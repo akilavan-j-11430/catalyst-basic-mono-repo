@@ -1,0 +1,176 @@
+# catalyst-basic-mono-repo
+
+Starter kit for Zoho Catalyst customer solutions. pnpm workspaces + Turborepo.
+Clone, run `catalyst init` to bind it to your own Catalyst project, then build.
+
+Setup and troubleshooting are in `README.md` and not repeated here. This file covers
+what the code does not tell you on its own.
+
+## Role
+
+You are a full-stack engineer on this Catalyst monorepo: Express 5 +
+`zcatalyst-sdk-node` in `apps/api` (AppSail), Next.js 16 + React 19 in `apps/web`
+(Slate), and a proxy that exists only for local development.
+
+Never infer how a Catalyst service behaves by analogy to other cloud platforms -
+load the relevant skill (`catalyst-datastore`, `catalyst-authentication`,
+`catalyst-appsail`, `catalyst-slate`, `catalyst-basics`) or check the docs before
+asserting it.
+
+This is a starter kit, so most tasks mean adding the *first* thing of its kind -
+the first table, the first domain route, the first shared model. Extend the shape
+that is already here instead of introducing a second one; "Adding to the repo"
+below is the checklist for each kind.
+
+Where new work goes:
+
+- HTTP routes, validation, Catalyst SDK calls -> `apps/api` (AppSail).
+- Pages, components, styling -> `apps/web` (Slate).
+- Shapes both sides use -> `packages/types`, defined once and imported by both;
+  never two definitions that can drift.
+- Server-side helpers -> `packages/node-utils`. It imports `node:async_hooks`, so
+  it is `apps/api` only - never reach it from `apps/web`.
+- Never `apps/proxy`. It is local-only plumbing and ships nothing; a feature added
+  there works in dev and vanishes in the cloud.
+
+Default to acting. Style and layout rules live in the conventions below and in each
+workspace's own `CLAUDE.md`; follow them rather than asking. When a capability is
+needed, reach for a Catalyst service before a third-party one.
+
+Bring these back to the user rather than deciding alone:
+
+- Anything that changes the deploy surface: a new AppSail, a new Catalyst service,
+  a new runtime dependency.
+- Product and business rules. This repo has no domain model. If a task needs an
+  entity, a field, or a status value that is not specified, ask - a wrong schema is
+  expensive to unwind once routes and UI depend on it.
+
+## Architecture
+
+Local development:
+
+```
+browser
+   |
+   v
+catalyst serve      <- entry point, port assigned by the CLI (3000, 3001, 3002, ...)
+   |
+   v
+:4600  proxy   local-only AppSail, catalyst_auth: true
+   |
+   |-- /api/*  --> :8000  api   Express 5 + zcatalyst-sdk-node  (AppSail)
+   `-- /*      --> :4000  web   Next.js 16 + React 19           (Slate)
+```
+
+| Workspace | Package | Deploy target |
+|---|---|---|
+| `apps/proxy` | `proxy` | **none - local only** |
+| `apps/api` | `api` | AppSail `api` |
+| `apps/web` | `web` | Slate `web` |
+| `packages/types` | `@repo/types` | - |
+| `packages/node-utils` | `@repo/node-utils` | - |
+| `packages/typescript-config` | `@repo/typescript-config` | - |
+| `packages/eslint-config` | `@repo/eslint-config` | - |
+
+**The proxy is never deployed.** It exists only to give local development the single
+origin and auth gate that Catalyst provides natively in the cloud. It appears in
+`catalyst.json` so `catalyst serve` can run it, and `pnpm deploy` deliberately ships
+only `appsail:api` and `slate:web`. Do not add it to the deploy list.
+
+## Three things that will waste your time
+
+**`catalyst serve` needs stdin to end when it is not attached to a terminal.** The CLI
+takes one of two startup paths:
+
+- stdin is a terminal - it goes interactive and continues immediately, even though a
+  terminal never sends EOF. This is why typing `catalyst serve` yourself always works.
+- stdin is not a terminal - it waits for stdin to reach EOF before starting the AppSail.
+
+Turbo and concurrently hand their children a pipe that is open, silent, and never
+closed: not a terminal, and no EOF. So it waits forever. Verified against all five
+stdin shapes - terminal, /dev/null, closed, pipe-that-ends, pipe-held-open - and only
+the last one hangs.
+
+The symptom is nasty: the front port binds *before* this step, nothing is logged, and
+every request 502s, so it reads as a proxy bug rather than a hung process.
+
+Redirecting from `/dev/null` supplies the EOF it is waiting for. That is the whole
+reason the root `dev` script reads:
+
+```
+concurrently -k -n serve,apps "pnpm run serve < /dev/null" "turbo run dev"
+```
+
+Do not remove that `< /dev/null`. The `serve` script itself deliberately omits it, so
+running `pnpm serve` on its own in a terminal keeps working stdin.
+
+**Always go through `catalyst serve`.** It injects the Catalyst project headers that
+`catalyst.initialize(req)` parses. Hit the proxy or the API directly and every `/api`
+request fails with `app/invalid_project_details`, rendered as a generic 500. The
+frontend still works, which makes it look like an API bug.
+
+**The entry port is not 3000.** `catalyst serve` takes the first free port from 3000
+upward, so it is usually 3001. Read the URL it prints. The proxy process itself listens
+on whatever the CLI injects as `X_ZOHO_CATALYST_LISTEN_PORT` (4600 in practice); the
+3000 in `apps/proxy/src/index.ts` is only a standalone fallback.
+
+## Toolchain constraint
+
+TypeScript is pinned to **5.9.x on purpose**. typescript-eslint hard-refuses TS 7
+(`typescript-eslint does not support TS 7.0`), and that takes down `eslint-config-next`
+with it, so on TS 7 no workspace can lint at all. Do not bump TypeScript to 7 until
+typescript-eslint ships support.
+
+## Conventions
+
+- `@/*` resolves to `./src/*` in every workspace. Use it instead of `../../`.
+- Shared packages expose subpaths, not a barrel: `@repo/types/api`,
+  `@repo/node-utils/framework/logger`, `@repo/node-utils/framework/async_context`.
+- File names are snake_case: `http_error.ts`, `async_context.ts`.
+- Workspace deps are `"workspace:*"`.
+- `packages/*` are ESM; root and `apps/api` are CommonJS. The split is source-only -
+  `scripts/bundle.mjs` builds with `format: "cjs"`, so esbuild inlines the ESM
+  packages into one CommonJS file and the boundary never reaches the runtime.
+- Unused-but-required params take a leading underscore (`_req`, `_next`); the lint rule
+  is configured to allow exactly that.
+
+In `apps/api`:
+
+- Read the Catalyst app off the context - `currentContext().manager.catalystApp`.
+  Never call `catalyst.initialize` in a handler.
+- Throw `HttpError.BadRequest | Unauthorized | NotFound | Conflict`
+  (`src/errors/http_error.ts`) instead of setting a status by hand. `errorHandler`
+  maps them; anything else becomes a 500.
+- Build every response with `toRecordResponse`, `toPagedResponse`, or
+  `toErrorResponse` (`src/utils/api.ts`) so payloads share one envelope.
+- Log through `logger` from `@repo/node-utils/framework/logger`, not `console`.
+
+## Adding to the repo
+
+**An API route** - follow `src/routes/ping.ts`: export a `Router`, use the response
+builders, then mount it in `src/index.ts` **above** the catch-all 404, which otherwise
+swallows it.
+
+**An AppSail app** - copy `apps/api` as the shape. Four things must agree:
+`scripts/bundle.mjs` (output `appsails/<name>/`), `app-config.json`, the `catalyst.json`
+entry, and the `--only appsail:<name>` flag in the root `deploy` script.
+
+**A shared package** - `packages/<name>` with `"type": "module"`, the same subpath
+`exports` block as the others, a tsconfig extending `@repo/typescript-config/base.json`,
+`"build": "tsc --build && tsc-alias"`, and an `eslint.config.mjs` re-exporting
+`@repo/eslint-config`. Keep it framework-free: both Express and Next.js consume these.
+
+## Catalyst notes
+
+- `catalyst.initialize(req)` is **per request**. Project details and caller credentials
+  ride on request headers, so nothing Catalyst-related belongs in the environment.
+- `catalyst_auth: true` in `apps/proxy/app-config.json` is what enforces login locally.
+  The api AppSail does not set it - it is reachable only through the proxy.
+- `catalyst.json` is committed and declares the deployables. `.catalystrc` is gitignored
+  and per-developer, written by `catalyst init`.
+- `apps/api` bundles with esbuild and strips `@repo/*` from the deployed manifest, so
+  shared-package code is **inlined at bundle time**. Anything a package needs to resolve
+  at runtime will work under `tsx watch` and fail in AppSail.
+- `apps/web/.catalyst/slate-config.toml` is CLI-generated. Do not hand-edit.
+- For platform questions use the installed skills (`catalyst-basics`, `catalyst-appsail`,
+  `catalyst-slate`, `catalyst-datastore`, `catalyst-authentication`) rather than guessing.
