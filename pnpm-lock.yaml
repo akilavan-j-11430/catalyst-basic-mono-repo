@@ -8,6 +8,21 @@ importers:
 
   .:
     dependencies:
+      '@zcatalyst/auth':
+        specifier: ^1.0.0
+        version: 1.0.0
+      '@zcatalyst/cache':
+        specifier: ^1.0.0
+        version: 1.0.0
+      '@zcatalyst/datastore':
+        specifier: ^1.0.0
+        version: 1.0.0
+      '@zcatalyst/job-scheduling':
+        specifier: ^1.0.0
+        version: 1.0.0
+      '@zcatalyst/stratus':
+        specifier: ^1.0.0
+        version: 1.0.0
       concurrently:
         specifier: ^10.0.5
         version: 10.0.5
@@ -28,8 +43,8 @@ importers:
         version: 5.9.3
     devDependencies:
       '@types/node':
-        specifier: ^26.6.2
-        version: 26.6.2
+        specifier: ^24.13.6
+        version: 24.13.6
 
   apps/api:
     dependencies:
@@ -39,6 +54,18 @@ importers:
       '@repo/types':
         specifier: workspace:*
         version: link:../../packages/types
+      '@zcatalyst/cache':
+        specifier: ^1.0.0
+        version: 1.0.0
+      '@zcatalyst/datastore':
+        specifier: ^1.0.0
+        version: 1.0.0
+      '@zcatalyst/job-scheduling':
+        specifier: ^1.0.0
+        version: 1.0.0
+      '@zcatalyst/stratus':
+        specifier: ^1.0.0
+        version: 1.0.0
       express:
         specifier: ^5.2.1
         version: 5.2.1
@@ -55,6 +82,9 @@ importers:
       '@types/express':
         specifier: ^4.17.25
         version: 4.17.25
+      '@types/node':
+        specifier: ^24.13.6
+        version: 24.13.6
       eslint:
         specifier: ^9.39.5
         version: 9.39.5(jiti@2.7.0)
@@ -78,8 +108,8 @@ importers:
         specifier: ^4.17.21
         version: 4.17.25
       '@types/node':
-        specifier: ^22.10.7
-        version: 22.20.4
+        specifier: ^24.13.6
+        version: 24.13.6
       esbuild:
         specifier: ^0.28.1
         version: 0.28.2
@@ -94,7 +124,7 @@ importers:
     dependencies:
       next:
         specifier: 16.3.5
-        version: 16.3.5(@babel/core@7.29.7)(@types/node@26.6.2)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
+        version: 16.3.5(@babel/core@7.29.7)(@types/node@24.13.6)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
       react:
         specifier: 19.2.8
         version: 19.2.8
@@ -137,10 +167,6 @@ importers:
         version: 8.70.0(eslint@9.39.5(jiti@2.7.0))(typescript@5.9.3)
 
   packages/node-utils:
-    dependencies:
-      zcatalyst-sdk-node:
-        specifier: ^3.4.0
-        version: 3.4.0
     devDependencies:
       '@repo/eslint-config':
         specifier: workspace:*
@@ -148,6 +174,12 @@ importers:
       '@repo/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config
+      '@types/node':
+        specifier: ^24.13.6
+        version: 24.13.6
+      concurrently:
+        specifier: ^10.0.5
+        version: 10.0.5
       eslint:
         specifier: ^9.39.5
         version: 9.39.5(jiti@2.7.0)
@@ -867,11 +899,8 @@ packages:
   '@types/mime@1.3.5':
     resolution: {integrity: sha512-/pyBZWSLD2n0dcHE3hq8s8ZvcETHtEuF+3E7XVt0Ig2nvsVQXdghHVcEkIWjy9A0wKfTn97a/PSDYohKIlnP/w==}
 
-  '@types/node@22.20.4':
-    resolution: {integrity: sha512-zJRE40jpHtKqE/C4fgHrAKQLJuSpzEnP9ff9Y7YtoR3Wd2pwqzlekDeEuUQXjRd+QCYnVnNwuJYmhdk9XV8gvA==}
-
-  '@types/node@26.6.2':
-    resolution: {integrity: sha512-X1P21scMv4zGKLYqjdGjaKa7COa0RKVYYZZN/NfvLQ1JegxFhdhpZG/Lyn8AXx6CDUavKAd11v6BvfpkDByK8g==}
+  '@types/node@24.13.6':
+    resolution: {integrity: sha512-SGrw/h3KPFshy3OE6ZL53LMBG5vGQQ8/gIpiqz/kRZhPJ7HgwCEs8LBuNtWLa8dvGZVpSF7+Bf+c11HUrCb/yg==}
 
   '@types/qs@6.15.1':
     resolution: {integrity: sha512-GZHUBZR9hckSUhrxmp1nG6NwdpM9fCunJwyThLW1X3AyHgd9IlHb6VANpQQqDr2o/qQp6McZ3y/IA2rVzKzSbw==}
@@ -1064,6 +1093,42 @@ packages:
     resolution: {integrity: sha512-nAB74NfSNKknqQ1RrYj6uz8FcXEomu/MATJZxh/x+BArzN2U3JbOYC0APYzUIGhVY3m5hRxA8VPNdPBoG8txlA==}
     cpu: [x64]
     os: [win32]
+
+  '@zcatalyst/auth-admin@1.0.0':
+    resolution: {integrity: sha512-YY2keEr65wmghlkgZYjwrA3GalCqxTfdikfGB8x8H67QN9WYSiZKqA9EfH7sj95aztGkKCRei8+qksq/PAv5wQ==}
+    engines: {node: '>=22'}
+
+  '@zcatalyst/auth-client@1.0.0':
+    resolution: {integrity: sha512-+jLbHUMFuk4kch5Pw8s0y8c3U/c0B2kcOEWAK/m5BnMx8GMdu+L+3q51oJrNSzJ4MB11qyDbnHx3avcJXmV6kA==}
+    engines: {node: '>=22'}
+
+  '@zcatalyst/auth@1.0.0':
+    resolution: {integrity: sha512-Qih+vp6e4VpLwHqWiuPQikqT2qFqqqlReW+XE2fkdLkS8X2oJ9C4bS5dAbkMUWM2JCZpwSoMVjxfFoBSXF9hCw==}
+    engines: {node: '>=22'}
+
+  '@zcatalyst/cache@1.0.0':
+    resolution: {integrity: sha512-2DZmZ6YmxH+ETIqax/ZVNwG7RpdiBP3AVxyRAmcfkMzYOrRmANiFZih/aIop3qJ6xRzhE5z2XNMsFtZyhWU6AA==}
+    engines: {node: '>=22'}
+
+  '@zcatalyst/datastore@1.0.0':
+    resolution: {integrity: sha512-cYtQT7krDqWQLermdmwCoU5zLtmpR/9WTsALYtbFMsfvUkYpgs2zNkImvTxcrK0Dr+X5pCGR2o7GGTtTMvIjqQ==}
+    engines: {node: '>=22'}
+
+  '@zcatalyst/job-scheduling@1.0.0':
+    resolution: {integrity: sha512-VUiLyVBcIUZ38iatrgm4m6Vm9tTukay/y3q05YYAusbhkpFb1yErq1u/xiQKsvJ8f3XNYmMsgAnZK2cZXuleYg==}
+    engines: {node: '>=22'}
+
+  '@zcatalyst/stratus@1.0.0':
+    resolution: {integrity: sha512-55Fnf8jS5aHNPoQJmGRjd0iyJ4GDrWZLRrdVIHn1NtxMQC6X7/yIdNjDNV6oJHrSedwROTuU7hBjeY6mnAkQMQ==}
+    engines: {node: '>=22'}
+
+  '@zcatalyst/transport@1.0.0':
+    resolution: {integrity: sha512-MYPBiid41uzEThvCutS2UiC/xwBqL4hlaabtIPDTEbWw8naDDHBFGAMWtWuzR5r2kGkHJT/VVyGWMQ+lImQNVQ==}
+    engines: {node: '>=22'}
+
+  '@zcatalyst/utils@1.0.0':
+    resolution: {integrity: sha512-G+tqnZYdWuCeiBKayYOLlTFlJp4pF8GuB0upxjcV0h5tK9du6Oafa6whjUakWrpverJQ5UePbV6ecjcwXSvsLw==}
+    engines: {node: '>=22'}
 
   accepts@2.0.0:
     resolution: {integrity: sha512-5cvg6CtKwfgdmVqY1WIiXKc3Q1bkRqGLi+2W/6ao+6Y7gu/RCwRuAhGEzh5B4KlszSuTLgZYuqFqo5bImjNKng==}
@@ -2592,11 +2657,8 @@ packages:
     resolution: {integrity: sha512-nWJ91DjeOkej/TA8pXQ3myruKpKEYgqvpw9lz4OPHj/NWFNluYrjbz9j01CJ8yKQd2g4jFoOkINCTW2I5LEEyw==}
     engines: {node: '>= 0.4'}
 
-  undici-types@6.21.0:
-    resolution: {integrity: sha512-iwDZqg0QAGrg9Rav5H4n0M64c3mkR59cJ6wQp+7C4nI0gsmExaedaYLNO44eT4AtBBwjbTiGPMlt2Md0T9H9JQ==}
-
-  undici-types@8.9.0:
-    resolution: {integrity: sha512-KTDyRTYX8sWmKXAikPHHSyc63CRPETMctyjKFupcC6OBLXT3xsN0e9aF7m+mIXutFWpUXuedtowG7iLOzp0kQg==}
+  undici-types@7.18.2:
+    resolution: {integrity: sha512-AsuCzffGHJybSaRrmr5eHr81mwJU3kjw6M+uprWvCXiNeN9SOGwQ3Jn8jb8m3Z6izVgknn1R0FTCEAP2QrLY/w==}
 
   unpipe@1.0.0:
     resolution: {integrity: sha512-pjy2bYhSsufwWlKwPc+l3cN7+wuJlK6uz0YdJEOlQDbl6jo/YlPi4mb8agUkVC8BF7V8NuzeyPNqRksA3hztKQ==}
@@ -3233,17 +3295,17 @@ snapshots:
   '@types/body-parser@1.19.6':
     dependencies:
       '@types/connect': 3.4.38
-      '@types/node': 26.6.2
+      '@types/node': 24.13.6
 
   '@types/connect@3.4.38':
     dependencies:
-      '@types/node': 26.6.2
+      '@types/node': 24.13.6
 
   '@types/estree@1.0.9': {}
 
   '@types/express-serve-static-core@4.19.9':
     dependencies:
-      '@types/node': 26.6.2
+      '@types/node': 24.13.6
       '@types/qs': 6.15.1
       '@types/range-parser': 1.2.7
       '@types/send': 1.2.1
@@ -3263,13 +3325,9 @@ snapshots:
 
   '@types/mime@1.3.5': {}
 
-  '@types/node@22.20.4':
+  '@types/node@24.13.6':
     dependencies:
-      undici-types: 6.21.0
-
-  '@types/node@26.6.2':
-    dependencies:
-      undici-types: 8.9.0
+      undici-types: 7.18.2
 
   '@types/qs@6.15.1': {}
 
@@ -3286,16 +3344,16 @@ snapshots:
   '@types/send@0.17.6':
     dependencies:
       '@types/mime': 1.3.5
-      '@types/node': 26.6.2
+      '@types/node': 24.13.6
 
   '@types/send@1.2.1':
     dependencies:
-      '@types/node': 26.6.2
+      '@types/node': 24.13.6
 
   '@types/serve-static@1.15.10':
     dependencies:
       '@types/http-errors': 2.0.5
-      '@types/node': 26.6.2
+      '@types/node': 24.13.6
       '@types/send': 0.17.6
 
   '@typescript-eslint/eslint-plugin@8.70.0(@typescript-eslint/parser@8.70.0(eslint@9.39.5(jiti@2.7.0))(typescript@5.9.3))(eslint@9.39.5(jiti@2.7.0))(typescript@5.9.3)':
@@ -3458,6 +3516,52 @@ snapshots:
 
   '@unrs/resolver-binding-win32-x64-msvc@1.12.2':
     optional: true
+
+  '@zcatalyst/auth-admin@1.0.0':
+    dependencies:
+      '@zcatalyst/utils': 1.0.0
+
+  '@zcatalyst/auth-client@1.0.0':
+    dependencies:
+      '@zcatalyst/utils': 1.0.0
+
+  '@zcatalyst/auth@1.0.0':
+    dependencies:
+      '@zcatalyst/auth-admin': 1.0.0
+      '@zcatalyst/auth-client': 1.0.0
+      '@zcatalyst/transport': 1.0.0
+      '@zcatalyst/utils': 1.0.0
+
+  '@zcatalyst/cache@1.0.0':
+    dependencies:
+      '@zcatalyst/transport': 1.0.0
+      '@zcatalyst/utils': 1.0.0
+
+  '@zcatalyst/datastore@1.0.0':
+    dependencies:
+      '@zcatalyst/auth-client': 1.0.0
+      '@zcatalyst/transport': 1.0.0
+      '@zcatalyst/utils': 1.0.0
+
+  '@zcatalyst/job-scheduling@1.0.0':
+    dependencies:
+      '@zcatalyst/auth-client': 1.0.0
+      '@zcatalyst/transport': 1.0.0
+      '@zcatalyst/utils': 1.0.0
+
+  '@zcatalyst/stratus@1.0.0':
+    dependencies:
+      '@zcatalyst/auth-client': 1.0.0
+      '@zcatalyst/transport': 1.0.0
+      '@zcatalyst/utils': 1.0.0
+
+  '@zcatalyst/transport@1.0.0':
+    dependencies:
+      '@zcatalyst/auth-admin': 1.0.0
+      '@zcatalyst/auth-client': 1.0.0
+      '@zcatalyst/utils': 1.0.0
+
+  '@zcatalyst/utils@1.0.0': {}
 
   accepts@2.0.0:
     dependencies:
@@ -4694,7 +4798,7 @@ snapshots:
     dependencies:
       content-type: 2.1.0
 
-  next@16.3.5(@babel/core@7.29.7)(@types/node@26.6.2)(react-dom@19.2.8(react@19.2.8))(react@19.2.8):
+  next@16.3.5(@babel/core@7.29.7)(@types/node@24.13.6)(react-dom@19.2.8(react@19.2.8))(react@19.2.8):
     dependencies:
       '@next/env': 16.3.5
       '@swc/helpers': 0.5.23
@@ -4713,7 +4817,7 @@ snapshots:
       '@next/swc-linux-x64-musl': 16.3.5
       '@next/swc-win32-arm64-msvc': 16.3.5
       '@next/swc-win32-x64-msvc': 16.3.5
-      sharp: 0.35.4(@types/node@26.6.2)
+      sharp: 0.35.4(@types/node@24.13.6)
     transitivePeerDependencies:
       - '@babel/core'
       - '@types/node'
@@ -5019,7 +5123,7 @@ snapshots:
 
   setprototypeof@1.2.0: {}
 
-  sharp@0.35.4(@types/node@26.6.2):
+  sharp@0.35.4(@types/node@24.13.6):
     dependencies:
       '@img/colour': 1.1.0
       detect-libc: 2.1.2
@@ -5050,7 +5154,7 @@ snapshots:
       '@img/sharp-win32-arm64': 0.35.4
       '@img/sharp-win32-ia32': 0.35.4
       '@img/sharp-win32-x64': 0.35.4
-      '@types/node': 26.6.2
+      '@types/node': 24.13.6
     optional: true
 
   shebang-command@2.0.0:
@@ -5299,9 +5403,7 @@ snapshots:
       has-symbols: 1.1.0
       which-boxed-primitive: 1.1.1
 
-  undici-types@6.21.0: {}
-
-  undici-types@8.9.0: {}
+  undici-types@7.18.2: {}
 
   unpipe@1.0.0: {}
 

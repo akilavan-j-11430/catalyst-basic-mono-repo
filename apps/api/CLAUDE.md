@@ -46,13 +46,20 @@ headers. Bypass it and `catalyst.initialize` throws `app/invalid_project_details
 which `errorHandler` renders as a generic 500. If every `/api` route is 500ing in dev,
 that is the cause, not your handler.
 
-Handlers must **not** call `catalyst.initialize` themselves. Read it off the context:
+Handlers must **not** call `catalyst.initialize` themselves, and must not reach for the
+app at all. Use the wrappers - they read it off the context for you:
 
 ```ts
-import { currentContext } from "@repo/node-utils/framework/async_context";
-
-const catalystApp = currentContext().manager.catalystApp;
+import { Bucket } from "@repo/node-utils/services/catalyst/bucket";
+import { Table } from "@repo/node-utils/services/catalyst/table";
+import { Zcql } from "@repo/node-utils/services/catalyst/zcql";
+import { Cache } from "@repo/node-utils/services/catalyst/cache";
+import { Job } from "@repo/node-utils/services/catalyst/job";
 ```
+
+They throw `CatalystError` (`@repo/node-utils/errors/catalyst_error`), which carries an
+`ErrorCode`; catch it at the route only to map onto an `HttpError`, otherwise let it reach
+`errorHandler` as a 500. `.claude/rules/catalyst_sdk.md` is the full rule.
 
 `currentContext()` throws outside a request. Carry anything else request-scoped via
 `manager.setExtras(key, value)` / `manager.getExtras<T>(key)`.
@@ -89,6 +96,35 @@ Every response goes through `src/utils/api.ts`:
 - `toErrorResponse(message)` - error shape
 
 The shapes live in `@repo/types/api` so the web app imports the same ones.
+
+## Calling an external API
+
+Through `HttpClient` from `@repo/node-utils/http/http_client` - never `fetch` or another
+client directly. One instance per service at module scope; the full rule, the body and
+response shapes and the transport seam are in `.claude/rules/outbound_http.md`.
+
+The body decides its own encoding - an object becomes JSON, a string is text, `FormData`
+is multipart. A third argument refines that but may not contradict it. A call resolves to
+the whole response - read the body as `json()`, `text()` or `raw()`.
+
+```ts
+const { body } = await billing.post("/invoices", dto);
+const invoice = toInvoice(await body.json());
+```
+
+Both a non-2xx and an unreachable host reject with `HttpRequestError`, which carries
+`status`, `headers` and `body` flat and synchronous for logging. Unhandled, it falls
+through to `errorHandler` as a 500 - the right default for an upstream failure. Catch it
+only to map a specific upstream status:
+
+```ts
+catch (error) {
+  if (error instanceof HttpRequestError && error.status === 404) {
+    throw HttpError.NotFound(`No invoice ${id}.`);
+  }
+  throw error;
+}
+```
 
 ## Logging
 
