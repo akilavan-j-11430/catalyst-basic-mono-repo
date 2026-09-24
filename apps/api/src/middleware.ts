@@ -11,8 +11,8 @@ import {
   runWithContext,
 } from "@repo/node-utils/framework/async_context";
 import { logger } from "@repo/node-utils/framework/logger";
-import catalyst from "zcatalyst-sdk-node";
 import { randomUUID } from "crypto";
+import { zcAuth } from "@zcatalyst/auth";
 import { HttpError } from "@/errors/http_error";
 import { toErrorResponse } from "@/utils/api";
 
@@ -40,13 +40,13 @@ export function recordRequestTiming(
 export const initExecutionContext: RequestHandler = (req, _res, next) => {
   // Catalyst reads both the project details and the caller's credentials off the headers,
   // so the app is per-request and nothing needs to be configured in the environment.
-  const catalystApp = catalyst.initialize(
-    req as unknown as Record<string, unknown>,
+  const catalystApp = zcAuth.init(
+    req as unknown as Parameters<typeof zcAuth.init>[0],
   );
   runWithContext(
     new ExecutionContext({
       executionId: randomUUID(),
-      catalystApp,
+      catalyst: catalystApp,
       extras: {},
     }),
     () => next(),

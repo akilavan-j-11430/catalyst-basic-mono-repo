@@ -1,13 +1,12 @@
 import { AsyncLocalStorage } from "node:async_hooks";
-import type { CatalystApp } from "zcatalyst-sdk-node/lib/catalyst-app.js";
 import { RuntimeError } from "@/errors/runtime_error";
 
 
 /** Per-request values carried on the execution context. */
 export interface ExecutionInfo {
+  catalyst: unknown;
   executionId: string;
   /** Catalyst app built from the request credentials. */
-  catalystApp: CatalystApp;
   /** Any other values that need to be carried through the request. */
   extras: Record<string, unknown>;
 }
@@ -23,12 +22,12 @@ class ExecutionManager {
     return this.values.executionId;
   }
 
-  get catalystApp(): CatalystApp {
-    return this.values.catalystApp;
+  get catalyst(): unknown {
+    return this.values.catalyst;
   }
 
-  set catalystApp(value: CatalystApp) {
-    this.values.catalystApp = value;
+  set catalyst(value: unknown) {
+    this.values.catalyst = value;
   }
 
   getExtras<T>(key: string): T | undefined {

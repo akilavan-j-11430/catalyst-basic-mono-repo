@@ -6,7 +6,7 @@ export class RuntimeError extends Error {
     message: string,
   ) {
     super(message);
-    this.name = "AppError";
+    this.name = "RuntimeError";
   }
 
   toString(): string {

@@ -1,3 +1,4 @@
-import config from "@repo/eslint-config";
+import config, { allowCatalystSdk } from "@repo/eslint-config";
 
-export default config;
+// Only the per-request initialization touches the SDK directly.
+export default [...config, allowCatalystSdk(["src/middleware.ts"])];

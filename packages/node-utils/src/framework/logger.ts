@@ -1,8 +1,9 @@
 import { currentContext } from "@/framework/async_context";
+import { env } from "@/utils/env";
 
 
 function timezone(): string {
-  return process.env["TZ"] ?? "Asia/Kolkata";
+  return env.optional("TZ") ?? "Asia/Kolkata";
 }
 
 

@@ -23,9 +23,8 @@
   "devDependencies": {
     "@repo/eslint-config": "workspace:*",
     "@repo/typescript-config": "workspace:*",
+    "@types/node": "^24.13.6",
+    "concurrently": "^10.0.5",
     "eslint": "^9.39.5"
-  },
-  "dependencies": {
-    "zcatalyst-sdk-node": "^3.4.0"
   }
 }
