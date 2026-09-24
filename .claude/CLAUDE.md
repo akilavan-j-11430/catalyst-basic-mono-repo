@@ -8,8 +8,8 @@ what the code does not tell you on its own.
 
 ## Role
 
-You are a full-stack engineer on this Catalyst monorepo: Express 5 +
-`zcatalyst-sdk-node` in `apps/api` (AppSail), Next.js 16 + React 19 in `apps/web`
+You are a full-stack engineer on this Catalyst monorepo: Express 5 + the modular
+`@zcatalyst/*` SDKs in `apps/api` (AppSail), Next.js 16 + React 19 in `apps/web`
 (Slate), and a proxy that exists only for local development.
 
 Never infer how a Catalyst service behaves by analogy to other cloud platforms -
@@ -58,7 +58,7 @@ catalyst serve      <- entry point, port assigned by the CLI (3000, 3001, 3002, 
    v
 :4600  proxy   local-only AppSail, catalyst_auth: true
    |
-   |-- /api/*  --> :8000  api   Express 5 + zcatalyst-sdk-node  (AppSail)
+   |-- /api/*  --> :8000  api   Express 5 + @zcatalyst/* SDKs    (AppSail)
    `-- /*      --> :4000  web   Next.js 16 + React 19           (Slate)
 ```
 
@@ -105,7 +105,7 @@ Do not remove that `< /dev/null`. The `serve` script itself deliberately omits i
 running `pnpm serve` on its own in a terminal keeps working stdin.
 
 **Always go through `catalyst serve`.** It injects the Catalyst project headers that
-`catalyst.initialize(req)` parses. Hit the proxy or the API directly and every `/api`
+`zcAuth.init(req)` parses. Hit the proxy or the API directly and every `/api`
 request fails with `app/invalid_project_details`, rendered as a generic 500. The
 frontend still works, which makes it look like an API bug.
 
@@ -143,14 +143,15 @@ runtime does not have.
 
 ## Conventions
 
-Topic rules live one-per-file in `.claude/rules/` and load automatically; `outbound_http.md`
-covers every call to a service outside this repo. Add a file there rather than growing this
-one, and give it `paths:` frontmatter if it only applies to part of the tree.
+Topic rules live one-per-file in `.claude/rules/` and load automatically: `catalyst_sdk.md`
+covers every Catalyst call, `outbound_http.md` every call to a service outside this repo.
+Add a file there rather than growing this one, and give it `paths:` frontmatter if it only
+applies to part of the tree.
 
 - `@/*` resolves to `./src/*` in every workspace. Use it instead of `../../`.
 - Shared packages expose subpaths, not a barrel: `@repo/types/api`,
   `@repo/node-utils/framework/logger`, `@repo/node-utils/framework/async_context`,
-  `@repo/node-utils/services/catalyst/bucket`, `@repo/node-utils/utils/env`.
+  `@repo/node-utils/services/catalyst/resources`, `@repo/node-utils/utils/env`.
 - File names are snake_case: `http_error.ts`, `async_context.ts`.
 - Workspace deps are `"workspace:*"`.
 - `packages/*` are ESM; root and `apps/api` are CommonJS. The split is source-only -
@@ -158,12 +159,20 @@ one, and give it `paths:` frontmatter if it only applies to part of the tree.
   packages into one CommonJS file and the boundary never reaches the runtime.
 - Unused-but-required params take a leading underscore (`_req`, `_next`); the lint rule
   is configured to allow exactly that.
+- **No `any`, and `unknown` only where the type genuinely is not knowable yet** - a
+  response body before it is parsed, a caught `error`, a value the SDK itself leaves
+  untyped. Narrow it at the first point you can, and type the result. What this rules out
+  is `any`/`unknown` standing in for a type nobody looked up: derive it from the signature
+  that produces it, or declare it. `.claude/rules/catalyst_sdk.md` shows how when the
+  vendor types are awkward.
 
 In `apps/api`:
 
-- Reach Catalyst through the wrappers in `@repo/node-utils/services/catalyst/*`
-  (`Bucket`, `Table`, `Zcql`, `Cache`, `Job`). Never call `catalyst.initialize` in a handler and
-  never read the app off the context yourself - see `.claude/rules/catalyst_sdk.md`.
+- Reach Catalyst through a resource handle imported from
+  `@repo/node-utils/services/catalyst/resources`, where every table, bucket, cache segment
+  and job is declared once with the wrapper's `create` factory. Never construct a wrapper
+  in a handler, never initialize Catalyst yourself, and never read the app off the context
+  - see `.claude/rules/catalyst_sdk.md`.
 - Throw `HttpError.BadRequest | Unauthorized | NotFound | Conflict`
   (`src/errors/http_error.ts`) instead of setting a status by hand. `errorHandler`
   maps them; anything else becomes a 500.
@@ -196,8 +205,9 @@ entry, and the `--only appsail:<name>` flag in the root `deploy` script.
 
 ## Catalyst notes
 
-- `catalyst.initialize(req)` is **per request**. Project details and caller credentials
-  ride on request headers, so nothing Catalyst-related belongs in the environment.
+- `zcAuth.init(req)` (`@zcatalyst/auth`) is **per request**. Project details and caller
+  credentials ride on request headers, so nothing Catalyst-related belongs in the
+  environment.
 - `catalyst_auth: true` in `apps/proxy/app-config.json` is what enforces login locally.
   The api AppSail does not set it - it is reachable only through the proxy.
 - `catalyst.json` is committed and declares the deployables. `.catalystrc` is gitignored

@@ -54,6 +54,9 @@ importers:
       '@repo/types':
         specifier: workspace:*
         version: link:../../packages/types
+      '@zcatalyst/auth':
+        specifier: ^1.0.0
+        version: 1.0.0
       '@zcatalyst/cache':
         specifier: ^1.0.0
         version: 1.0.0
@@ -69,9 +72,6 @@ importers:
       express:
         specifier: ^5.2.1
         version: 5.2.1
-      zcatalyst-sdk-node:
-        specifier: ^3.4.0
-        version: 3.4.0
     devDependencies:
       '@repo/eslint-config':
         specifier: workspace:*
@@ -1144,10 +1144,6 @@ packages:
     engines: {node: '>=0.4.0'}
     hasBin: true
 
-  agent-base@7.1.4:
-    resolution: {integrity: sha512-MnA+YT8fwfJPgBx3m60MNqakm30XOkyIoH1y6huTQvC0PwZG7ki8NacLBcrPbNoo8vEZy7Jpuk7+jMO+CUovTQ==}
-    engines: {node: '>= 14'}
-
   ajv@6.15.0:
     resolution: {integrity: sha512-fgFx7Hfoq60ytK2c7DhnF8jIvzYgOMxfugjLOSMHjLIPgenqa7S7oaagATUq99mV6IYvN2tRmC0wnTYX6iPbMw==}
 
@@ -1805,10 +1801,6 @@ packages:
   http-proxy-middleware@4.2.0:
     resolution: {integrity: sha512-ZA+oNOoM+GLoFTIzhkJptVQov73Srep2LBqhF8hG8CIPKO3nam1jonXVQ/QUH8RbwsmaaVz2SOJdzBNBHNtKbw==}
     engines: {node: ^22.15.0 || ^24.0.0 || >=26.0.0}
-
-  https-proxy-agent@7.0.6:
-    resolution: {integrity: sha512-vK9P5/iUfdl95AI+JVyUuIcVtd4ofvtrOr3HNtM2yxC9bnMbEdp3x01OhQNnjb8IJYi38VlTE3mBXwcfvywuSw==}
-    engines: {node: '>= 14'}
 
   httpxy@0.5.5:
     resolution: {integrity: sha512-uDjmnPyp1q4Sgzf3w+J/Fc6UqcCEj0x4Wjp7OqK5dGhNeDgpyrAmnS6ey8QWrX3SWDon2DMKf9sBa5X9+CVyMA==}
@@ -2731,10 +2723,6 @@ packages:
     resolution: {integrity: sha512-rVksvsnNCdJ/ohGc6xgPwyN8eheCxsiLM8mxuE/t/mOVqJewPuO1miLpTHQiRgTKCLexL4MeAFVagts7HmNZ2Q==}
     engines: {node: '>=10'}
 
-  zcatalyst-sdk-node@3.4.0:
-    resolution: {integrity: sha512-+hjLHve+BeQdSd9rt8MgugMrfVKfBO9kZO58e+Uwakmn7SrasqOJDyWffECxMAVfemMPSSQOpRx/aAbghdOQIA==}
-    engines: {node: '>=10.0.0'}
-
   zod-validation-error@4.0.2:
     resolution: {integrity: sha512-Q6/nZLe6jxuU80qb/4uJ4t5v2VEZ44lzQjPDhYJNztRQ4wyWc6VF3D3Kb/fAuPetZQnhS3hnajCf9CsWesghLQ==}
     engines: {node: '>=18.0.0'}
@@ -3573,8 +3561,6 @@ snapshots:
       acorn: 8.18.0
 
   acorn@8.18.0: {}
-
-  agent-base@7.1.4: {}
 
   ajv@6.15.0:
     dependencies:
@@ -4470,13 +4456,6 @@ snapshots:
       is-glob: 4.0.3
       is-plain-obj: 4.1.0
       micromatch: 4.0.8
-    transitivePeerDependencies:
-      - supports-color
-
-  https-proxy-agent@7.0.6:
-    dependencies:
-      agent-base: 7.1.4
-      debug: 4.4.3
     transitivePeerDependencies:
       - supports-color
 
@@ -5517,12 +5496,6 @@ snapshots:
       yargs-parser: 22.0.0
 
   yocto-queue@0.1.0: {}
-
-  zcatalyst-sdk-node@3.4.0:
-    dependencies:
-      https-proxy-agent: 7.0.6
-    transitivePeerDependencies:
-      - supports-color
 
   zod-validation-error@4.0.2(zod@4.6.5):
     dependencies:

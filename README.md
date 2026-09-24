@@ -8,7 +8,7 @@ minutes.
 **What you get out of the box**
 
 - A **Next.js 16** frontend (React 19, Tailwind 4) deployed as a Catalyst Slate app.
-- An **Express 5** API on `zcatalyst-sdk-node`, deployed as a Catalyst AppSail, with
+- An **Express 5** API on the modular `@zcatalyst/*` SDKs, deployed as a Catalyst AppSail, with
   per-request execution context, structured logging, and a consistent response shape.
 - A **reverse proxy** AppSail that gives the whole stack a single origin and enforces
   Catalyst login at the edge.
@@ -204,7 +204,7 @@ curl http://localhost:3001/api/nope
 | `apps/api` | Express API. Establishes a per-request execution context holding the Catalyst app, times requests, and maps typed errors to HTTP statuses. |
 | `apps/web` | Next.js frontend. Calls the API with relative `/api/...` paths. |
 | `@repo/types` | `RecordResponse`, `PagedRecordResponse`, `ErrorResponse` - imported by both the API and the web app so the contract is written once. |
-| `@repo/node-utils` | `ExecutionContext` over `AsyncLocalStorage`, a `logger` that stamps execution IDs, and `RuntimeError`. |
+| `@repo/node-utils` | `ExecutionContext` over `AsyncLocalStorage`, a `logger` that stamps execution IDs, `RuntimeError`, `env`, `HttpClient`, and the Catalyst wrappers plus the resource handles built from them. |
 | `@repo/typescript-config` | `base.json`. Strict mode, `noUncheckedIndexedAccess`, ES2022. Every other tsconfig extends it. |
 | `@repo/eslint-config` | Shared flat ESLint config. Every workspace re-exports it from its own `eslint.config.mjs`. |
 
@@ -335,8 +335,9 @@ Short version; `CLAUDE.md` has the full list.
   `toErrorResponse` so clients always get the same `status` / `data` envelope.
 - **Logging.** Use `logger` from `@repo/node-utils`, not `console`. It attaches the
   execution ID and per-request ordering.
-- **Catalyst SDK.** `catalyst.initialize(req)` happens once per request in middleware.
-  Handlers read the app off the execution context and never initialize their own.
+- **Catalyst SDK.** `zcAuth.init(req)` happens once per request in middleware. Handlers
+  import a resource handle from `@repo/node-utils/services/catalyst/resources` and never
+  initialize their own app.
 - **Ports** come from `X_ZOHO_CATALYST_LISTEN_PORT` with a local fallback. Never
   hardcode.
 - **Underscore-prefixed params** (`_req`, `_next`) mark arguments a signature requires
@@ -361,7 +362,7 @@ in a terminal is unaffected - a terminal takes the interactive path.
 
 **Every `/api` call returns 500 `Something went wrong`** - you are bypassing
 `catalyst serve`. Only the CLI injects the project headers the Catalyst SDK parses, so
-`catalyst.initialize(req)` throws `app/invalid_project_details`. The API log shows the
+`zcAuth.init(req)` throws `app/invalid_project_details`. The API log shows the
 real error. Use the CLI's printed URL, not `:8000` or a hand-started proxy.
 
 **You cannot find the app on port 3000** - the CLI takes the first free port from 3000

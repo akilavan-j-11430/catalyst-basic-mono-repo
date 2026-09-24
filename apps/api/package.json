@@ -18,12 +18,12 @@
   "dependencies": {
     "@repo/node-utils": "workspace:*",
     "@repo/types": "workspace:*",
+    "@zcatalyst/auth": "^1.0.0",
     "@zcatalyst/cache": "^1.0.0",
     "@zcatalyst/datastore": "^1.0.0",
     "@zcatalyst/job-scheduling": "^1.0.0",
     "@zcatalyst/stratus": "^1.0.0",
-    "express": "^5.2.1",
-    "zcatalyst-sdk-node": "^3.4.0"
+    "express": "^5.2.1"
   },
   "devDependencies": {
     "@repo/eslint-config": "workspace:*",
