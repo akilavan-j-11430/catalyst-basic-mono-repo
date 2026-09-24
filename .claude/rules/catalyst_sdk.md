@@ -5,8 +5,7 @@ Every Catalyst SDK call goes through `packages/node-utils/src/services/catalyst/
 exemption is `framework/async_context.ts`, which carries the app's type across the request.
 
 One file per component - `bucket.ts`, `table.ts`, `zcql.ts`, `cache.ts`, `job.ts` - plus
-`resources.ts`, which names the resources, and `job_scheduling_enums.d.ts`, which makes
-the SDK's enums importable. Each component builds the SDK client
+`resources.ts`, which names the resources. Each component builds the SDK client
 it needs itself, in a module-private accessor at the top of the file, and reaches for the
 app nowhere else:
 
@@ -176,29 +175,44 @@ type CatalystBucket = ReturnType<Stratus["bucket"]>;
 type SubmitInput = Parameters<JobScheduling["JOB"]["submitJob"]>[0];
 ```
 
-The enums need a bridge. `@zcatalyst/job-scheduling` declares `CRON_TYPE`, `TARGET_TYPE`
-and the rest but re-exports none of them from its package root, and its build output
-splits them: the **values** are in `dist-es/utils/enum.js` with no declarations beside
-them, the **declarations** in `dist-types/utils/enum` with no JS. Importing either alone
-fails - `dist-types` type-checks and then throws at runtime, `dist-es` runs but is an
-implicit `any`.
+**Never import from `dist-es/`, `dist-cjs/` or `dist-types/`.** Those are build artefacts,
+not an API, and a reader who finds one cannot tell whether it is load-bearing.
 
-`job_scheduling_enums.d.ts` joins them, declaring the `dist-es` module with the
-`dist-types` types, so the enum imports normally and `TARGET_TYPE.FUNCTION` is used
-directly. This survives the CJS bundle because AppSail runs **node24**, where `require()`
-of an ESM file is supported - on an older runtime it would not.
+That rule costs something, and the cost is worth knowing. The SDK's enums are reachable
+nowhere else: `CRON_TYPE` and `TARGET_TYPE` are re-exported from no package root, their
+values ship in `dist-es/` with no declarations beside them, and their declarations sit in
+`dist-types/` with no JS behind them - so `dist-types` type-checks and then throws at
+runtime, while `dist-es` runs as an implicit `any`. Reaching them at all takes a
+`declare module` bridging the two directories.
 
-Both paths are build artefacts rather than a public API. Re-check them on every upgrade,
-and prefer a derivation off a method signature wherever one is possible.
+Do not build that bridge. **Name the wire shape this repo sends and cast once, at the
+call.** The payload stays fully checked, the vendor's build layout stays irrelevant, and
+what Catalyst receives is readable in one place:
+
+```ts
+interface FunctionJobRequest {
+  job_name: string;
+  jobpool_name: string;
+  target_type: "Function";
+  target_name: string;
+  params: JobParams;
+}
+
+const job: FunctionJobRequest = { ... };
+await jobScheduling().JOB.submitJob(job as unknown as SdkJobMeta);
+```
+
+`job.ts` is the worked example. The cast is the seam: it is the one place the SDK's
+declared type and the shape Catalyst actually accepts are allowed to disagree.
 
 ## Known rough edges in the modular SDK
 
-- `createCron` is typed with its *response* shape, so its input demands `id`, `end_time`
-  and `cron_execution_type` that only the server produces. `job.ts` casts through
-  `unknown` for that one call and builds the payload field by field.
+- `createCron` takes `ICatalystCronDetails`, its *response* shape, so its declared input
+  demands `id`, `end_time`, `cron_execution_type` and an expanded `job_meta` that only the
+  server produces. No valid request satisfies it.
+- `submitJob` is declared against `TCatalystJobs`, whose `target_type` is a TS enum member
+  - and a string literal is never assignable to one, so even a correct payload is
+  rejected. Both are why `job.ts` casts at the call.
 - `@zcatalyst/zcql` is at **0.0.2** while the rest are 1.0.0. It is the least settled
   dependency here; expect its API to move. `zcql.ts` goes through `Datastore` instead.
-- `createCron` takes `ICatalystCronDetails`, the *response* shape, so its input demands
-  `id`, `end_time` and `cron_execution_type` that only the server produces. That is what
-  the cast through `unknown` is for; the enum fields themselves are typed correctly.
 - `getSegmentDetails(id)` and `segment(id)` take a segment **id**, not a name.
