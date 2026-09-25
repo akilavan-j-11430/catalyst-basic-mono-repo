@@ -146,8 +146,9 @@ runtime does not have.
 Topic rules live one-per-file in `.claude/rules/` and load automatically: `catalyst_sdk.md`
 covers every Catalyst call, `outbound_http.md` every call to a service outside this repo,
 `web_data_access.md` every call the browser makes to our own API and every form that
-collects one. Add a file there rather than growing this one, and give it `paths:`
-frontmatter if it only applies to part of the tree.
+collects one, `environment.md` every environment variable, `typography.md` every font.
+Add a file there rather than growing this one, and give it `paths:` frontmatter if it only
+applies to part of the tree.
 
 - `@/*` resolves to `./src/*` in every workspace. Use it instead of `../../`.
 - Shared packages expose subpaths, not a barrel: `@repo/types/api`,
@@ -186,6 +187,8 @@ In `apps/web`:
   gets re-implemented with `useState`.
 - Failures are reported by the query client as a toast, so a call site handles success only.
 - The full rule is `.claude/rules/web_data_access.md`.
+- Fonts come from the tokens in `globals.css` and nowhere else. Never set a family on a
+  component - see `.claude/rules/typography.md`.
 
 In `apps/api`:
 
@@ -203,11 +206,12 @@ In `apps/api`:
 - Call external services through `HttpClient` (`@repo/node-utils/http/http_client`), never
   `fetch` or another client directly. It stamps the request's execution id on every
   outbound call as `app-execution-id`. See `.claude/rules/outbound_http.md`.
-- Read environment variables through `env` (`@repo/node-utils/utils/env`) rather than
-  `process.env` - add the key to its `EnvTemplate` first, so a typo is a compile error.
-  The platform-injected ones read at module scope in `index.ts` and
-  `framework/catalyst_logger.ts` predate it. Nothing Catalyst-related belongs in the
-  environment.
+- Read environment variables through `env` (`@/env`), never `process.env`. This app owns
+  its keys - add one to the template in `src/env.ts` first, so a typo is a compile error.
+  Values live in `.env`, never in `app-config.json` or any other Catalyst file, and
+  nothing Catalyst-related belongs in the environment at all. The platform-injected reads
+  at module scope in `index.ts` and `framework/catalyst_logger.ts` are the exception.
+  See `.claude/rules/environment.md`.
 
 ## Adding to the repo
 

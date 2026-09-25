@@ -117,9 +117,10 @@ cp .env.example .env
 The root `.env` is shared by every app. App-specific values go in `apps/<app>/.env`.
 Both are gitignored; the `.env.example` files are committed.
 
+Platform values, read by the Catalyst CLI and SDK rather than by this repo's code:
+
 | Variable | Purpose |
 |---|---|
-| `APP_ENVIRONMENT` | Your own marker for which environment the code is running in. |
 | `X_ZOHO_CATALYST_IS_LOCAL` | Tells the Catalyst SDK it is running outside the cloud. |
 | `X_ZOHO_CATALYST_ACCOUNTS_URL` | Accounts endpoint for your data centre. |
 | `X_ZOHO_CATALYST_CONSOLE_URL` | Console endpoint for your data centre. |
@@ -128,6 +129,17 @@ Both are gitignored; the `.env.example` files are committed.
 
 These are declared in `turbo.json` under `globalPassThroughEnv`, so Turborepo forwards
 them to every task without treating them as cache keys.
+
+Values this repo's own code reads. Each is a key on the owning app's template - for
+`apps/api` that is `src/env.ts` - so the app decides what it is configured with:
+
+| Variable | Owner | Purpose |
+|---|---|---|
+| `AUTH_REDIRECT_URL` | `apps/api` | Where Catalyst sends a new user from the confirmation email. Locally the origin `catalyst serve` prints, usually `http://localhost:3001/`. |
+| `TZ` | `apps/api` | Timezone for log timestamps. Defaults to `Asia/Kolkata`. |
+
+These never go in `app-config.json` or any other Catalyst file - that file is committed,
+and `.env` is not. `.claude/rules/environment.md` is the full rule.
 
 **4. Start everything**
 
@@ -278,6 +290,14 @@ Which is `turbo run bundle && catalyst deploy --only appsail:api,slate:web`:
 component only - Catalyst gives you the single origin and auth gate natively in the
 cloud. Deploying it would put a redundant hop in front of your app.
 
+**Environment variables are not carried by the deploy.** `app-config.json` declares no
+`env_variables`, on purpose - it is committed, so a value there is a value in git. Set
+what the deployed app needs in **Console -> AppSail -> api -> Configuration ->
+Environment Variables** before the first deploy that needs it, and remember that the
+Development and Production environments are configured separately. `AUTH_REDIRECT_URL`
+is required by `POST /api/auth/register`; without it that route fails with a
+`RuntimeError` naming the variable.
+
 **Environments.** Catalyst projects have a Development and a Production environment,
 with separate data and separate IDs. `catalyst init` sets your active one and records
 it in `.catalystrc`; check which one you are on before deploying. Note that the ZAID
@@ -406,7 +426,22 @@ per environment. Check which environment `.catalystrc` has active.
 
 ## Working with AI
 
-`CLAUDE.md` files are checked in at the root, in each app, and in `packages/`. They
-cover architecture, conventions, and the patterns to follow, so an agent picks up the
-house style without being told each time. Keep them accurate when you change the
-structure - a stale one is worse than none.
+`CLAUDE.md` files are checked in at the root (`.claude/CLAUDE.md`), in each app, and in
+`packages/`. They cover architecture, conventions, and the patterns to follow, so an
+agent picks up the house style without being told each time.
+
+Alongside them, `.claude/rules/` holds one file per topic, loaded automatically:
+
+| Rule | Covers |
+|---|---|
+| `catalyst_sdk.md` | every Catalyst SDK call, and the wrappers they go through |
+| `outbound_http.md` | every call to a service outside this repo |
+| `web_data_access.md` | every call the browser makes to our own API, and every form |
+| `environment.md` | every environment variable - who declares it and where values live |
+| `typography.md` | fonts: one family, named in one file |
+
+A rule that applies to only part of the tree says so in `paths:` frontmatter, the way
+`web_data_access.md` and `typography.md` scope themselves to `apps/web/**`.
+
+Keep all of it accurate when you change the structure - a stale one is worse than none.
+Put a new convention in `.claude/rules/` rather than growing a `CLAUDE.md`.

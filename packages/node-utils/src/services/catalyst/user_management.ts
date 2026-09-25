@@ -2,7 +2,6 @@ import { UserManagement as UserManagementClient } from "@zcatalyst/auth";
 import type { NewUser, RegisteredUser } from "@repo/types/user";
 import { CatalystError } from "@/errors/catalyst_error";
 import { currentContext } from "@/framework/async_context";
-import { env } from "@/utils/env";
 
 type RegisteredUserDetails = Awaited<
   ReturnType<UserManagementClient["registerUser"]>
@@ -26,13 +25,17 @@ function toRegisteredUser(details: RegisteredUserDetails): RegisteredUser {
 
 /** Catalyst app users. Like `Zcql`, this names no resource, so it has no handle. */
 export class UserManagement {
-  /** Registers an app user. Catalyst emails them a link to confirm and set a password. */
-  static async register(user: NewUser): Promise<RegisteredUser> {
+  /** Registers an app user. Catalyst emails them a link to confirm and set a
+   *  password, and sends them to `redirectUrl` from it. */
+  static async register(
+    user: NewUser,
+    redirectUrl: string,
+  ): Promise<RegisteredUser> {
     try {
       const registered = await userManagement().registerUser(
         {
           platform_type: "web",
-          redirect_url: env.get("AUTH_REDIRECT_URL"),
+          redirect_url: redirectUrl,
         },
         {
           first_name: user.firstName,

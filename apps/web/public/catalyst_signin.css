@@ -1436,9 +1436,25 @@
  * values are the literal tokens from globals.css rather than var() references.
  * Keep them in step by hand.
  *
+ * The font is declared here for the same reason, and comes from Google's CDN
+ * rather than /public. `next/font` self-hosts Geist under a per-build hashed
+ * filename nothing outside the bundle can name, and a copy served from /public
+ * would be fetched cross-origin by this sheet - which `@font-face` always does
+ * with CORS, and /public sends no Access-Control-Allow-Origin. fonts.gstatic.com
+ * sends `*`, so this is the one source the iframe can actually load.
+ *
  * `!important` is unavoidable here: the rules above are the same specificity and
  * come first, and the SDK re-applies some of them inline on every step change.
  * ------------------------------------------------------------------------- */
+
+@font-face {
+  font-family: "Geist";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("https://fonts.gstatic.com/s/geist/v5/gyByhwUxId8gMEwcGFWNOITd.woff2")
+    format("woff2");
+}
 
 :root {
   color-scheme: light;
@@ -1453,7 +1469,8 @@
   --app-brand-ink: #ffffff;
   --app-danger: #b91c1c;
   --app-radius: 0.625rem;
-  --app-font: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --app-font: "Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+    sans-serif;
 }
 
 /* The iframe is a panel inside our card, not a page: no backdrop, no chrome. */

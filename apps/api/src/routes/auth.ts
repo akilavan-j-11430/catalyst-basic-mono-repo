@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { UserManagement } from "@repo/node-utils/services/catalyst/user_management";
 import type { NewUser } from "@repo/types/user";
+import { env } from "@/env";
 import { HttpError } from "@/errors/http_error";
 import { toRecordResponse } from "@/utils/api";
 
@@ -34,6 +35,9 @@ export const authRouter: Router = Router();
 
 authRouter.post("/auth/register", async (req, res) => {
   const user = toNewUser(req.body);
-  const registered = await UserManagement.register(user);
+  const registered = await UserManagement.register(
+    user,
+    env.get("AUTH_REDIRECT_URL"),
+  );
   res.status(201).json(toRecordResponse(registered));
 });

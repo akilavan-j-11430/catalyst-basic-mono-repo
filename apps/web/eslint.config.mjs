@@ -2,6 +2,9 @@ import { defineConfig, globalIgnores } from "eslint/config";
 import nextVitals from "eslint-config-next/core-web-vitals";
 import nextTs from "eslint-config-next/typescript";
 
+const FETCH_MESSAGE =
+  "Call the API through src/services/ - see .claude/rules/web_data_access.md.";
+
 const eslintConfig = defineConfig([
   ...nextVitals,
   ...nextTs,
@@ -17,9 +20,15 @@ const eslintConfig = defineConfig([
         "error",
         {
           name: "fetch",
-          message:
-            "Call the API through src/services/ - see .claude/rules/web_data_access.md.",
+          message: FETCH_MESSAGE,
         },
+      ],
+      // `no-restricted-globals` matches bare identifiers only, so `window.fetch`
+      // and `globalThis.fetch` walk straight past it.
+      "no-restricted-properties": [
+        "error",
+        { object: "window", property: "fetch", message: FETCH_MESSAGE },
+        { object: "globalThis", property: "fetch", message: FETCH_MESSAGE },
       ],
     },
   },

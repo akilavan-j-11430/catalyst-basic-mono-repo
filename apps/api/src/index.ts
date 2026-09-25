@@ -1,4 +1,6 @@
 import "@/framework/catalyst_logger";
+import { setLogTimeZone } from "@repo/node-utils/framework/logger";
+import { env } from "@/env";
 import {
   errorHandler,
   initExecutionContext,
@@ -8,6 +10,8 @@ import { authRouter } from "@/routes/auth";
 import { pingRouter } from "@/routes/ping";
 import { toErrorResponse } from "@/utils/api";
 import express from "express";
+
+setLogTimeZone(env.optional("TZ"));
 
 const PORT = Number(
   process.env["X_ZOHO_CATALYST_LISTEN_PORT"] ?? process.env["PORT"] ?? 8000,

@@ -1,25 +1,27 @@
 import { currentContext } from "@/framework/async_context";
-import { env } from "@/utils/env";
 
+let timeZone = "Asia/Kolkata";
 
-function timezone(): string {
-  return env.optional("TZ") ?? "Asia/Kolkata";
+/** Sets the timezone log timestamps are formatted in. The environment belongs to
+ *  the app, so the app reads its own key and calls this once at startup. */
+export function setLogTimeZone(zone: string | undefined): void {
+  if (zone !== undefined) {
+    timeZone = zone;
+  }
 }
 
-
 function formatDateTime(date: Date): string {
-  const tz = timezone();
   const datePart = new Intl.DateTimeFormat("en-GB", {
     day: "numeric",
     month: "short",
     year: "numeric",
-    timeZone: tz,
+    timeZone,
   }).format(date);
   const timePart = new Intl.DateTimeFormat("en-US", {
     hour: "numeric",
     minute: "2-digit",
     hour12: true,
-    timeZone: tz,
+    timeZone,
   }).format(date);
   return `${datePart}, ${timePart}`;
 }
