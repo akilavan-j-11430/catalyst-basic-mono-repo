@@ -64,9 +64,14 @@ on every path, the way the server's `HttpClient` takes them:
 
 ```ts
 // src/services/api/endpoints.ts
+const segment = (value: string): string => encodeURIComponent(value);
+
 export const endpoint = {
   auth: { register: "/auth/register" },
-  warranty: { byId: (id: string) => `/warranties/${id}` },
+  warranty: {
+    all: "/warranties",
+    byId: (id: string) => `/warranties/${segment(id)}`,
+  },
 } as const;
 
 // src/services/warranty.ts
@@ -77,6 +82,28 @@ export async function fetchWarranty(id: string): Promise<Warranty> {
 
 The shape it returns comes from `@repo/types`, never redeclared here - `apps/api` builds
 the same response from the same type, so the two cannot drift.
+
+### A path with an id in it
+
+**A path that takes a value is a function on `endpoint`, and the value goes through
+`segment`.** Not a `"/warranties/:id"` template substituted at the call site, and not a
+template literal built where the call is made.
+
+A function is checked: the compiler knows `byId` needs one string, so a missing or
+misspelled parameter is a compile error rather than a URL reading `/warranties/undefined`.
+A `:id` template is a string until it reaches the wire, and nothing catches the typo.
+
+`segment` is `encodeURIComponent`, and it is not optional. A ROWID is digits and survives
+anything, but the moment a path carries an email, a slug or a name, a `/`, `?`, `#` or
+space silently changes which route the server sees - `a/b` becomes two segments, and
+everything after a `#` never leaves the browser. Encoding once inside `endpoints.ts` means
+no call site has to remember.
+
+Values that are **not** part of the path are `query`, not a segment:
+
+```ts
+await api.get(endpoint.warranty.all, { query: { status: "open", page: 2 } });
+```
 
 ## What a call resolves to
 
