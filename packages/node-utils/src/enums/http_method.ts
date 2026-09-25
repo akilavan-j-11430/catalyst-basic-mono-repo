@@ -1,14 +1,6 @@
 /**
- * Written as a frozen object rather than a TS `enum`: an enum emits runtime code, which
- * Node's strip-only type support rejects outright, and it would be the only one here.
- * `HttpMethod.Get` and the union type both come out of this.
+ * Re-exported so `apps/api` keeps one import path for it. The definition lives in
+ * `@repo/types/http`, because `apps/web` builds the same response shape and the two
+ * must not drift.
  */
-export const HttpMethod = {
-  Get: "GET",
-  Post: "POST",
-  Put: "PUT",
-  Patch: "PATCH",
-  Delete: "DELETE",
-} as const;
-
-export type HttpMethod = (typeof HttpMethod)[keyof typeof HttpMethod];
+export { HttpMethod } from "@repo/types/http";

@@ -12,6 +12,7 @@ src/
 |-- index.ts              app setup, middleware order, route mounting
 |-- middleware.ts         execution context, request timing, terminal error handler
 |-- routes/ping.ts        reference route - copy this shape
+|-- routes/auth.ts        POST /auth/register - registers a Catalyst app user
 |-- errors/http_error.ts  typed failures that map to HTTP statuses
 |-- utils/api.ts          response builders
 `-- framework/catalyst_logger.ts   console -> Catalyst log pipe, imported for side effect
@@ -36,10 +37,21 @@ New routers mount at step 3. Below the catch-all they are unreachable - every re
 
 ## Execution context
 
-`initExecutionContext` (`src/middleware.ts`) calls `zcAuth.init(req)` from
-`@zcatalyst/auth` and runs the rest of the chain inside `runWithContext`. Catalyst reads
-the project details and the caller's credentials off the request headers, so the app is
-per-request and nothing needs configuring in the environment.
+`initExecutionContext` (`src/middleware.ts`) awaits `zcAuth.init(req, { scope: "admin" })`
+from `@zcatalyst/auth` and runs the rest of the chain inside `runWithContext`. Catalyst
+reads the project details and the caller's credentials off the request headers, so the app
+is per-request and nothing needs configuring in the environment.
+
+Two things about that call are easy to get wrong:
+
+- **It is async.** The node facade loads its implementation through a dynamic import, so
+  `init` returns a promise. Unawaited, that promise is truthy, reaches the SDK intact and
+  only fails later as `app.credential.getToken is not a function`.
+- **Admin scope is deliberate.** The API acts as the application, not as the caller. Under
+  user scope the SDK throws `missing user credentials` for anyone who is not signed in,
+  which would take down `POST /api/auth/register` - the one route whose callers have no
+  account yet. The consequence is that App User table permissions do not apply to what this
+  API does, so a route that must be restricted enforces that itself.
 
 This is why requests must arrive through `catalyst serve` - only the CLI injects those
 headers. Bypass it and `zcAuth.init` throws `app/invalid_project_details`, which

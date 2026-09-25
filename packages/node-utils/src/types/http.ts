@@ -1,4 +1,19 @@
 import type { HttpMethod } from "@/enums/http_method";
+import type {
+  HeaderResolver,
+  HttpResponse,
+  QueryValue,
+  RequestOptions,
+  ResponseBody,
+} from "@repo/types/http";
+
+export type {
+  HeaderResolver,
+  HttpResponse,
+  QueryValue,
+  RequestOptions,
+  ResponseBody,
+};
 
 /** What a transport is expected to put on the wire as-is. Deliberately not fetch's
  *  `BodyInit`: that includes streams, which not every client can consume. */
@@ -40,32 +55,6 @@ export type HttpTransport = (
   request: TransportRequest,
 ) => Promise<TransportResponse>;
 
-/** The body in whichever form the caller needs. Reading is deferred, so a response
- *  nobody reads costs nothing and a binary one is never mangled. */
-export interface ResponseBody {
-  /** The bytes exactly as they arrived. Use this for anything that is not text. */
-  raw(): Promise<Uint8Array>;
-  /** UTF-8 decoded. An empty body gives `""`. */
-  text(): Promise<string>;
-  /** Parsed JSON, or `undefined` for an empty body.
-   *  Rejects with `HttpRequestError.Undecodable` when the body is not JSON. */
-  json(): Promise<unknown>;
-}
-
-export interface HttpResponse {
-  status: number;
-  /** Lower-cased header names, as every transport is expected to supply them. */
-  headers: Record<string, string>;
-  body: ResponseBody;
-}
-
-export type QueryValue = string | number | boolean;
-
-/** Resolved on every call, so a token that expires can be refreshed per request. */
-export type HeaderResolver = () =>
-  | Record<string, string>
-  | Promise<Record<string, string>>;
-
 export interface HttpClientOptions {
   /** Absolute base every path is resolved against. Its own path is preserved. */
   baseUrl: string;
@@ -75,15 +64,6 @@ export interface HttpClientOptions {
   /** Swap seam - defaults to fetch. Pass `createFetchTransport({ dispatcher })` to
    *  control pooling, proxying or TLS. */
   transport?: HttpTransport;
-}
-
-export interface RequestOptions {
-  query?: Record<string, QueryValue>;
-  /** Merged over the client defaults. A `HttpHeader.ContentType` entry here refines the
-   *  type detected from the body. */
-  headers?: Record<string, string>;
-  /** Overrides the client's timeout for this one call - a slow export, a big upload. */
-  timeoutMs?: number;
 }
 
 /**

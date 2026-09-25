@@ -328,6 +328,9 @@ Short version; `CLAUDE.md` has the full list.
 - **Subpath imports.** Shared packages have no barrel file. Import the exact module:
   `@repo/types/api`, `@repo/node-utils/framework/logger`.
 - **File names** are snake_case: `http_error.ts`, `async_context.ts`.
+- **Naming.** Identifiers and JSON keys are camelCase: `emailId`, `nextPageToken`. A
+  vendor's own wire shape (`email_id`, `ROWID`) keeps its spelling and is converted at
+  the wrapper.
 - **Errors.** In the API, throw `HttpError.BadRequest(...)` and friends instead of
   setting a status by hand. The terminal error handler maps them; anything unrecognised
   becomes a generic 500.

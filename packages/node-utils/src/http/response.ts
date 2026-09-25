@@ -15,13 +15,13 @@ export function toHttpResponse(
     body: {
       raw: async () => bytes,
       text: async () => new TextDecoder().decode(bytes),
-      json: async () => {
+      json: async <T = unknown>(): Promise<T> => {
         const text = new TextDecoder().decode(bytes);
         if (text.length === 0) {
-          return undefined;
+          return undefined as T;
         }
         try {
-          return JSON.parse(text);
+          return JSON.parse(text) as T;
         } catch {
           throw HttpRequestError.Undecodable({
             method,

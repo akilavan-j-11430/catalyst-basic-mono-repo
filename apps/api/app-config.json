@@ -2,6 +2,9 @@
 	"command": "node index.js",
 	"build_path": "./",
 	"stack": "node24",
+	"env_variables": {
+		"AUTH_REDIRECT_URL": ""
+	},
 	"memory": 256,
 	"scripts": {}
 }

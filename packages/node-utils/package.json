@@ -26,5 +26,8 @@
     "@types/node": "^24.13.6",
     "concurrently": "^10.0.5",
     "eslint": "^9.39.5"
+  },
+  "dependencies": {
+    "@repo/types": "workspace:*"
   }
 }
