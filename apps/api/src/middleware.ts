@@ -37,11 +37,17 @@ export function recordRequestTiming(
 }
 
 /** Establishes the execution context for the request and runs the chain inside it. */
-export const initExecutionContext: RequestHandler = (req, _res, next) => {
+export const initExecutionContext: RequestHandler = async (req, _res, next) => {
   // Catalyst reads both the project details and the caller's credentials off the headers,
   // so the app is per-request and nothing needs to be configured in the environment.
-  const catalystApp = zcAuth.init(
+  // Admin scope: the API acts as the application, not as the caller. User scope throws
+  // `missing user credentials` for anyone not signed in, which would take down the one
+  // route whose callers have no account yet. The admin token rides on every request.
+  // `init` loads its implementation through a dynamic import, so it must be awaited - an
+  // unawaited promise is truthy and only fails later, inside the SDK.
+  const catalystApp = await zcAuth.init(
     req as unknown as Parameters<typeof zcAuth.init>[0],
+    { scope: "admin" },
   );
   runWithContext(
     new ExecutionContext({

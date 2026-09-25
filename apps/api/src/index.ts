@@ -4,6 +4,7 @@ import {
   initExecutionContext,
   recordRequestTiming,
 } from "@/middleware";
+import { authRouter } from "@/routes/auth";
 import { pingRouter } from "@/routes/ping";
 import { toErrorResponse } from "@/utils/api";
 import express from "express";
@@ -16,6 +17,7 @@ const app = express();
 app.use(express.json());
 app.use("/api", initExecutionContext, recordRequestTiming);
 app.use("/api", pingRouter);
+app.use("/api", authRouter);
 app.use("/", (_req, res) => {
   res.status(404).json(toErrorResponse("The requested url does not exist."));
 });

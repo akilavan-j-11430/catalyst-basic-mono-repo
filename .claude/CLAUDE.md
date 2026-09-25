@@ -144,16 +144,27 @@ runtime does not have.
 ## Conventions
 
 Topic rules live one-per-file in `.claude/rules/` and load automatically: `catalyst_sdk.md`
-covers every Catalyst call, `outbound_http.md` every call to a service outside this repo.
-Add a file there rather than growing this one, and give it `paths:` frontmatter if it only
-applies to part of the tree.
+covers every Catalyst call, `outbound_http.md` every call to a service outside this repo,
+`web_data_access.md` every call the browser makes to our own API and every form that
+collects one. Add a file there rather than growing this one, and give it `paths:`
+frontmatter if it only applies to part of the tree.
 
 - `@/*` resolves to `./src/*` in every workspace. Use it instead of `../../`.
 - Shared packages expose subpaths, not a barrel: `@repo/types/api`,
   `@repo/node-utils/framework/logger`, `@repo/node-utils/framework/async_context`,
   `@repo/node-utils/services/catalyst/resources`, `@repo/node-utils/utils/env`.
 - File names are snake_case: `http_error.ts`, `async_context.ts`.
+- Identifiers and JSON keys are camelCase: `emailId`, `nextPageToken`. The exception is
+  a wire shape a vendor defines - Catalyst sends `email_id`, `job_name`, `ROWID` - which
+  is named as the vendor names it and converted at the wrapper, never leaked past it.
 - Workspace deps are `"workspace:*"`.
+- **A file earns its existence from a second caller or from a boundary, not from
+  tidiness.** Something used in exactly one place lives where it is used; split it out
+  when the second caller arrives, and let that caller tell you what the shape should be.
+  The exception is a seam - `services/catalyst/`, `services/api/client.ts`,
+  `endpoints.ts` - which exists so that everything passes through one place. A seam is
+  right at one caller, because being the only route through is its whole job. Everything
+  else - a validation rule, a formatter, a resolver - is not.
 - `packages/*` are ESM; root and `apps/api` are CommonJS. The split is source-only -
   `scripts/bundle.mjs` builds with `format: "cjs"`, so esbuild inlines the ESM
   packages into one CommonJS file and the boundary never reaches the runtime.
@@ -165,6 +176,16 @@ applies to part of the tree.
   is `any`/`unknown` standing in for a type nobody looked up: derive it from the signature
   that produces it, or declare it. `.claude/rules/catalyst_sdk.md` shows how when the
   vendor types are awkward.
+
+In `apps/web`:
+
+- Reach `apps/api` through `src/services/` - one file per domain, built on
+  `src/services/api/` (`client.ts` for transport, `endpoints.ts` for every path). No
+  `fetch` and no URL in a component.
+- Server state is react-query, form state is react-hook-form. Both are installed; neither
+  gets re-implemented with `useState`.
+- Failures are reported by the query client as a toast, so a call site handles success only.
+- The full rule is `.claude/rules/web_data_access.md`.
 
 In `apps/api`:
 

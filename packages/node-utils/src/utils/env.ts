@@ -5,6 +5,8 @@ type Nullable<T> = T | null | undefined;
 
 type EnvTemplate = {
   TZ: Nullable<string>;
+  /** Where Catalyst sends a new user from the confirmation email. */
+  AUTH_REDIRECT_URL: Nullable<string>;
 };
 
 class EnvHelper {
