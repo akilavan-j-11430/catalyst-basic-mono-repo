@@ -1,13 +1,13 @@
-import "@/framework/catalyst_logger";
+import "@/framework/catalyst-logger";
 import { setLogTimeZone } from "@repo/node-utils/framework/logger";
+import { ApiPath } from "@repo/routing/api-path";
 import { env } from "@/env";
 import {
   errorHandler,
   initExecutionContext,
   recordRequestTiming,
 } from "@/middleware";
-import { authRouter } from "@/routes/auth";
-import { pingRouter } from "@/routes/ping";
+import { apiRouter } from "@/routes/api-router";
 import { toErrorResponse } from "@/utils/api";
 import express from "express";
 
@@ -19,9 +19,8 @@ const PORT = Number(
 
 const app = express();
 app.use(express.json());
-app.use("/api", initExecutionContext, recordRequestTiming);
-app.use("/api", pingRouter);
-app.use("/api", authRouter);
+app.use(ApiPath.Api, initExecutionContext, recordRequestTiming);
+app.use(ApiPath.Api + ApiPath.V1, apiRouter);
 app.use("/", (_req, res) => {
   res.status(404).json(toErrorResponse("The requested url does not exist."));
 });

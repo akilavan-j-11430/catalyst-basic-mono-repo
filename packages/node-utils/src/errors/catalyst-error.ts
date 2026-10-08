@@ -1,5 +1,5 @@
-import { ErrorCode } from "@/enums/error_codes";
-import { RuntimeError } from "@/errors/runtime_error";
+import { ErrorCode } from "@/enums/error-codes";
+import { RuntimeError } from "@/errors/runtime-error";
 
 /** A Catalyst operation that failed in a way the caller can act on. */
 export class CatalystError extends RuntimeError {
@@ -22,6 +22,14 @@ export class CatalystError extends RuntimeError {
   /** The addressed resource does not exist. */
   static ResourceNotFound(message: string, cause?: unknown): CatalystError {
     return new CatalystError(ErrorCode.RESOURCE_NOT_FOUND, message, cause);
+  }
+
+  /** The request has no Catalyst app for the scope, usually because it carries no user. */
+  static ScopeUnavailable(scope: string): CatalystError {
+    return new CatalystError(
+      ErrorCode.SCOPE_UNAVAILABLE,
+      `No ${scope}-scope Catalyst app for this request`,
+    );
   }
 
   override toString(): string {

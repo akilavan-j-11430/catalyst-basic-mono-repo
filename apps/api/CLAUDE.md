@@ -12,14 +12,15 @@ src/
 |-- index.ts              app setup, middleware order, route mounting
 |-- env.ts                every environment variable this app reads
 |-- middleware.ts         execution context, request timing, terminal error handler
+|-- routes/api-router.ts  the only place a router mounts
 |-- routes/ping.ts        reference route - copy this shape
 |-- routes/auth.ts        POST /auth/register - registers a Catalyst app user
-|-- errors/http_error.ts  typed failures that map to HTTP statuses
+|-- errors/http-error.ts  typed failures that map to HTTP statuses
 |-- utils/api.ts          response builders
-`-- framework/catalyst_logger.ts   console -> Catalyst log pipe, imported for side effect
+`-- framework/catalyst-logger.ts   console -> Catalyst log pipe, imported for side effect
 ```
 
-`catalyst_logger` is imported first in `index.ts` purely for its side effect: it
+`catalyst-logger` is imported first in `index.ts` purely for its side effect: it
 replaces the `console` methods so logs are framed for Catalyst's collector. It exports
 nothing you should call.
 
@@ -29,55 +30,68 @@ From `src/index.ts`, and the order is load-bearing:
 
 1. `express.json()`
 2. `/api` -> `initExecutionContext`, then `recordRequestTiming`
-3. `/api` -> routers (`pingRouter`, ...)
+3. `/api/v1` -> `apiRouter` (`src/routes/api-router.ts`), which holds every route
 4. `/` -> JSON 404 catch-all
 5. `errorHandler` (terminal)
 
-New routers mount at step 3. Below the catch-all they are unreachable - every request
-404s instead.
+`index.ts` mounts one router, and `api-router.ts` composes the rest, so a new route
+cannot land below the catch-all and quietly 404. Add it there, not here.
+
+Every path segment is a constant in `ApiPath` (`@repo/routing/api-path`), shared with
+`apps/web`; a full path is their concatenation, `ApiPath.Api + ApiPath.V1`.
+`api-router.ts` mounts each router under its own segment -
+`apiRouter.use(ApiPath.Auth, authRouter)` - and the router names only what follows it,
+`ApiPath.Register`. So a router-level `use` covers that router's routes and nothing else.
 
 ## Execution context
 
-`initExecutionContext` (`src/middleware.ts`) awaits `zcAuth.init(req, { scope: "admin" })`
-from `@zcatalyst/auth` and runs the rest of the chain inside `runWithContext`. Catalyst
-reads the project details and the caller's credentials off the request headers, so the app
-is per-request and nothing needs configuring in the environment.
+`initExecutionContext` (`src/middleware.ts`) calls `zcAuth.init(req, { scope })` from
+`@zcatalyst/auth` once per `CatalystScope` and runs the rest of the chain inside
+`runWithContext`. Catalyst reads the project details and the caller's credentials off the
+request headers, so the apps are per-request and nothing needs configuring in the
+environment.
 
-Two things about that call are easy to get wrong:
+Three things about that call are easy to get wrong:
 
 - **It is async.** The node facade loads its implementation through a dynamic import, so
   `init` returns a promise. Unawaited, that promise is truthy, reaches the SDK intact and
   only fails later as `app.credential.getToken is not a function`.
-- **Admin scope is deliberate.** The API acts as the application, not as the caller. Under
-  user scope the SDK throws `missing user credentials` for anyone who is not signed in,
-  which would take down `POST /api/auth/register` - the one route whose callers have no
-  account yet. The consequence is that App User table permissions do not apply to what this
-  API does, so a route that must be restricted enforces that itself.
+- **User and Admin are different apps.** A user-scope app acts as the signed-in caller, so
+  `getCurrentUser()` identifies them and App User table permissions apply. An admin-scope
+  app acts as the application. The wrapper picks which one it reads with
+  `manager.catalyst.getApp(scope)`.
+- **A failed scope does not fail the request.** A request with neither a user token nor a
+  cookie cannot build the User app (`missing user credentials`). That scope is left unset
+  and logged, and `getApp(CatalystScope.User)` throws `CatalystError` (`SCOPE_UNAVAILABLE`)
+  only if something asks for it.
 
 This is why requests must arrive through `catalyst serve` - only the CLI injects those
-headers. Bypass it and `zcAuth.init` throws `app/invalid_project_details`, which
-`errorHandler` renders as a generic 500. If every `/api` route is 500ing in dev, that is
+headers. Bypass it and every scope's `zcAuth.init` fails with `app/invalid_project_details`
+(logged by `initExecutionContext`), so the first Catalyst call throws `SCOPE_UNAVAILABLE`,
+which `errorHandler` renders as a generic 500. If every `/api` route is 500ing in dev, that is
 the cause, not your handler.
 
 Handlers must **not** initialize Catalyst themselves, and must not reach for the app at
-all. Import a resource handle - it reads the app off the context for you:
+all. Import a resource handle and pick the scope with `runIn` - it reads that scope's app
+off the context for you:
 
 ```ts
+import { CatalystScope } from "@repo/node-utils/enums/catalyst-scope";
 import { todoTable } from "@repo/node-utils/services/catalyst/resources";
 
-const todo = await todoTable.getRow(rowId);
+const todo = await todoTable.runIn(CatalystScope.User).getRow(rowId);
 ```
 
 Handles are declared once in `packages/node-utils/src/services/catalyst/resources.ts`,
 never in a route. `Zcql` is the exception: a query belongs to no single table, so it is
-static - `Zcql.executeQuery("SELECT ...")`.
+static - `Zcql.runIn(CatalystScope.User).executeQuery("SELECT ...")`.
 
 If a handle cannot do what the route needs, **add the method to the wrapper** rather than
 reaching for the SDK here. A single-use method is still the right shape.
 
-The wrappers throw `CatalystError` (`@repo/node-utils/errors/catalyst_error`), which carries
+The wrappers throw `CatalystError` (`@repo/node-utils/errors/catalyst-error`), which carries
 an `ErrorCode`; catch it at the route only to map onto an `HttpError`, otherwise let it
-reach `errorHandler` as a 500. `.claude/rules/catalyst_sdk.md` is the full rule.
+reach `errorHandler` as a 500. `.claude/rules/catalyst-sdk.md` is the full rule.
 
 `currentContext()` throws outside a request. Carry anything else request-scoped via
 `manager.setExtras(key, value)` / `manager.getExtras<T>(key)`.
@@ -88,20 +102,25 @@ reach `errorHandler` as a 500. `.claude/rules/catalyst_sdk.md` is the full rule.
 
 ```ts
 import { Router } from "express";
+import { ApiPath } from "@repo/routing/api-path";
 import { toRecordResponse } from "@/utils/api";
 
 export const pingRouter: Router = Router();
 
-pingRouter.get("/ping", (_req, res) => {
+pingRouter.get(ApiPath.Ping, (_req, res) => {
   res.json(toRecordResponse({ message: "pong" }));
 });
 ```
 
-Mount it in `src/index.ts` with `app.use("/api", pingRouter)`, above the catch-all.
+Add any new segment to `ApiPath` first, never as a string literal. Then add one line to
+`src/routes/api-router.ts` - `apiRouter.use(ApiPath.Auth, authRouter)` for a router with a
+prefix; `ping` is a single route, so it mounts bare and names `ApiPath.Ping` itself. The `: Router`
+annotation is not optional: the declaration emit cannot infer the type across the package
+boundary without it.
 
 ## Errors and responses
 
-Throw `HttpError` (`src/errors/http_error.ts`) rather than setting a status by hand -
+Throw `HttpError` (`src/errors/http-error.ts`) rather than setting a status by hand -
 `BadRequest` 400, `Unauthorized` 401, `NotFound` 404, `Conflict` 409. `errorHandler`
 maps those; anything else is logged and becomes a 500 with a generic message, so do not
 expect a raw thrown error to surface its message to the client.
@@ -117,9 +136,9 @@ The shapes live in `@repo/types/api` so the web app imports the same ones.
 
 ## Calling an external API
 
-Through `HttpClient` from `@repo/node-utils/http/http_client` - never `fetch` or another
+Through `HttpClient` from `@repo/node-utils/http/http-client` - never `fetch` or another
 client directly. One instance per service at module scope; the full rule, the body and
-response shapes and the transport seam are in `.claude/rules/outbound_http.md`.
+response shapes and the transport seam are in `.claude/rules/outbound-http.md`.
 
 The body decides its own encoding - an object becomes JSON, a string is text, `FormData`
 is multipart. A third argument refines that but may not contradict it. A call resolves to

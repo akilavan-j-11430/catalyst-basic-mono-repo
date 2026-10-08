@@ -42,7 +42,8 @@ Not `apps/*/app-config.json`, not `catalyst.json`, not
 
 `app-config.json` is committed, so a value written there is a value committed to the
 repository. `.env` is gitignored and is the only place a value lives; `.env.example` is
-committed and carries the key with a comment and no value.
+committed and carries the key with a comment and no value. The root pair holds what every
+app shares; an app's own keys go in `apps/<app>/.env` and `apps/<app>/.env.example`.
 
 This costs something at deploy time and the cost is worth knowing. For an app linked in
 `catalyst.json`, `env_variables` in `app-config.json` is what the AppSail runtime applies
@@ -57,14 +58,14 @@ A package under `packages/` has no keys of its own and no `src/env.ts`. It takes
 needs as a parameter, so the app that owns the variable is the one that reads it:
 
 ```ts
-// packages/node-utils/src/services/catalyst/user_management.ts
+// packages/node-utils/src/services/catalyst/user-management.ts
 static async register(user: NewUser, redirectUrl: string): Promise<RegisteredUser>
 
 // apps/api/src/routes/auth.ts
 await UserManagement.register(user, env.get("AUTH_REDIRECT_URL"));
 ```
 
-It is the same rule as `.claude/rules/catalyst_sdk.md` - a wrapper takes and returns plain
+It is the same rule as `.claude/rules/catalyst-sdk.md` - a wrapper takes and returns plain
 values - and it is what makes the failure land in the route, which is what the variable
 configures.
 
@@ -74,12 +75,14 @@ static and exposes `setLogTimeZone`, which the app calls once at startup with it
 
 ## Adding a variable
 
-Three steps, in order:
+Four steps, in order:
 
 1. The key on the app's template in `apps/<app>/src/env.ts`, with a comment saying what it
    is for.
-2. An entry in `.env.example` - committed, commented, no value.
-3. The local value in `.env` - gitignored.
+2. The key in the `dev` task's `passThroughEnv` in `apps/<app>/turbo.json`, so a value set
+   in the shell survives turbo's strict env mode.
+3. An entry in `apps/<app>/.env.example` - committed, commented, no value.
+4. The local value in `apps/<app>/.env` - gitignored.
 
 Then set it in the Catalyst Console before the next deploy that needs it.
 
@@ -89,7 +92,7 @@ Catalyst injects these itself and they are read at module scope, before any app 
 exists. They stay as they are:
 
 - `apps/api/src/index.ts` - `X_ZOHO_CATALYST_LISTEN_PORT`, `PORT`
-- `apps/api/src/framework/catalyst_logger.ts` - `X_ZOHO_SPARKLET_LOG_FD`
+- `apps/api/src/framework/catalyst-logger.ts` - `X_ZOHO_SPARKLET_LOG_FD`
 - `apps/proxy/src/index.ts` - `X_ZOHO_CATALYST_LISTEN_PORT`
 
 They are not configuration this repo owns, so they do not belong on a template. `apps/proxy`
@@ -112,4 +115,9 @@ directly through `tsx --env-file-if-exists`.
 An app may carry its own `turbo.json` with `extends: ["//"]`, but a **global key is
 root-only**: turbo 2.11 rejects `globalPassThroughEnv` there with `Found an unknown key`.
 The per-app equivalent is task-level `passThroughEnv`, which is accepted and merges over
-the inherited task definition. Nothing needs one today, so nothing has one.
+the inherited task definition. `apps/api/turbo.json` is that file: its `dev` task passes
+through every key on the `src/env.ts` template and nothing else. The platform-injected
+reads above are set only when Catalyst runs the app, never under turbo, so they have no
+place there.
+`apps/web` reads no environment and `apps/proxy` has no turbo task that runs it, so
+neither has one.

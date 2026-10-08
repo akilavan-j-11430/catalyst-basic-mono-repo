@@ -28,6 +28,10 @@ Where new work goes:
 - Pages, components, styling -> `apps/web` (Slate).
 - Shapes both sides use -> `packages/types`, defined once and imported by both;
   never two definitions that can drift.
+- Route path segments -> `packages/routing`: `ApiPath` in `api-path.ts`, combined with
+  `+` - `ApiPath.Api + ApiPath.V1`. `apps/api` mounts them and `apps/web` calls them, so
+  a path is never a string literal in either app. Client paths belong here too, in their
+  own file.
 - Server-side helpers -> `packages/node-utils`. It imports `node:async_hooks`, so
   it is `apps/api` only - never reach it from `apps/web`.
 - Never `apps/proxy`. It is local-only plumbing and ships nothing; a feature added
@@ -68,6 +72,7 @@ catalyst serve      <- entry point, port assigned by the CLI (3000, 3001, 3002, 
 | `apps/api` | `api` | AppSail `api` |
 | `apps/web` | `web` | Slate `web` |
 | `packages/types` | `@repo/types` | - |
+| `packages/routing` | `@repo/routing` | - |
 | `packages/node-utils` | `@repo/node-utils` | - |
 | `packages/typescript-config` | `@repo/typescript-config` | - |
 | `packages/eslint-config` | `@repo/eslint-config` | - |
@@ -143,18 +148,18 @@ runtime does not have.
 
 ## Conventions
 
-Topic rules live one-per-file in `.claude/rules/` and load automatically: `catalyst_sdk.md`
-covers every Catalyst call, `outbound_http.md` every call to a service outside this repo,
-`web_data_access.md` every call the browser makes to our own API and every form that
-collects one, `environment.md` every environment variable, `typography.md` every font.
-Add a file there rather than growing this one, and give it `paths:` frontmatter if it only
-applies to part of the tree.
+Topic rules live one-per-file in `.claude/rules/` and load automatically: `catalyst-sdk.md`
+covers every Catalyst call and how few of them a solution makes, `outbound-http.md` every
+call to a service outside this repo, `web-data-access.md` every call the browser makes to
+our own API and every form that collects one, `environment.md` every environment
+variable, `typography.md` every font. Add a file there rather than growing this one, and
+give it `paths:` frontmatter if it only applies to part of the tree.
 
 - `@/*` resolves to `./src/*` in every workspace. Use it instead of `../../`.
-- Shared packages expose subpaths, not a barrel: `@repo/types/api`,
-  `@repo/node-utils/framework/logger`, `@repo/node-utils/framework/async_context`,
+- Shared packages expose subpaths, not a barrel: `@repo/types/api`, `@repo/routing/api-path`,
+  `@repo/node-utils/framework/logger`, `@repo/node-utils/framework/async-context`,
   `@repo/node-utils/services/catalyst/resources`, `@repo/node-utils/utils/env`.
-- File names are snake_case: `http_error.ts`, `async_context.ts`.
+- File names are kebab-case: `http-error.ts`, `async-context.ts`.
 - Identifiers and JSON keys are camelCase: `emailId`, `nextPageToken`. The exception is
   a wire shape a vendor defines - Catalyst sends `email_id`, `job_name`, `ROWID` - which
   is named as the vendor names it and converted at the wrapper, never leaked past it.
@@ -175,7 +180,7 @@ applies to part of the tree.
   response body before it is parsed, a caught `error`, a value the SDK itself leaves
   untyped. Narrow it at the first point you can, and type the result. What this rules out
   is `any`/`unknown` standing in for a type nobody looked up: derive it from the signature
-  that produces it, or declare it. `.claude/rules/catalyst_sdk.md` shows how when the
+  that produces it, or declare it. `.claude/rules/catalyst-sdk.md` shows how when the
   vendor types are awkward.
 
 In `apps/web`:
@@ -186,7 +191,7 @@ In `apps/web`:
 - Server state is react-query, form state is react-hook-form. Both are installed; neither
   gets re-implemented with `useState`.
 - Failures are reported by the query client as a toast, so a call site handles success only.
-- The full rule is `.claude/rules/web_data_access.md`.
+- The full rule is `.claude/rules/web-data-access.md`.
 - Fonts come from the tokens in `globals.css` and nowhere else. Never set a family on a
   component - see `.claude/rules/typography.md`.
 
@@ -196,28 +201,29 @@ In `apps/api`:
   `@repo/node-utils/services/catalyst/resources`, where every table, bucket, cache segment
   and job is declared once with the wrapper's `create` factory. Never construct a wrapper
   in a handler, never initialize Catalyst yourself, and never read the app off the context
-  - see `.claude/rules/catalyst_sdk.md`.
+  - see `.claude/rules/catalyst-sdk.md`.
 - Throw `HttpError.BadRequest | Unauthorized | NotFound | Conflict`
-  (`src/errors/http_error.ts`) instead of setting a status by hand. `errorHandler`
+  (`src/errors/http-error.ts`) instead of setting a status by hand. `errorHandler`
   maps them; anything else becomes a 500.
 - Build every response with `toRecordResponse`, `toPagedResponse`, or
   `toErrorResponse` (`src/utils/api.ts`) so payloads share one envelope.
 - Log through `logger` from `@repo/node-utils/framework/logger`, not `console`.
-- Call external services through `HttpClient` (`@repo/node-utils/http/http_client`), never
+- Call external services through `HttpClient` (`@repo/node-utils/http/http-client`), never
   `fetch` or another client directly. It stamps the request's execution id on every
-  outbound call as `app-execution-id`. See `.claude/rules/outbound_http.md`.
+  outbound call as `app-execution-id`. See `.claude/rules/outbound-http.md`.
 - Read environment variables through `env` (`@/env`), never `process.env`. This app owns
   its keys - add one to the template in `src/env.ts` first, so a typo is a compile error.
   Values live in `.env`, never in `app-config.json` or any other Catalyst file, and
   nothing Catalyst-related belongs in the environment at all. The platform-injected reads
-  at module scope in `index.ts` and `framework/catalyst_logger.ts` are the exception.
+  at module scope in `index.ts` and `framework/catalyst-logger.ts` are the exception.
   See `.claude/rules/environment.md`.
 
 ## Adding to the repo
 
-**An API route** - follow `src/routes/ping.ts`: export a `Router`, use the response
-builders, then mount it in `src/index.ts` **above** the catch-all 404, which otherwise
-swallows it.
+**An API route** - follow `src/routes/ping.ts`: export a `Router` with the explicit
+`: Router` annotation, use the response builders, add its segments to `ApiPath`
+(`packages/routing`), then mount it in `src/routes/api-router.ts` under its own segment.
+That file is the only place a router mounts, so `src/index.ts` never changes.
 
 **An AppSail app** - copy `apps/api` as the shape. Four things must agree:
 `scripts/bundle.mjs` (output `appsails/<name>/`), `app-config.json`, the `catalyst.json`

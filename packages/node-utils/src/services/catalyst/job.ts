@@ -1,6 +1,7 @@
-import { CatalystError } from "@/errors/catalyst_error";
+import { CatalystError } from "@/errors/catalyst-error";
 import { JobScheduling } from "@zcatalyst/job-scheduling";
-import { currentContext } from "@/framework/async_context";
+import { CatalystScope } from "@/enums/catalyst-scope";
+import { currentContext } from "@/framework/async-context";
 import { randomUUID } from "node:crypto";
 
 /** Catalyst rejects an alias longer than this. */
@@ -39,7 +40,7 @@ interface OneTimeCronRequest {
 /** Fresh per call. The app is per-request and carries the caller's credentials,
  *  so a service must never be hoisted to module scope. */
 function jobScheduling(): JobScheduling {
-  return new JobScheduling(currentContext().manager.catalyst);
+  return new JobScheduling(currentContext().manager.catalyst.getApp(CatalystScope.User));
 }
 
 /** Catalyst carries job params as strings. A job that takes none is `Job<void>`. */

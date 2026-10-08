@@ -1,7 +1,8 @@
 "use client";
 
-import { appUrl, authSession, type SignedInUser } from "@/catalyst/auth_client";
-import { useSignedInUser } from "@/components/auth/auth_gate";
+import { LogOut } from "lucide-react";
+import { appUrl, authSession, type SignedInUser } from "@/catalyst/auth-client";
+import { useSignedInUser } from "@/components/auth/auth-gate";
 import { Button } from "@/components/ui/button";
 
 function displayName(user: SignedInUser): string {
@@ -22,6 +23,7 @@ export function SignedInAccount() {
         variant="outline"
         onClick={() => void authSession().then((auth) => auth.signOut(appUrl("/sign-in")))}
       >
+        <LogOut aria-hidden />
         Sign out
       </Button>
     </div>

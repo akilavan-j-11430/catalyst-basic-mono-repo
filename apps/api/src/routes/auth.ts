@@ -1,8 +1,9 @@
 import { Router } from "express";
-import { UserManagement } from "@repo/node-utils/services/catalyst/user_management";
+import { ApiPath } from "@repo/routing/api-path";
+import { UserManagement } from "@repo/node-utils/services/catalyst/user-management";
 import type { NewUser } from "@repo/types/user";
 import { env } from "@/env";
-import { HttpError } from "@/errors/http_error";
+import { HttpError } from "@/errors/http-error";
 import { toRecordResponse } from "@/utils/api";
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -33,7 +34,7 @@ function toNewUser(body: unknown): NewUser {
 
 export const authRouter: Router = Router();
 
-authRouter.post("/auth/register", async (req, res) => {
+authRouter.post(ApiPath.Register, async (req, res) => {
   const user = toNewUser(req.body);
   const registered = await UserManagement.register(
     user,

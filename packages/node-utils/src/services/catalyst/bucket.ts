@@ -1,6 +1,7 @@
-import { CatalystError } from "@/errors/catalyst_error";
+import { CatalystError } from "@/errors/catalyst-error";
 import { Stratus } from "@zcatalyst/stratus";
-import { currentContext } from "@/framework/async_context";
+import type { CatalystScope } from "@/enums/catalyst-scope";
+import { currentContext } from "@/framework/async-context";
 import { Readable } from "node:stream";
 
 type CatalystBucket = ReturnType<Stratus["bucket"]>;
@@ -11,8 +12,8 @@ type ObjectFormat = "stream" | "text" | "json";
 
 /** Fresh per call. The app is per-request and carries the caller's credentials,
  *  so a service must never be hoisted to module scope. */
-function stratus(): Stratus {
-  return new Stratus(currentContext().manager.catalyst);
+function stratus(scope: CatalystScope): Stratus {
+  return new Stratus(currentContext().manager.catalyst.getApp(scope));
 }
 
 /** `listPagedObjects` returns either a plain detail record or an object handle. */
@@ -28,15 +29,15 @@ async function readStream(stream: Readable): Promise<string> {
   return Buffer.concat(chunks).toString("utf8");
 }
 
-export class Bucket {
-  private constructor(private readonly name: string) {}
+/** A Stratus bucket bound to a scope. Reached only through `Bucket.runIn`. */
+class ScopedBucket {
+  constructor(
+    private readonly name: string,
+    private readonly scope: CatalystScope,
+  ) {}
 
   private bucket(): CatalystBucket {
-    return stratus().bucket(this.name);
-  }
-
-  buildKey(...parts: string[]): string {
-    return parts.join("/");
+    return stratus(this.scope).bucket(this.name);
   }
 
   async listObject(options: {
@@ -136,6 +137,22 @@ export class Bucket {
 
   async deletePath(path: string): Promise<void> {
     await this.bucket().deletePath(path);
+  }
+}
+
+export type { ScopedBucket };
+
+/** A Stratus bucket. Holds the name only; every Catalyst call goes through `runIn`. */
+export class Bucket {
+  private constructor(private readonly name: string) {}
+
+  /** The bucket's operations, acting with the scope's credentials. */
+  runIn(scope: CatalystScope): ScopedBucket {
+    return new ScopedBucket(this.name, scope);
+  }
+
+  buildKey(...parts: string[]): string {
+    return parts.join("/");
   }
 
   static create(name: string): Bucket {

@@ -1,14 +1,19 @@
 import { Cache as CacheClient } from "@zcatalyst/cache";
-import { currentContext } from "@/framework/async_context";
+import { CatalystScope } from "@/enums/catalyst-scope";
+import { currentContext } from "@/framework/async-context";
 
 /** The SDK exports only its top-level clients, so segment/bucket/table types are
  *  derived from the methods that produce them rather than imported. */
 type Segment = ReturnType<CacheClient["segment"]>;
 
 /** Fresh per call. The app is per-request and carries the caller's credentials,
- *  so a service must never be hoisted to module scope. */
+ *  so a service must never be hoisted to module scope. Cache is admin-only.
+ *  Never construct the client without an app: the SDK then falls back to whichever
+ *  request called `zcAuth.init` last, and switches that request's credential to admin. */
 function cacheClient(): CacheClient {
-  return new CacheClient(currentContext().manager.catalyst);
+  return new CacheClient(
+    currentContext().manager.catalyst.getApp(CatalystScope.Admin),
+  );
 }
 
 /** A Catalyst cache segment. Omit the id to use the project's default segment. */
