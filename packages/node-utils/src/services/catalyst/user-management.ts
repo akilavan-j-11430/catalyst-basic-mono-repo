@@ -1,5 +1,6 @@
 import { UserManagement as UserManagementClient } from "@zcatalyst/auth";
 import type { NewUser, RegisteredUser } from "@repo/types/user";
+import { CatalystScope } from "@/enums/catalyst-scope";
 import { CatalystError } from "@/errors/catalyst-error";
 import { currentContext } from "@/framework/async-context";
 
@@ -8,9 +9,12 @@ type RegisteredUserDetails = Awaited<
 >["user_details"];
 
 /** Fresh per call. The app is per-request and carries the caller's credentials,
- *  so a service must never be hoisted to module scope. */
+ *  so a service must never be hoisted to module scope. Admin, because registering a
+ *  user is not a browser SDK method and its caller has no account yet. */
 function userManagement(): UserManagementClient {
-  return new UserManagementClient(currentContext().manager.catalyst);
+  return new UserManagementClient(
+    currentContext().manager.catalyst.getApp(CatalystScope.Admin),
+  );
 }
 
 function toRegisteredUser(details: RegisteredUserDetails): RegisteredUser {
