@@ -37,10 +37,15 @@ export function recordRequestTiming(
 }
 
 /** Establishes the execution context for the request and runs the chain inside it. */
-export const initExecutionContext: RequestHandler = (req, _res, next) => {
+export const initExecutionContext: RequestHandler = async (req, _res, next) => {
   // Catalyst reads both the project details and the caller's credentials off the headers,
   // so the app is per-request and nothing needs to be configured in the environment.
-  const catalystApp = zcAuth.init(
+  // No scope is passed, so the app follows whatever the caller presents - a handler acts as
+  // the signed-in user and `getCurrentUser()` identifies them. A request carrying neither a
+  // user token nor a cookie is rejected here with `missing user credentials`.
+  // `init` loads its implementation through a dynamic import, so it must be awaited - an
+  // unawaited promise is truthy and only fails later, inside the SDK.
+  const catalystApp = await zcAuth.init(
     req as unknown as Parameters<typeof zcAuth.init>[0],
   );
   runWithContext(

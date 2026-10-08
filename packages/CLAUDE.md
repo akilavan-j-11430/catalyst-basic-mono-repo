@@ -5,7 +5,7 @@ Shared code for the monorepo. All four are private and consumed as `"workspace:*
 | Package | Holds |
 |---|---|
 | `@repo/types` | API response shapes shared by `apps/api` and `apps/web` |
-| `@repo/node-utils` | `ExecutionContext`, `logger`, `env`, `RuntimeError`, `HttpClient`, and the Catalyst wrappers plus the resource handles built from them |
+| `@repo/node-utils` | `ExecutionContext`, `logger`, `env`, `RuntimeError`, `HttpClient`, and the Catalyst wrappers (`table`, `bucket`, `cache`, `job`, `zcql`, `user_management`) plus the resource handles built from them |
 | `@repo/typescript-config` | `base.json` that every tsconfig extends |
 | `@repo/eslint-config` | flat ESLint config - currently unwired |
 
@@ -20,7 +20,7 @@ import type { RecordResponse } from "@repo/types/api";              // src/api.t
 import { logger } from "@repo/node-utils/framework/logger";         // src/framework/logger.ts
 import { currentContext } from "@repo/node-utils/framework/async_context";
 import { todoTable } from "@repo/node-utils/services/catalyst/resources"; // src/services/catalyst/resources.ts
-import { env } from "@repo/node-utils/utils/env";                     // src/utils/env.ts
+import { defineEnv } from "@repo/node-utils/utils/env";               // src/utils/env.ts
 ```
 
 There is no `@repo/types` root import. Adding a file under `src/` is enough to publish
@@ -59,15 +59,13 @@ Consumers must be built after these. Turborepo handles that via `dependsOn: ["^b
   service. Types live in `src/types/`, named constants in `src/enums/`, and the transport
   seam is `src/types/http.ts` - see `.claude/rules/outbound_http.md` before adding an HTTP
   dependency.
-- **Read environment variables through `env` (`src/utils/env.ts`), not `process.env`.**
-  Each variable is a key on its `EnvTemplate`, so what the code depends on is one type
-  rather than string literals spread across files, and a typo is a compile error. Add the
-  key there first, then `env.get("NAME")` for one that must be set - it throws
-  `RuntimeError` naming the variable - or `env.optional("NAME")` for one with a fallback.
-  Nothing Catalyst-related belongs here: project details and caller credentials ride on
-  request headers. Nothing enforces this yet, and the platform-injected variables the apps
-  read at module scope (`X_ZOHO_CATALYST_LISTEN_PORT`, `X_ZOHO_SPARKLET_LOG_FD`) still go
-  through `process.env` directly.
+- **These packages own the env mechanism, never a key.** `src/utils/env.ts` exports
+  `defineEnv<T>()`, which is generic and names no variable; each app declares what it
+  reads in its own `src/env.ts`. A package that needs a configured value **takes it as a
+  parameter** - `UserManagement.register(user, redirectUrl)`, `setLogTimeZone(zone)` - so
+  the app that owns the variable is the one that reads it, and the failure lands where the
+  value is used. No file under `packages/` calls `process.env` except the mechanism
+  itself. See `.claude/rules/environment.md`.
 
 ## A new package
 

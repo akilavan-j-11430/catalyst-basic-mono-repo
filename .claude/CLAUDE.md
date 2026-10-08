@@ -144,7 +144,9 @@ runtime does not have.
 ## Conventions
 
 Topic rules live one-per-file in `.claude/rules/` and load automatically: `catalyst_sdk.md`
-covers every Catalyst call, `outbound_http.md` every call to a service outside this repo.
+covers every Catalyst call, `outbound_http.md` every call to a service outside this repo,
+`web_data_access.md` every call the browser makes to our own API and every form that
+collects one, `environment.md` every environment variable, `typography.md` every font.
 Add a file there rather than growing this one, and give it `paths:` frontmatter if it only
 applies to part of the tree.
 
@@ -153,7 +155,17 @@ applies to part of the tree.
   `@repo/node-utils/framework/logger`, `@repo/node-utils/framework/async_context`,
   `@repo/node-utils/services/catalyst/resources`, `@repo/node-utils/utils/env`.
 - File names are snake_case: `http_error.ts`, `async_context.ts`.
+- Identifiers and JSON keys are camelCase: `emailId`, `nextPageToken`. The exception is
+  a wire shape a vendor defines - Catalyst sends `email_id`, `job_name`, `ROWID` - which
+  is named as the vendor names it and converted at the wrapper, never leaked past it.
 - Workspace deps are `"workspace:*"`.
+- **A file earns its existence from a second caller or from a boundary, not from
+  tidiness.** Something used in exactly one place lives where it is used; split it out
+  when the second caller arrives, and let that caller tell you what the shape should be.
+  The exception is a seam - `services/catalyst/`, `services/api/client.ts`,
+  `endpoints.ts` - which exists so that everything passes through one place. A seam is
+  right at one caller, because being the only route through is its whole job. Everything
+  else - a validation rule, a formatter, a resolver - is not.
 - `packages/*` are ESM; root and `apps/api` are CommonJS. The split is source-only -
   `scripts/bundle.mjs` builds with `format: "cjs"`, so esbuild inlines the ESM
   packages into one CommonJS file and the boundary never reaches the runtime.
@@ -165,6 +177,18 @@ applies to part of the tree.
   is `any`/`unknown` standing in for a type nobody looked up: derive it from the signature
   that produces it, or declare it. `.claude/rules/catalyst_sdk.md` shows how when the
   vendor types are awkward.
+
+In `apps/web`:
+
+- Reach `apps/api` through `src/services/` - one file per domain, built on
+  `src/services/api/` (`client.ts` for transport, `endpoints.ts` for every path). No
+  `fetch` and no URL in a component.
+- Server state is react-query, form state is react-hook-form. Both are installed; neither
+  gets re-implemented with `useState`.
+- Failures are reported by the query client as a toast, so a call site handles success only.
+- The full rule is `.claude/rules/web_data_access.md`.
+- Fonts come from the tokens in `globals.css` and nowhere else. Never set a family on a
+  component - see `.claude/rules/typography.md`.
 
 In `apps/api`:
 
@@ -182,11 +206,12 @@ In `apps/api`:
 - Call external services through `HttpClient` (`@repo/node-utils/http/http_client`), never
   `fetch` or another client directly. It stamps the request's execution id on every
   outbound call as `app-execution-id`. See `.claude/rules/outbound_http.md`.
-- Read environment variables through `env` (`@repo/node-utils/utils/env`) rather than
-  `process.env` - add the key to its `EnvTemplate` first, so a typo is a compile error.
-  The platform-injected ones read at module scope in `index.ts` and
-  `framework/catalyst_logger.ts` predate it. Nothing Catalyst-related belongs in the
-  environment.
+- Read environment variables through `env` (`@/env`), never `process.env`. This app owns
+  its keys - add one to the template in `src/env.ts` first, so a typo is a compile error.
+  Values live in `.env`, never in `app-config.json` or any other Catalyst file, and
+  nothing Catalyst-related belongs in the environment at all. The platform-injected reads
+  at module scope in `index.ts` and `framework/catalyst_logger.ts` are the exception.
+  See `.claude/rules/environment.md`.
 
 ## Adding to the repo
 

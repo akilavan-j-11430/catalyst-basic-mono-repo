@@ -185,5 +185,7 @@ deployed manifest from that file alone.
 
 ## Not covered by this rule
 
-`apps/web` calls this repo's own API with relative `fetch("/api/...")` through the proxy.
-That is not an external request, and `apps/web` cannot import `node-utils` anyway.
+`apps/web` calls this repo's own API through the proxy. That is not an external request,
+and `apps/web` cannot import `node-utils` anyway - it has its own client in
+`src/services/api/client.ts`, built to this same standard and returning the same
+`HttpResponse` from `@repo/types/http`. `.claude/rules/web_data_access.md` is its rule.
