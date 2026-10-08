@@ -1,4 +1,4 @@
-import "@/framework/catalyst_logger";
+import "@/framework/catalyst-logger";
 import { setLogTimeZone } from "@repo/node-utils/framework/logger";
 import { env } from "@/env";
 import {
