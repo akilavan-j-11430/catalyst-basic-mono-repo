@@ -153,7 +153,8 @@ covers every Catalyst call and how few of them a solution makes, `outbound-http.
 call to a service outside this repo, `web-data-access.md` every call the browser makes to
 our own API and every form that collects one, `environment.md` every environment
 variable, `typography.md` every font, `code-design.md` every class and the pattern it
-follows. Add a file there rather than growing this one, and
+follows, `readable-code.md` casing, naming and when complexity is worth it,
+`vendor-boundaries.md` where each vendor is reached and how little a migration touches. Add a file there rather than growing this one, and
 give it `paths:` frontmatter if it only applies to part of the tree.
 
 - `@/*` resolves to `./src/*` in every workspace. Use it instead of `../../`.
@@ -164,6 +165,7 @@ give it `paths:` frontmatter if it only applies to part of the tree.
 - Identifiers and JSON keys are camelCase: `emailId`, `nextPageToken`. The exception is
   a wire shape a vendor defines - Catalyst sends `email_id`, `job_name`, `ROWID` - which
   is named as the vendor names it and converted at the wrapper, never leaked past it.
+  See `.claude/rules/readable-code.md`.
 - Workspace deps are `"workspace:*"`.
 - **A file earns its existence from a second caller or from a boundary, not from
   tidiness.** Something used in exactly one place lives where it is used; split it out
@@ -227,6 +229,12 @@ In `apps/api`:
 That file is the only place a router mounts, so `src/index.ts` never changes. A route that
 calls Catalyst mounts `initCatalystScopes([...])` (`src/middleware.ts`) ahead of its handler,
 naming the scopes it uses - `router.use` it instead when every route on the router needs them.
+
+**A table** - declare its handle in `packages/node-utils/src/catalyst/resources.ts`, its
+domain type in `packages/types`, and a repository in
+`packages/node-utils/src/repositories/<name>-repository.ts` that is the only importer of the
+handle and maps rows to the domain type. Routes call the repository. See
+`.claude/rules/vendor-boundaries.md`.
 
 **An AppSail app** - copy `apps/api` as the shape. Four things must agree:
 `scripts/bundle.mjs` (output `appsails/<name>/`), `app-config.json`, the `catalyst.json`
