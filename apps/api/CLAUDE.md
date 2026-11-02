@@ -9,7 +9,8 @@ Port: `X_ZOHO_CATALYST_LISTEN_PORT`, else `PORT`, else **8000**.
 
 ```
 src/
-|-- index.ts              app setup, middleware order, route mounting
+|-- index.ts              startup: log timezone, listen on the port
+|-- app.ts                the Express app - middleware order, route mounting
 |-- env.ts                every environment variable this app reads
 |-- middleware.ts         execution context, request timing, terminal error handler
 |-- routes/api-router.ts  the only place a router mounts
@@ -18,7 +19,18 @@ src/
 |-- errors/http-error.ts  typed failures that map to HTTP statuses
 |-- utils/api.ts          response builders
 `-- framework/catalyst-logger.ts   console -> Catalyst log pipe, imported for side effect
+test/
+|-- setup.ts              fakes zcAuth.init for every test
+|-- catalyst-auth.ts      catalystAuth - the fake, which a test controls
+|-- unit/                 middleware and helpers, called directly
+`-- integration/          the app from app.ts, driven through Supertest
+vitest.config.mts         .mts because this package is CommonJS
+tsconfig.json             src + test, no emit - editor and typecheck
+tsconfig.build.json       src only - build
 ```
+
+`app.ts` builds the Express app without a listener, so the integration tests import it
+directly. Tests and how Catalyst is faked: `.claude/rules/testing.md`.
 
 `catalyst-logger` is imported first in `index.ts` purely for its side effect: it
 replaces the `console` methods so logs are framed for Catalyst's collector. It exports
@@ -26,7 +38,7 @@ nothing you should call.
 
 ## Middleware order
 
-From `src/index.ts`, and the order is load-bearing:
+From `src/app.ts`, and the order is load-bearing:
 
 1. `express.json()`
 2. `/api` -> `initExecutionContext`, then `recordRequestTiming`
@@ -34,7 +46,7 @@ From `src/index.ts`, and the order is load-bearing:
 4. `/` -> JSON 404 catch-all
 5. `errorHandler` (terminal)
 
-`index.ts` mounts one router, and `api-router.ts` composes the rest, so a new route
+`app.ts` mounts one router, and `api-router.ts` composes the rest, so a new route
 cannot land below the catch-all and quietly 404. Add it there, not here.
 
 Every path segment is a constant in `ApiPath` (`@repo/routing/api-path`), shared with
@@ -185,7 +197,9 @@ execution ID and a per-request order number from the async context.
 
 ## Build
 
-- `pnpm build` - `tsc --build && tsc-alias` into `dist/` (resolves the `@/*` alias).
+- `pnpm build` - `tsc --build tsconfig.build.json && tsc-alias -p tsconfig.build.json` into
+  `dist/` (resolves the `@/*` alias). `tsconfig.json` covers `src/` and `test/` for the
+  editor and `pnpm typecheck` and never emits.
 - `pnpm bundle` - `scripts/bundle.mjs` esbuilds `src/index.ts` into `appsails/api/`.
 
 The bundle script reads `package.json`, strips every `@repo/*` dependency from the

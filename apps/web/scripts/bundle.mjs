@@ -20,6 +20,8 @@ const skippedEntries = new Set([
   ".turbo",
   "scripts",
   "turbo.json",
+  // Imports @repo/eslint-config, which the staged manifest drops. Slate never lints.
+  "eslint.config.mjs",
 ]);
 
 await rm(outDir, { recursive: true, force: true });
@@ -89,12 +91,34 @@ const { stdout: npmVersion } = await execAsync("npm --version", {
   env: npmEnv,
 });
 
+// npm refuses a manifest with a `workspace:*` entry, so the staged copy leaves out each
+// workspace devDependency. Today that is only a lint preset, which `next build` never reads.
+// `next build` does read tsconfig.json, so a dropped package named there - a tsconfig preset
+// in `extends` - would break the Slate build: stop here instead.
+const workspaceDevDependencies = Object.keys(packageJsonFile.devDependencies ?? {}).filter(
+  (name) => packageJsonFile.devDependencies[name].startsWith("workspace:"),
+);
+const webTsconfig = await readFile(join(root, "tsconfig.json"), "utf-8");
+const neededByBuild = workspaceDevDependencies.filter((name) => webTsconfig.includes(name));
+if (neededByBuild.length > 0) {
+  throw new Error(
+    `tsconfig.json uses ${neededByBuild.join(", ")}, a workspace devDependency the staged copy drops, so Slate's next build would fail.`,
+  );
+}
+const devDependencies = Object.fromEntries(
+  Object.entries(packageJsonFile.devDependencies ?? {}).filter(
+    ([name]) => !workspaceDevDependencies.includes(name),
+  ),
+);
+
 const packageJson = {
   ...packageJsonFile,
   dependencies: { ...packageJsonFile.dependencies, ...vendoredDependencies },
+  devDependencies,
   packageManager: `npm@${npmVersion.trim()}`,
 };
 delete packageJson.scripts.bundle;
+delete packageJson.scripts.lint;
 
 await writeFile(
   join(outDir, "package.json"),
