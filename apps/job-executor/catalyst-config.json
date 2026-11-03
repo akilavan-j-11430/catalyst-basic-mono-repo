@@ -1,0 +1,10 @@
+{
+  "deployment": {
+    "name": "job-executor",
+    "stack": "node24",
+    "type": "job"
+  },
+  "execution": {
+    "main": "index.js"
+  }
+}

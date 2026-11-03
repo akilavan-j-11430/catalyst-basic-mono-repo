@@ -1,13 +1,14 @@
 # packages/
 
-Shared code for the monorepo. All seven are private and consumed as `"workspace:*"`.
+Shared code for the monorepo. All eight are private and consumed as `"workspace:*"`.
 
 | Package | Holds |
 |---|---|
 | `@repo/routing` | API path segments (`ApiPath`) shared by `apps/api` and `apps/web` |
+| `@repo/app-core` | The rules every app shares - the monitor limits and the alert wording. `@repo/types` holds shapes only |
 | `@repo/case-conversion` | `CamelCase` - renames a vendor's snake_case/kebab-case keys, for `node-utils` and `apps/web` |
 | `@repo/types` | API response shapes shared by `apps/api` and `apps/web` |
-| `@repo/node-utils` | `ExecutionContext`, `logger`, `env`, `RuntimeError`, `HttpClient`, and the Catalyst wrappers (`table`, `bucket`, `cache`, `job`, `zcql`, `user-management`) plus the resource handles built from them |
+| `@repo/node-utils` | `ExecutionContext`, `logger`, `env`, `RuntimeError`, `HttpClient`, and the Catalyst wrappers (`table`, `bucket`, `cache`, `job`, `zcql`, `mail`) plus the resource handles built from them |
 | `@repo/typescript-config` | `base.json` that every tsconfig extends |
 | `@repo/eslint-config` | flat ESLint config: the import boundaries and the camelCase naming rule |
 | `@repo/testing` | `VitestProjects` - the shared Vitest settings; later, any test fake a second workspace needs. Dev-only, never imported from `src/` |

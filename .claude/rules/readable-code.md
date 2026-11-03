@@ -46,6 +46,24 @@ function toRegisteredUser(details: RegisteredUserDetails): RegisteredUser {
 - Sending works the same way in reverse: build the vendor's shape from our camelCase value
   at the last moment, as `register` does with `first_name: user.firstName`.
 
+## Timestamps are ISO 8601 UTC on the wire
+
+The server decides the format, and the client only displays it. Every timestamp an API
+response carries is an ISO 8601 string in UTC with milliseconds - `2026-11-03T12:22:05.123Z`
+- whatever the storage holds:
+
+- Below the API everything keeps epoch ms: the repository reads and writes it, the probe
+  job computes with it, and the server-side shapes in `@repo/types` (`Probe`, `Alert`,
+  `Monitor`) carry it as `...Ms` fields. Only `apps/api` turns a time into a string, and only
+  through `WireTime.fromEpochMs` (`apps/api/src/utils/wire-time.ts`) - no other
+  `toISOString()` builds a response. A vendor's own time format is turned into epoch ms in
+  the seam that read it.
+- The shapes a response carries (`LatestProbe`, `LatestAlert`) type every time as `string`.
+- Never send a locale-formatted string. The browser turns ISO into local, human time
+  (`RelativeTime`, `toLocaleString`) for whoever is looking.
+- ISO in UTC sorts as text and parses in every language, so a request body that carries a
+  time takes the same form.
+
 ## Names say what the thing is
 
 A name is specific to what it holds in this code, so a reader understands it without

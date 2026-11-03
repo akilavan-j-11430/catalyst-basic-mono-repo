@@ -1473,6 +1473,24 @@
     sans-serif;
 }
 
+/*
+ * The `.dark` tokens from globals.css, as hex. sign-in-widget.tsx copies the page's
+ * `dark` class onto this document's root on every load and every theme switch.
+ */
+:root.dark {
+  color-scheme: dark;
+
+  --app-surface: #13171f;
+  --app-sunken: #20242c;
+  --app-foreground: #e8ebef;
+  --app-muted: #9fa5ae;
+  --app-line: #383d46;
+  --app-brand: #4a91f8;
+  --app-brand-hover: #66a5ff;
+  --app-brand-ink: #080d16;
+  --app-danger: #f0574e;
+}
+
 /* The iframe is a panel inside our card, not a page: no backdrop, no chrome. */
 body {
   background: transparent !important;
@@ -1604,8 +1622,8 @@ a,
 }
 
 /*
- * The widget's own signup link leaves for the platform's hosted page. This app
- * has /sign-up, linked from the card, so the duplicate would be a dead end.
+ * The widget's own signup link leaves for the platform's hosted page. Lively has
+ * no self-signup - accounts are added by the project admin - so it is hidden.
  */
 .signup_text {
   display: none !important;

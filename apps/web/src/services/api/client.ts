@@ -1,4 +1,4 @@
-import type { ErrorResponse, RecordResponse } from "@repo/types/api";
+import type { ErrorResponse, PagedRecordResponse, RecordResponse } from "@repo/types/api";
 import { ApiPath } from "@repo/routing/api-path";
 import {
   HttpMethod,
@@ -287,6 +287,22 @@ export async function recordOf<T>(response: ApiResponse): Promise<T> {
     });
   }
   return payload.data;
+}
+
+/** A page of records and where it sits in the whole list - a paged route's envelope,
+ *  read here for the same reason `recordOf` reads the record's. */
+export async function pagedOf<T>(response: ApiResponse): Promise<Pick<PagedRecordResponse<T>, "data" | "pageInfo">> {
+  const payload = await response.body.json<PagedRecordResponse<T> | undefined>();
+  if (payload === undefined) {
+    throw ApiError.Undecodable({
+      method: response.method,
+      url: response.url,
+      status: response.status,
+      headers: response.headers,
+      body: "",
+    });
+  }
+  return { data: payload.data, pageInfo: payload.pageInfo };
 }
 
 /**

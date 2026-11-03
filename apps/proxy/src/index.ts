@@ -11,6 +11,14 @@ const apiProxy = createProxyMiddleware({
   pathFilter: "/api",
 });
 
+// Local only: runs a job by hand on the job-executor dev server - `POST /jobs/<jobName>`.
+// Through here, the request carries the project credentials `catalyst serve` adds.
+const jobsProxy = createProxyMiddleware({
+  target: "http://localhost:8100",
+  changeOrigin: true,
+  pathFilter: "/jobs",
+});
+
 const viteProxy = createProxyMiddleware({
   target: "http://localhost:4000",
   changeOrigin: true,
@@ -18,6 +26,7 @@ const viteProxy = createProxyMiddleware({
 });
 
 app.use(apiProxy);
+app.use(jobsProxy);
 app.use(viteProxy);
 
 const server = app.listen(PORT, () => {

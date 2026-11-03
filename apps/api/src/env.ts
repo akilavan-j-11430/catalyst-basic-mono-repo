@@ -6,8 +6,6 @@ import { defineEnv } from "@repo/node-utils/utils/env";
  * fallback - so a key appears here exactly once either way.
  */
 type ApiEnv = {
-  /** Where Catalyst sends a new user from the confirmation email. */
-  AUTH_REDIRECT_URL: string;
   /** Timezone for log timestamps. Falls back to the logger's own default. */
   TZ: string;
 };

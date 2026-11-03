@@ -1,12 +1,7 @@
-import { SignedInAccount } from "@/components/auth/signed-in-account";
-import { Card, CardContent } from "@/components/ui/card";
+import { redirect } from "next/navigation";
+import { ClientPath } from "@repo/routing/client-path";
 
-export default function HomePage() {
-  return (
-    <Card className="w-full max-w-md">
-      <CardContent>
-        <SignedInAccount />
-      </CardContent>
-    </Card>
-  );
+/** The app has no page of its own at `/` - the monitor list is where it starts. */
+export default function RootPage() {
+  redirect(ClientPath.Monitors);
 }

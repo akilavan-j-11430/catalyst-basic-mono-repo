@@ -1,11 +1,20 @@
 import type { ReactNode } from "react";
-import { Card } from "@/components/ui/card";
+import { SignInCard } from "@/components/auth/sign-in-card";
+import { HowItWorks, SIGN_IN_GRID, SignInBand } from "@/components/auth/sign-in-overview";
+import { AppFooter, AppHeader, PAGE_COLUMN } from "@/components/shared/app-frame";
+import { ThemeSwitch } from "@/components/shared/theme-switch";
 
 // Not LayoutProps<...>: Next keys those by URL path, and a route group has none.
 export default function AuthLayout({ children }: { children: ReactNode }) {
   return (
-    <main className="flex flex-1 items-center justify-center px-6 py-12">
-      <Card className="min-h-auth-card w-full max-w-md">{children}</Card>
-    </main>
+    <>
+      <AppHeader actions={<ThemeSwitch />} />
+      <SignInBand />
+      <main className={`${PAGE_COLUMN} ${SIGN_IN_GRID} flex-1 items-start gap-y-10 pb-10`}>
+        <SignInCard>{children}</SignInCard>
+        <HowItWorks className="lg:col-start-1 lg:row-start-1 lg:pt-10" />
+      </main>
+      <AppFooter />
+    </>
   );
 }

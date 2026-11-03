@@ -28,6 +28,8 @@ Where new work goes:
 - Pages, components, styling -> `apps/web` (Slate).
 - Shapes both sides use -> `packages/types`, defined once and imported by both;
   never two definitions that can drift.
+- Rules and limits every app shares -> `packages/app-core` (`monitor-limits.ts`,
+  `alert-message.ts`). `packages/types` holds shapes only - no constants, no classes.
 - Route path segments -> `packages/routing`: `ApiPath` in `api-path.ts`, combined with
   `+` - `ApiPath.Api + ApiPath.V1`. `apps/api` mounts them and `apps/web` calls them, so
   a path is never a string literal in either app. Client paths belong here too, in their
@@ -70,9 +72,11 @@ catalyst serve      <- entry point, port assigned by the CLI (3000, 3001, 3002, 
 |---|---|---|
 | `apps/proxy` | `proxy` | **none - local only** |
 | `apps/api` | `api` | AppSail `api` |
+| `apps/job-executor` | `job-executor` | Job function `job-executor` (staged in `functions/`) |
 | `apps/web` | `web` | Slate `web` (staged in `slate/web`) |
 | `packages/types` | `@repo/types` | - |
 | `packages/routing` | `@repo/routing` | - |
+| `packages/app-core` | `@repo/app-core` | - |
 | `packages/case-conversion` | `@repo/case-conversion` | - |
 | `packages/node-utils` | `@repo/node-utils` | - |
 | `packages/typescript-config` | `@repo/typescript-config` | - |
@@ -164,6 +168,7 @@ give it `paths:` frontmatter if it only applies to part of the tree.
 
 - `@/*` resolves to `./src/*` in every app and every built package. Use it instead of `../../`.
 - Shared packages expose subpaths, not a barrel: `@repo/types/api`, `@repo/routing/api-path`,
+  `@repo/app-core/monitor-limits`,
   `@repo/case-conversion/camel-case`,
   `@repo/node-utils/framework/logger`, `@repo/node-utils/framework/async-context`,
   `@repo/node-utils/catalyst/resources`, `@repo/node-utils/utils/env`,

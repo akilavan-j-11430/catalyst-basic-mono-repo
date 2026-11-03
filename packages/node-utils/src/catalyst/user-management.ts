@@ -1,55 +1,34 @@
 import { UserManagement as UserManagementClient } from "@zcatalyst/auth";
 import { CamelCase } from "@repo/case-conversion/camel-case";
-import type { NewUser, RegisteredUser } from "@repo/types/user";
 import { CatalystScope } from "@/enums/catalyst-scope";
 import { CatalystError } from "@/errors/catalyst-error";
 import { currentContext } from "@/framework/async-context";
 
-type RegisteredUserDetails = Awaited<
-  ReturnType<UserManagementClient["registerUser"]>
->["user_details"];
-
-/** Fresh per call. The app is per-request and carries the caller's credentials,
- *  so a service must never be hoisted to module scope. Admin, because registering a
- *  user is not a browser SDK method and its caller has no account yet. */
-function userManagement(): UserManagementClient {
-  return new UserManagementClient(
-    currentContext().manager.catalyst.getApp(CatalystScope.Admin),
-  );
+/** The signed-in caller, as this repo names them. */
+export interface AppUser {
+  userId: string;
+  emailId: string;
 }
 
-/** Picks only the fields we expose, so the rest of Catalyst's user record never leaks. */
-function toRegisteredUser(details: RegisteredUserDetails): RegisteredUser {
-  const { userId, emailId, firstName, lastName, isConfirmed } = CamelCase.convertKeys(details);
-  return { userId, emailId, firstName, lastName, isConfirmed };
+/** Fresh per call. The app is per-request and carries the caller's credentials,
+ *  so a service must never be hoisted to module scope. User scope, because the question
+ *  is who the caller is - an admin app would answer with the project admin instead. */
+function userManagement(): UserManagementClient {
+  return new UserManagementClient(
+    currentContext().manager.catalyst.getApp(CatalystScope.User),
+  );
 }
 
 /** Catalyst app users. Like `Zcql`, this names no resource, so it has no handle. */
 export class UserManagement {
-  /** Registers an app user. Catalyst emails them a link to confirm and set a
-   *  password, and sends them to `redirectUrl` from it. */
-  static async register(
-    user: NewUser,
-    redirectUrl: string,
-  ): Promise<RegisteredUser> {
+  /** The user whose session made this request. Picks only the fields we expose, so the
+   *  rest of Catalyst's user record never leaks. */
+  static async currentUser(): Promise<AppUser> {
     try {
-      const registered = await userManagement().registerUser(
-        {
-          platform_type: "web",
-          redirect_url: redirectUrl,
-        },
-        {
-          first_name: user.firstName,
-          last_name: user.lastName,
-          email_id: user.emailId,
-        },
-      );
-      return toRegisteredUser(registered.user_details);
+      const { userId, emailId } = CamelCase.convertKeys(await userManagement().getCurrentUser());
+      return { userId: String(userId), emailId };
     } catch (cause) {
-      throw CatalystError.InvalidResource(
-        `Failed to register ${user.emailId}`,
-        cause,
-      );
+      throw CatalystError.InvalidResource("Failed to read the signed-in user", cause);
     }
   }
 }

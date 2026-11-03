@@ -12,6 +12,7 @@ import {
 } from "@repo/node-utils/framework/async-context";
 import { CatalystScope } from "@repo/node-utils/enums/catalyst-scope";
 import { Catalyst } from "@repo/node-utils/catalyst/catalyst";
+import { UserManagement } from "@repo/node-utils/catalyst/user-management";
 import { logger } from "@repo/node-utils/framework/logger";
 import { randomUUID } from "crypto";
 import { zcAuth } from "@zcatalyst/auth";
@@ -75,6 +76,20 @@ export function initCatalystScopes(scopes: CatalystScope[]): RequestHandler {
     next();
   };
 }
+
+/** Answers 401 unless the request carries a live session of a signed-in user. Building the
+ *  User app only reads the credentials off the request; asking Catalyst who they belong to
+ *  is what checks them - one call per request, and the routes behind it then act as Admin.
+ *  Mount it after `initCatalystScopes` with the User scope. */
+export const requireSignedInUser: RequestHandler = async (_req, _res, next) => {
+  try {
+    await UserManagement.currentUser();
+  } catch (cause) {
+    logger.info(`No signed-in user: ${String(cause)}`);
+    throw HttpError.Unauthorized("Sign in to continue.");
+  }
+  next();
+};
 
 /** Terminal error handler - maps HttpError to its status, anything else to 500. */
 export const errorHandler: ErrorRequestHandler = (error, _req, res, _next) => {

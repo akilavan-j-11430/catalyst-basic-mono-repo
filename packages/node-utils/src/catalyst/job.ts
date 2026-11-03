@@ -2,21 +2,17 @@ import { CatalystError } from "@/errors/catalyst-error";
 import { JobScheduling } from "@zcatalyst/job-scheduling";
 import { CatalystScope } from "@/enums/catalyst-scope";
 import { currentContext } from "@/framework/async-context";
-import { randomUUID } from "node:crypto";
 
 /** Catalyst rejects an alias longer than this. */
 const MAX_ALIAS_LENGTH = 20;
 
-/** Catalyst rejects a cron name longer than this. */
-const MAX_CRON_NAME_LENGTH = 20;
+/** Catalyst rejects a schedule (cron) name longer than this. */
+const MAX_SCHEDULE_NAME_LENGTH = 20;
 
-// Neither SDK method can be satisfied as declared. `submitJob` wants a `TCatalystJobs`
-// member, whose `target_type` is a TS enum the package exports from neither its root nor
-// its types. `createCron` wants its own *response* shape, demanding `id`, `end_time` and
-// `cron_execution_type` that only the server produces. So the wire shapes this repo sends
-// are named below and each is cast once, at the call - the payloads stay checked, and
-// nothing reaches into the SDK's build output.
-type SdkJobMeta = Parameters<JobScheduling["JOB"]["submitJob"]>[0];
+// `createCron` and `updateCron` cannot be satisfied as declared: both want the cron's own
+// *response* shape, demanding `id`, `end_time` and `cron_execution_type` that only the server
+// produces. So the wire shape this repo sends is named below and cast once, at each call -
+// the payload stays checked, and nothing reaches into the SDK's build output.
 type SdkCronDetails = Parameters<JobScheduling["CRON"]["createCron"]>[0];
 
 /** A job targeting a Catalyst function, as Catalyst accepts it. */
@@ -28,43 +24,37 @@ interface FunctionJobRequest {
   params: JobParams;
 }
 
-/** A cron that fires once, as Catalyst accepts it. */
-interface OneTimeCronRequest {
+/** A cron that fires every `hour:minute:second`, as Catalyst accepts it. Catalyst runs it
+ *  once at creation too, then every interval from that moment. */
+interface PeriodicCronRequest {
   cron_name: string;
-  cron_type: "OneTime";
+  cron_type: "Periodic";
   cron_status: boolean;
-  cron_detail: { time_of_execution: string };
+  cron_detail: { hour: string; minute: string; second: string; repetition_type: "every" };
   job_meta: FunctionJobRequest;
 }
 
-/** Fresh per call. The app is per-request and carries the caller's credentials,
- *  so a service must never be hoisted to module scope. */
+/** Fresh per call. The app is per-request, so a service must never be hoisted to module
+ *  scope. Admin, because job scheduling is not a browser SDK method. */
 function jobScheduling(): JobScheduling {
-  return new JobScheduling(currentContext().manager.catalyst.getApp(CatalystScope.User));
+  return new JobScheduling(currentContext().manager.catalyst.getApp(CatalystScope.Admin));
 }
 
-/** Catalyst carries job params as strings. A job that takes none is `Job<void>`. */
+/** Catalyst carries job params as strings. */
 export type JobParams = Record<string, string>;
 
-/** Absent for a `Job<void>`, required for every other job. */
-type WithParams<T> = T extends void ? { params?: undefined } : { params: T };
+interface ScheduleRepeatingInput<T> {
+  /** How often the job runs. Whole seconds; split into Catalyst's hour/minute/second. */
+  intervalSeconds: number;
+  /** Unique in the project, at most `MAX_SCHEDULE_NAME_LENGTH` characters. */
+  scheduleName: string;
+  params: T;
+}
 
-type SubmitJobInput<T> = WithParams<T> & {
-  /** Defaults to a UUID. */
-  jobId?: string;
-};
-
-/** A `Job<void>` needs neither params nor a jobId, so it is called with no argument. */
-type SubmitJobArgs<T> = T extends void
-  ? [input?: SubmitJobInput<T>]
-  : [input: SubmitJobInput<T>];
-
-type SubmitOneTimeCronInput<T> = WithParams<T> & {
-  /** Epoch milliseconds. */
-  timeOfExecution: number;
-  /** Unique in the project, at most `MAX_CRON_NAME_LENGTH` characters. */
-  cronName: string;
-};
+interface RescheduleRepeatingInput<T> extends ScheduleRepeatingInput<T> {
+  /** False keeps a paused schedule paused - the update replaces its status too. */
+  isActive: boolean;
+}
 
 interface JobConfig {
   jobName: string;
@@ -74,49 +64,95 @@ interface JobConfig {
   jobTargetFunctionName: string;
 }
 
-export class Job<T extends JobParams | void = void> {
-  private constructor(readonly config: JobConfig) {}
+export class Job<T extends JobParams> {
+  /** The name the job function dispatches on - it rides in every run's params. */
+  readonly name: string;
 
-  /** Queues the job for immediate execution. */
-  async submitJob(...[input]: SubmitJobArgs<T>): Promise<void> {
-    const { params, jobId = randomUUID() } = input ?? {};
-    const job: FunctionJobRequest = {
-      job_name: this.config.aliasName,
-      jobpool_name: this.config.jobPoolName,
-      target_type: "Function",
-      target_name: this.config.jobTargetFunctionName,
-      params: { ...params, jobId, jobName: this.config.jobName },
-    };
-    await jobScheduling().JOB.submitJob(job as unknown as SdkJobMeta);
+  private constructor(private readonly config: JobConfig) {
+    this.name = config.jobName;
   }
 
-  /** Queues the job to run once. `cronName` names the cron, must be unique in the
-   *  project, and never reaches the job's params. */
-  async submitOneTimeCron(input: SubmitOneTimeCronInput<T>): Promise<void> {
-    const { timeOfExecution, params, cronName } = input;
-    if (cronName.length > MAX_CRON_NAME_LENGTH) {
-      throw CatalystError.InvalidResource(
-        `Cron name must be at most ${MAX_CRON_NAME_LENGTH} characters, got "${cronName}".`,
-      );
+  /** Runs the job every `intervalSeconds` until the schedule is paused or deleted, and
+   *  answers with the schedule's id - keep it: Catalyst lists no cron made from code, so the
+   *  id is the only handle on it later. */
+  async scheduleRepeating(input: ScheduleRepeatingInput<T>): Promise<string> {
+    const cron = this.periodicCron({ ...input, isActive: true });
+    try {
+      const createdCron = await jobScheduling().CRON.createCron(cron as unknown as SdkCronDetails);
+      return String(createdCron.id);
+    } catch (cause) {
+      throw CatalystError.InvalidResource(`Scheduling ${input.scheduleName} failed`, cause);
     }
+  }
 
-    const cron: OneTimeCronRequest = {
-      cron_type: "OneTime",
-      cron_name: cronName,
-      cron_status: true,
-      cron_detail: { time_of_execution: timeOfExecution.toString() },
+  /** Replaces a schedule's interval and params in place, so its id - and every reference to
+   *  it - stays good. Its timetable starts again from now. */
+  async rescheduleRepeating(scheduleId: string, input: RescheduleRepeatingInput<T>): Promise<void> {
+    const cron = this.periodicCron(input);
+    try {
+      await jobScheduling().CRON.updateCron(scheduleId, cron as unknown as SdkCronDetails);
+    } catch (cause) {
+      throw CatalystError.InvalidResource(`Rescheduling ${scheduleId} failed`, cause);
+    }
+  }
+
+  /** Stops a schedule from firing until `resumeSchedule`. */
+  async pauseSchedule(scheduleId: string): Promise<void> {
+    try {
+      await jobScheduling().CRON.pauseCron(scheduleId);
+    } catch (cause) {
+      throw CatalystError.InvalidResource(`Pausing schedule ${scheduleId} failed`, cause);
+    }
+  }
+
+  async resumeSchedule(scheduleId: string): Promise<void> {
+    try {
+      await jobScheduling().CRON.resumeCron(scheduleId);
+    } catch (cause) {
+      throw CatalystError.InvalidResource(`Resuming schedule ${scheduleId} failed`, cause);
+    }
+  }
+
+  async deleteSchedule(scheduleId: string): Promise<void> {
+    try {
+      await jobScheduling().CRON.deleteCron(scheduleId);
+    } catch (cause) {
+      throw CatalystError.InvalidResource(`Deleting schedule ${scheduleId} failed`, cause);
+    }
+  }
+
+  private periodicCron(input: RescheduleRepeatingInput<T>): PeriodicCronRequest {
+    const { intervalSeconds, params, scheduleName, isActive } = input;
+    Job.checkScheduleName(scheduleName);
+    return {
+      cron_type: "Periodic",
+      cron_name: scheduleName,
+      cron_status: isActive,
+      cron_detail: {
+        hour: String(Math.floor(intervalSeconds / 3600)),
+        minute: String(Math.floor((intervalSeconds % 3600) / 60)),
+        second: String(intervalSeconds % 60),
+        repetition_type: "every",
+      },
       job_meta: {
         job_name: this.config.aliasName,
         jobpool_name: this.config.jobPoolName,
         target_type: "Function",
         target_name: this.config.jobTargetFunctionName,
-        params: { ...params, jobName: this.config.jobName },
+        params: { ...params, jobName: this.name },
       },
     };
-    await jobScheduling().CRON.createCron(cron as unknown as SdkCronDetails);
   }
 
-  static create<T extends JobParams | void = void>(config: JobConfig): Job<T> {
+  private static checkScheduleName(scheduleName: string): void {
+    if (scheduleName.length > MAX_SCHEDULE_NAME_LENGTH) {
+      throw CatalystError.InvalidResource(
+        `Schedule name must be at most ${MAX_SCHEDULE_NAME_LENGTH} characters, got "${scheduleName}".`,
+      );
+    }
+  }
+
+  static create<T extends JobParams>(config: JobConfig): Job<T> {
     if (config.aliasName.length > MAX_ALIAS_LENGTH) {
       throw CatalystError.InvalidResource(
         `Job alias name must be at most ${MAX_ALIAS_LENGTH} characters, got "${config.aliasName}".`,

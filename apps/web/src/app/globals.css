@@ -1,41 +1,111 @@
+/* Hallmark - genre: modern-minimal - macrostructure: Index-First (app) - theme: Cobalt
+ * (fonts preserved: Geist + Geist Mono) - tone: technical - anchor hue: 256 cobalt
+ * enrichment: none - nav: N9 edge-aligned - footer: Ft2 inline single line
+ */
 @import "tailwindcss";
 
 /*
  * shadcn ships `dark:` classes on its components. Tailwind's built-in `dark:`
- * follows the OS, which would half-darken those components while these tokens
- * stay light. Binding the variant to a `.dark` ancestor - which nothing sets -
- * keeps the app light, the way `color-scheme` below declares it.
+ * follows the OS, which would darken those components while the tokens follow the
+ * theme switch. Binding the variant to the `.dark` class `ThemePreference` sets on
+ * `<html>` keeps both on the same switch.
  */
 @custom-variant dark (&:is(.dark *));
 
+/*
+ * Hallmark tokens - Cobalt, adapted to an app: cool engineered paper, cool charcoal ink,
+ * one electric cobalt signal, hairlines instead of shadows, and one graphite band. All
+ * OKLCH, all tinted toward hue ~255. Status colours each pass 3:1 as glyphs on both the
+ * paper and the graphite band, and never carry meaning alone - every status has a shape.
+ */
 :root {
   color-scheme: light;
 
-  --radius: 0.625rem;
+  --radius: 0.375rem;
 
-  --background: #f6f7f9;
-  --foreground: #18181b;
-  --card: #ffffff;
-  --card-foreground: #18181b;
-  --popover: #ffffff;
-  --popover-foreground: #18181b;
-  --primary: #1d4ed8;
-  --primary-foreground: #ffffff;
-  --secondary: #f4f4f5;
-  --secondary-foreground: #18181b;
-  --muted: #f4f4f5;
-  --muted-foreground: #52525b;
-  --accent: #f4f4f5;
-  --accent-foreground: #18181b;
-  --destructive: #b91c1c;
-  --border: #e4e4e7;
-  --input: #e4e4e7;
-  --ring: #1d4ed8;
+  --background: oklch(98.5% 0.004 250);
+  --foreground: oklch(24% 0.02 258);
+  --card: oklch(99.3% 0.003 250);
+  --card-foreground: oklch(24% 0.02 258);
+  --popover: oklch(99.3% 0.003 250);
+  --popover-foreground: oklch(24% 0.02 258);
+  --primary: oklch(53% 0.2 258);
+  --primary-foreground: oklch(98.5% 0.004 250);
+  --secondary: oklch(95.5% 0.006 252);
+  --secondary-foreground: oklch(24% 0.02 258);
+  --muted: oklch(95.5% 0.006 252);
+  --muted-foreground: oklch(47% 0.018 257);
+  --accent: oklch(95.5% 0.006 252);
+  --accent-foreground: oklch(24% 0.02 258);
+  --destructive: oklch(52% 0.19 27);
+  --border: oklch(90.5% 0.008 255);
+  --input: oklch(86% 0.01 255);
+  --ring: oklch(53% 0.2 258);
 
-  /* No shadcn equivalent: the toasts and the sign-up confirmation use these. */
-  --success: #15803d;
-  --success-wash: #f0fdf4;
-  --destructive-wash: #fef2f2;
+
+  /* Monitor status. Paired with a glyph shape wherever they appear. */
+  --status-up: oklch(60% 0.15 155);
+  --status-down: oklch(57% 0.21 27);
+  --status-paused: oklch(64% 0.14 70);
+  --status-unknown: oklch(62% 0.012 255);
+
+  /* The one dark beat on the page. */
+  --graphite: oklch(22% 0.016 260);
+  --graphite-foreground: oklch(95% 0.006 255);
+  --graphite-muted: oklch(72% 0.015 257);
+  --graphite-rule: oklch(32% 0.016 260);
+
+  /* The error toast: the status band's graphite, so a failure reads in the app's own
+     strongest surface rather than as a generic card. */
+  --toast: var(--graphite);
+  --toast-foreground: var(--graphite-foreground);
+  --toast-muted: var(--graphite-muted);
+  --toast-rule: var(--graphite-rule);
+}
+
+/*
+ * Cobalt at night: the same hue family, lifted signal and status colours so each still
+ * clears 3:1 on the darker paper, and the graphite band pushed below the page so it stays
+ * the one dark beat. Mirrored by hand in `public/catalyst-signin.css`.
+ */
+.dark {
+  color-scheme: dark;
+
+  --background: oklch(17% 0.014 260);
+  --foreground: oklch(94% 0.006 255);
+  --card: oklch(20.5% 0.016 260);
+  --card-foreground: oklch(94% 0.006 255);
+  --popover: oklch(20.5% 0.016 260);
+  --popover-foreground: oklch(94% 0.006 255);
+  --primary: oklch(66% 0.17 258);
+  --primary-foreground: oklch(16% 0.02 260);
+  --secondary: oklch(26% 0.016 260);
+  --secondary-foreground: oklch(94% 0.006 255);
+  --muted: oklch(26% 0.016 260);
+  --muted-foreground: oklch(72% 0.015 257);
+  --accent: oklch(26% 0.016 260);
+  --accent-foreground: oklch(94% 0.006 255);
+  --destructive: oklch(66% 0.19 27);
+  --border: oklch(30% 0.016 260);
+  --input: oklch(36% 0.016 260);
+  --ring: oklch(66% 0.17 258);
+
+
+  --status-up: oklch(72% 0.15 155);
+  --status-down: oklch(67% 0.2 27);
+  --status-paused: oklch(76% 0.14 70);
+  --status-unknown: oklch(66% 0.012 255);
+
+  --graphite: oklch(12.5% 0.012 260);
+  --graphite-foreground: oklch(95% 0.006 255);
+  --graphite-muted: oklch(72% 0.015 257);
+  --graphite-rule: oklch(26% 0.014 260);
+
+  /* Dark mode raises the toast by lightness, not shadow: a step above the card. */
+  --toast: oklch(27% 0.016 260);
+  --toast-foreground: oklch(95% 0.006 255);
+  --toast-muted: oklch(76% 0.015 257);
+  --toast-rule: oklch(36% 0.016 260);
 }
 
 @theme inline {
@@ -57,9 +127,19 @@
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
-  --color-success: var(--success);
-  --color-success-wash: var(--success-wash);
-  --color-destructive-wash: var(--destructive-wash);
+  --color-status-up: var(--status-up);
+  --color-status-down: var(--status-down);
+  --color-status-paused: var(--status-paused);
+  --color-status-unknown: var(--status-unknown);
+  --color-graphite: var(--graphite);
+  --color-graphite-foreground: var(--graphite-foreground);
+  --color-graphite-muted: var(--graphite-muted);
+  --color-graphite-rule: var(--graphite-rule);
+
+  /* Hallmark's motion canon replaces Tailwind's default curves. */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in: cubic-bezier(0.7, 0, 0.84, 0);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
 
   --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-geist-mono), ui-monospace, monospace;
@@ -68,11 +148,6 @@
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
-
-  /* One floor for both auth cards so the shell does not resize between sign-in
-     and sign-up. Set by the taller natural content - the sign-up form - and the
-     sign-in widget stretches to fill whatever is left. */
-  --spacing-auth-card: 34rem;
 }
 
 @layer base {
@@ -87,123 +162,166 @@
   body {
     @apply bg-background text-foreground font-sans;
   }
+
+  /* clip, not hidden: hidden would make these scroll containers and break sticky. */
+  html,
+  body {
+    overflow-x: clip;
+  }
 }
 
 /*
+ * Waiting states. Every one of them keeps something travelling for as long as the wait
+ * lasts - a spinner turning in place, or a pulse fading in and out, reads as stalled
+ * after a few seconds. The bar's fill creeps toward the end without reaching it while a
+ * highlight crosses it on a loop; a skeleton has a sheen sweeping left to right; the page
+ * loader's beat runs along its trace; the content loader's bars rise one after another.
+ * Under reduced motion the guard at the bottom freezes each at its end frame: the fill
+ * nearly full, the sheens and the beat parked off-edge, the bars resting low.
+ */
+@keyframes progress-trickle {
+  from {
+    transform: scaleX(0.06);
+  }
+  to {
+    transform: scaleX(0.94);
+  }
+}
+
+@keyframes progress-sheen {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(300%);
+  }
+}
+
+@keyframes skeleton-shimmer {
+  from {
+    background-position: 100% 0;
+  }
+  to {
+    background-position: 0 0;
+  }
+}
+
+/* On a path with pathLength 1: a dash a third of the trace long, run from before its start
+ * to past its end. */
+@keyframes heartbeat-trace {
+  from {
+    stroke-dashoffset: 0.35;
+  }
+  to {
+    stroke-dashoffset: -1;
+  }
+}
+
+@utility heartbeat-trace {
+  stroke-dasharray: 0.35 1;
+  animation: heartbeat-trace 1.6s cubic-bezier(0.65, 0, 0.35, 1) infinite;
+}
+
+/* Scaled from the bottom, so each bar grows up from the baseline like a strip's bar. */
+@keyframes content-loader-bar {
+  0%,
+  100% {
+    transform: scaleY(0.3);
+  }
+  40% {
+    transform: scaleY(1);
+  }
+}
+
+@utility content-loader-bar {
+  transform-origin: bottom;
+  transform: scaleY(0.3);
+  animation: content-loader-bar 1s ease-in-out infinite;
+}
+
+@utility progress-trickle {
+  transform-origin: left;
+  animation: progress-trickle 12s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@utility progress-sheen {
+  animation: progress-sheen 1.4s cubic-bezier(0.65, 0, 0.35, 1) infinite;
+}
+
+/* Tinted from currentColor, so one skeleton reads on the page and on the graphite band. */
+@utility skeleton {
+  border-radius: var(--radius-sm);
+  background-image: linear-gradient(
+    90deg,
+    color-mix(in oklab, currentColor 7%, transparent) 35%,
+    color-mix(in oklab, currentColor 15%, transparent) 50%,
+    color-mix(in oklab, currentColor 7%, transparent) 65%
+  );
+  background-size: 300% 100%;
+  animation: skeleton-shimmer 1.6s linear infinite;
+}
+
+/*
+ * Hallmark · component: toast (error) · genre: modern-minimal · theme: project tokens
+ * states: default · hover (pauses dismiss) · focus (close) · active (close) · error
+ *         n/a - disabled, loading, success: only failures toast; success is silent
+ * contrast: text on --toast passes 4.5:1 in both themes; the diamond passes 3:1
+ *
  * Sonner. The whole look lives here rather than in the component, because sonner styles
  * its own internals through selectors Tailwind utilities cannot outrank - `background`
  * is set as a shorthand on `[data-sonner-toast][data-styled='true']`, which wipes out any
  * `background-image` a utility class adds, and `[data-icon]` is three attributes deep.
- * Everything below is one attribute wider than the rule it replaces, so it wins on
- * specificity rather than on the order of sonner's runtime `<style>`.
+ * Every rule below carries `[data-y-position]`, which sonner sets on every toast, so each
+ * is one attribute wider than the rule it replaces and wins on specificity rather than on
+ * the order of sonner's runtime `<style>`.
  *
- * The position is sonner's own top-center, never overridden. Centring the stack on the
- * page put it over the very control that raised it, and sonner draws only the front
- * toast's content - the ones behind are bare strips - so a stack mid-page read as a
- * broken layout.
+ * Only failures toast - success is silent, the page shows it - so there is one design: the
+ * status band's graphite surface, a hairline rule, and the down diamond the monitors use.
+ * No side stripe and no tinted icon halo. It stacks in the bottom-right corner, where it
+ * covers no control the person is using and existing toasts never move.
  */
-/* Sonner already positions every toast absolutely, which anchors the rail below. Making
-   it relative takes the toasts out of sonner's stack: each one gets its own row, and the
-   ones behind the front show as empty bars instead of folding under it. */
-[data-sonner-toast][data-styled="true"] {
-  overflow: hidden;
+[data-sonner-toast][data-styled="true"][data-y-position] {
+  background: var(--toast);
+  color: var(--toast-foreground);
+  border: 1px solid var(--toast-rule);
+  box-shadow: 0 8px 24px -12px color-mix(in oklab, var(--graphite) 60%, transparent);
 }
 
-
-/* The accent rail. It is what makes the toast read as a verdict rather than a card. */
-[data-sonner-toast][data-styled="true"]::before {
-  content: "";
-  position: absolute;
-  inset-block: 0;
-  inset-inline-start: 0;
-  width: 0.375rem;
+[data-sonner-toast][data-styled="true"][data-y-position] [data-description] {
+  color: var(--toast-muted);
 }
 
-[data-sonner-toast][data-styled="true"] [data-icon] {
-  height: 2rem;
-  width: 2rem;
-  justify-content: center;
-  border-radius: calc(infinity * 1px);
-  margin-inline-end: 0.125rem;
+[data-sonner-toast][data-styled="true"][data-y-position] [data-icon] {
+  width: 0.875rem;
+  height: 0.875rem;
+  margin-inline-end: 0.25rem;
+  color: var(--status-down);
 }
 
-[data-sonner-toast][data-styled="true"] [data-icon] svg {
-  height: 1rem;
-  width: 1rem;
-  margin: 0;
-}
-
-/* Inside the toast on the right. Sonner hangs it off the top-left corner, where the
-   overflow that clips the rail to the rounded corners would cut it in half. */
-[data-sonner-toast][data-styled="true"][data-type] [data-close-button] {
+/* Inside on the right. Sonner hangs it off the top-left corner by default. */
+[data-sonner-toast][data-styled="true"][data-y-position] [data-close-button] {
   left: auto;
-  right: 0.75rem;
+  right: 0.625rem;
   top: 50%;
   transform: translateY(-50%);
   background: transparent;
   border-color: transparent;
-  color: currentColor;
-  opacity: 0.55;
+  color: var(--toast-muted);
+  transition: background-color 150ms var(--ease-out), color 150ms var(--ease-out);
 }
 
-[data-sonner-toast][data-styled="true"][data-type="success"] {
-  background: linear-gradient(
-    135deg,
-    color-mix(in oklab, var(--success) 12%, var(--success-wash)),
-    var(--success-wash) 55%,
-    color-mix(in oklab, var(--success) 9%, var(--success-wash))
-  );
-  color: var(--success);
-  border: 1px solid color-mix(in oklab, var(--success) 22%, transparent);
-  box-shadow:
-    0 1px 0 0 color-mix(in oklab, #fff 60%, transparent) inset,
-    0 30px 70px -30px color-mix(in oklab, var(--success) 70%, transparent);
+[data-sonner-toast][data-styled="true"][data-y-position] [data-close-button]:hover {
+  background: var(--toast-rule);
+  color: var(--toast-foreground);
 }
 
-[data-sonner-toast][data-styled="true"][data-type="success"]::before {
-  background: linear-gradient(
-    to bottom,
-    var(--success),
-    color-mix(in oklab, var(--success) 35%, transparent)
-  );
+[data-sonner-toast][data-styled="true"][data-y-position] [data-close-button]:focus-visible {
+  outline: 2px solid var(--toast-foreground);
+  outline-offset: 1px;
 }
 
-[data-sonner-toast][data-styled="true"][data-type="success"] [data-icon] {
-  background: var(--success);
-  color: #fff;
-  box-shadow:
-    0 0 0 0.25rem color-mix(in oklab, var(--success) 10%, transparent),
-    0 8px 20px -6px color-mix(in oklab, var(--success) 60%, transparent);
-}
-
-[data-sonner-toast][data-styled="true"][data-type="error"] {
-  background: linear-gradient(
-    135deg,
-    color-mix(in oklab, var(--destructive) 12%, var(--destructive-wash)),
-    var(--destructive-wash) 55%,
-    color-mix(in oklab, var(--destructive) 9%, var(--destructive-wash))
-  );
-  color: var(--destructive);
-  border: 1px solid color-mix(in oklab, var(--destructive) 22%, transparent);
-  box-shadow:
-    0 1px 0 0 color-mix(in oklab, #fff 60%, transparent) inset,
-    0 30px 70px -30px color-mix(in oklab, var(--destructive) 70%, transparent);
-}
-
-[data-sonner-toast][data-styled="true"][data-type="error"]::before {
-  background: linear-gradient(
-    to bottom,
-    var(--destructive),
-    color-mix(in oklab, var(--destructive) 35%, transparent)
-  );
-}
-
-[data-sonner-toast][data-styled="true"][data-type="error"] [data-icon] {
-  background: var(--destructive);
-  color: #fff;
-  box-shadow:
-    0 0 0 0.25rem color-mix(in oklab, var(--destructive) 10%, transparent),
-    0 8px 20px -6px color-mix(in oklab, var(--destructive) 60%, transparent);
+[data-sonner-toast][data-styled="true"][data-y-position] [data-close-button]:active {
+  transform: translateY(-50%) scale(0.94);
 }
 
 @media (prefers-reduced-motion: reduce) {

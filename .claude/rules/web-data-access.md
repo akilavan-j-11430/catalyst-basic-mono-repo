@@ -196,7 +196,7 @@ does not.
 **Every form is react-hook-form.** No `useState` per field, no hand-rolled `onChange`.
 
 Rules reach the form as a `Resolver`, and the resolver lives **in the component that owns
-the form** - `sign-up-form.tsx` is the worked example. One form's rules are used by one
+the form** - `monitor-form.tsx` is the worked example. One form's rules are used by one
 form, and a file that exists only to move fifteen lines somewhere else buys nothing; it
 moves out when a second form needs the same rules, and that form tells you what the shared
 shape is. This is the general rule in `.claude/CLAUDE.md` about what earns a file.

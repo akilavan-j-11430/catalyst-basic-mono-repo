@@ -65,7 +65,7 @@ every route alone. It lives in `node-utils`, beside the handles, so a second App
 function reuses it rather than writing its own queries.
 
 Bucket, cache and job handles need no extra layer: their wrapper methods - `getObject(key)`,
-`submitJob({ params })` - already speak our vocabulary, so the wrapper is the seam and a
+`pauseSchedule(scheduleId)` - already speak our vocabulary, so the wrapper is the seam and a
 route may call it.
 
 ## Portability is not a reason to add layers

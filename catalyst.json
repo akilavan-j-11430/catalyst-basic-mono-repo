@@ -1,4 +1,10 @@
 {
+  "functions": {
+    "source": "functions",
+    "targets": [
+      "job-executor"
+    ]
+  },
   "appsail": [
     {
       "source": "appsails/proxy",

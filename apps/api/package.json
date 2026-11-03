@@ -18,6 +18,7 @@
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
+    "@repo/app-core": "workspace:*",
     "@repo/node-utils": "workspace:*",
     "@repo/routing": "workspace:*",
     "@repo/types": "workspace:*",

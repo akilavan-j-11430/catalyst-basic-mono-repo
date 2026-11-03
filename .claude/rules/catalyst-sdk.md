@@ -79,36 +79,24 @@ that does not say what runs it is a deploy-time failure nothing catches, so ever
 its own. Several jobs may share one executor, which dispatches on the `jobName` carried in
 the params.
 
-Both methods take a single object. `submitJob` queues the job now; `submitOneTimeCron`
-schedules it, and its `cronName` is required, unique in the project, and capped at 20
-characters like the alias:
+`scheduleRepeating` runs the job every `intervalSeconds` and answers with the schedule's
+id. Keep that id: Catalyst lists no schedule made from code, so it is the only handle for
+pausing, resuming or deleting it later. `scheduleName` is required, unique in the
+project, and capped at 20 characters like the alias:
 
 ```ts
-await reminderJob.submitJob({ params: { todoId: "1" } });
-await reminderJob.submitOneTimeCron({
-  timeOfExecution: runAt,          // epoch milliseconds
+const scheduleId = await reminderJob.scheduleRepeating({
+  scheduleName: "remind-0001",
+  intervalSeconds: 3600,
   params: { todoId: "1" },
-  cronName: "remind-0001",
-});
-```
-
-A job that takes no params is `Job<void>` - the generic's default - and then the `params`
-key is gone rather than empty:
-
-```ts
-export const nightlyReportJob = Job.create({
-  jobName: "nightly_report",
-  aliasName: "nightly_report",
-  jobPoolName: "default",
-  jobTargetFunctionName: "report_executor",
 });
 
-await nightlyReportJob.submitJob({});
-await nightlyReportJob.submitOneTimeCron({ timeOfExecution: runAt, cronName: "nightly-01" });
+await reminderJob.pauseSchedule(scheduleId);
+await reminderJob.resumeSchedule(scheduleId);
+await reminderJob.deleteSchedule(scheduleId);
 ```
 
-The generic decides which, so the two cannot be confused: passing a payload to a void job,
-or omitting one from a typed job, is a compile error.
+`T` types `params`, so a missing or misspelt param is a compile error.
 
 ### Declaring a table's row
 
@@ -269,7 +257,7 @@ a one-off client built at the call site. The ESLint boundary stops the import, b
 rule is about intent: the point of `catalyst/` is that one directory answers
 what this repo asks of Catalyst, and a capability used from a route is invisible there.
 
-So `listObject` on `Bucket`, `getPagedRows` on `Table`, `submitOneTimeCron` on `Job` -
+So `listObject` on `Bucket`, `getPagedRows` on `Table`, `scheduleRepeating` on `Job` -
 each arrived because something needed it. Add the next one the same way, following the
 rules above, and call it from the route:
 
@@ -294,7 +282,7 @@ it rather than deep-importing a built file, which would break on any upgrade:
 
 ```ts
 type CatalystBucket = ReturnType<Stratus["bucket"]>;
-type SubmitInput = Parameters<JobScheduling["JOB"]["submitJob"]>[0];
+type SdkCronDetails = Parameters<JobScheduling["CRON"]["createCron"]>[0];
 ```
 
 **Never import from `dist-es/`, `dist-cjs/` or `dist-types/`.** Those are build artefacts,
@@ -312,16 +300,16 @@ call.** The payload stays fully checked, the vendor's build layout stays irrelev
 what Catalyst receives is readable in one place:
 
 ```ts
-interface FunctionJobRequest {
-  job_name: string;
-  jobpool_name: string;
-  target_type: "Function";
-  target_name: string;
-  params: JobParams;
+interface PeriodicCronRequest {
+  cron_name: string;
+  cron_type: "Periodic";
+  cron_status: boolean;
+  cron_detail: { hour: string; minute: string; second: string; repetition_type: "every" };
+  job_meta: FunctionJobRequest;
 }
 
-const job: FunctionJobRequest = { ... };
-await jobScheduling().JOB.submitJob(job as unknown as SdkJobMeta);
+const cron: PeriodicCronRequest = { ... };
+await jobScheduling().CRON.createCron(cron as unknown as SdkCronDetails);
 ```
 
 `job.ts` is the worked example. The cast is the seam: it is the one place the SDK's
@@ -334,7 +322,7 @@ declared type and the shape Catalyst actually accepts are allowed to disagree.
   server produces. No valid request satisfies it.
 - `submitJob` is declared against `TCatalystJobs`, whose `target_type` is a TS enum member
   - and a string literal is never assignable to one, so even a correct payload is
-  rejected. Both are why `job.ts` casts at the call.
+  rejected. `job.ts` does not call it today; the `createCron` cast is the one it makes.
 - `@zcatalyst/zcql` is at **0.0.2** while the rest are 1.0.0. It is the least settled
   dependency here; expect its API to move. `zcql.ts` goes through `Datastore` instead.
 - `getSegmentDetails(id)` and `segment(id)` take a segment **id**, not a name.

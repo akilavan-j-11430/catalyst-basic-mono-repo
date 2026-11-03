@@ -1,0 +1,29 @@
+[
+  {
+    "date": "2026-11-03",
+    "macrostructure": "Index-First (app) - control-room list",
+    "theme": "Cobalt",
+    "enrichment": "none",
+    "nav": "N9 edge-aligned",
+    "footer": "Ft2 inline single line",
+    "brief": "Lively /monitors redesign - instrument-strip band, pinned list head, status-tick rows"
+  },
+  {
+    "date": "2026-11-02",
+    "macrostructure": "Index-First (app) - sign-in variant",
+    "theme": "Cobalt",
+    "enrichment": "none",
+    "nav": "N9 edge-aligned",
+    "footer": "Ft2 inline single line",
+    "brief": "Lively sign-in - graphite band + overlapping card, three-figure how-it-works row"
+  },
+  {
+    "date": "2026-10-30",
+    "macrostructure": "Index-First (app)",
+    "theme": "Cobalt",
+    "enrichment": "none",
+    "nav": "N9 edge-aligned",
+    "footer": "Ft2 inline single line",
+    "brief": "Lively - per-user uptime monitor dashboard for engineers"
+  }
+]

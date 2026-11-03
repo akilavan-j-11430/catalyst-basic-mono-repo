@@ -1,4 +1,63 @@
-# catalyst-basic-mono-repo
+# Lively
+
+Uptime monitoring for the endpoints you own, built on Zoho Catalyst. Sign in, register a
+URL, and Lively gives it its own scheduled job that probes it at the interval you chose.
+Miss `N` probes in a row (up to 100) and the job raises one alert for the outage and emails
+it to the monitor's alert address. Every probe, with
+its latency, is a row in the `Probe` table, and nothing is kept longer than three days. A
+rebuild of the DevPulse demo app on this monorepo.
+
+| | |
+|---|---|
+| **Scheduler** | One Periodic cron per monitor, at its interval -> the `probe` job in the `job-executor` function |
+| **Alert logic** | In the `probe` job (`apps/job-executor/src/monitor-probe.ts`) |
+| **Monitors** | Data Store table `Monitor` - global, visible to every signed-in user |
+| **Probes, alerts** | Columns on the monitor's row: its latest 100 probes and 100 alerts |
+| **Editing** | `PUT /api/v1/monitors/:id` replaces every setting and starts the monitor's history over; a new interval updates its cron in place |
+| **Check now** | `POST /api/v1/monitors/:id/check` calls the URL once and answers with the result; it records nothing |
+| **Alert email** | Catalyst Mail, one email per outage, from `ALERT_SENDER_EMAIL` (set on the function) |
+| **Accounts** | No self-signup. Add users in **Console -> Authentication -> Users**. |
+| **Reset** | `POST /api/v1/monitors/reset` wipes every monitor, its cron, its probes and its alerts, then adds two to start from - `console.catalyst.zoho.com` and `catalyst.zoho.com`, probed every minute, alerts recorded but not emailed. Public by design. |
+
+`docs/architecture.md` covers the design: patterns, calls per path, retention and failure.
+
+### One-time cloud setup
+
+The `Monitor` and `Probe` tables and the **Function** job pool `LivelyJobPool` (512 MB) exist
+in the `lively` project already. Then:
+
+1. **Deploy** - `pnpm deploy` ships `appsail:api`, `slate:web` and `functions:job-executor`.
+   A monitor's cron targets the deployed function, so no probe runs until it exists - locally
+   too, since crons run in the cloud. Each new monitor then schedules its own cron.
+2. **Console -> Job Scheduling -> Cron**: one daily cron (Calendar, daily) targeting
+   `LivelyJobPool`, the `job-executor` function, with param `jobName` = `sweep`. It deletes
+   probes older than three days.
+3. **Console -> Mail -> Email Configuration**: add and verify the sender address, then set
+   it as `ALERT_SENDER_EMAIL` on the function (**Console -> Functions -> job-executor ->
+   Environment Variables**), and in `apps/job-executor/.env` to run the job locally. Unset,
+   alerts still reach the dashboard feed but no email goes out.
+
+To run a probe by hand, keep `pnpm dev` running and post through the URL `catalyst serve`
+printed - the proxy forwards `/jobs` to the job-executor dev server with the project's
+credentials:
+
+```bash
+curl -X POST http://localhost:3001/jobs/probe \
+  -H 'content-type: application/json' -d '{"monitorId":"<monitor id>"}'
+```
+
+### Resetting
+
+```bash
+curl -X POST https://<api-appsail-domain>/api/v1/monitors/reset
+# {"data":{"monitorsDeleted":4,"monitorsAdded":2},"status":"success"}
+```
+
+Locally it goes through the proxy, which requires a signed-in session cookie.
+
+---
+
+## The starter kit underneath
 
 A monorepo starter kit for building customer solutions on
 [Zoho Catalyst](https://catalyst.zoho.com). Clone it, point it at your own Catalyst
@@ -141,7 +200,6 @@ Values this repo's own code reads. Each is a key on the owning app's template - 
 
 | Variable | Owner | Purpose |
 |---|---|---|
-| `AUTH_REDIRECT_URL` | `apps/api` | Where Catalyst sends a new user from the confirmation email. Locally the origin `catalyst serve` prints, usually `http://localhost:3001/`. |
 | `TZ` | `apps/api` | Timezone for log timestamps. Defaults to `Asia/Kolkata`. |
 
 These never go in `app-config.json` or any other Catalyst file - that file is committed,
@@ -311,9 +369,7 @@ cloud. Deploying it would put a redundant hop in front of your app.
 `env_variables`, on purpose - it is committed, so a value there is a value in git. Set
 what the deployed app needs in **Console -> AppSail -> api -> Configuration ->
 Environment Variables** before the first deploy that needs it, and remember that the
-Development and Production environments are configured separately. `AUTH_REDIRECT_URL`
-is required by `POST /api/v1/auth/register`; without it that route fails with a
-`RuntimeError` naming the variable.
+Development and Production environments are configured separately.
 
 **Environments.** Catalyst projects have a Development and a Production environment,
 with separate data and separate IDs. `catalyst init` sets your active one and records

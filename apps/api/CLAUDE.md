@@ -15,7 +15,9 @@ src/
 |-- middleware.ts         execution context, request timing, terminal error handler
 |-- routes/api-router.ts  the only place a router mounts
 |-- routes/ping.ts        reference route - copy this shape
-|-- routes/auth.ts        POST /auth/register - registers a Catalyst app user
+|-- routes/monitors.ts    list, detail, register, pause/resume, delete, a live check of the URL, and the
+|                         public POST /monitors/reset that wipes everything
+|-- services/monitor-service.ts  MonitorService - every monitor operation; routes parse and respond
 |-- errors/http-error.ts  typed failures that map to HTTP statuses
 |-- utils/api.ts          response builders
 `-- framework/catalyst-logger.ts   console -> Catalyst log pipe, imported for side effect
@@ -52,8 +54,8 @@ cannot land below the catch-all and quietly 404. Add it there, not here.
 Every path segment is a constant in `ApiPath` (`@repo/routing/api-path`), shared with
 `apps/web`; a full path is their concatenation, `ApiPath.Api + ApiPath.V1`.
 `api-router.ts` mounts each router under its own segment -
-`apiRouter.use(ApiPath.Auth, authRouter)` - and the router names only what follows it,
-`ApiPath.Register`. So a router-level `use` covers that router's routes and nothing else.
+`apiRouter.use(ApiPath.Checks, checksRouter)` - and the router names only what follows it,
+`ApiPath.Run`. So a router-level `use` covers that router's routes and nothing else.
 
 ## Execution context
 
@@ -64,7 +66,7 @@ Catalyst app.
 A route that calls Catalyst says which scopes it needs, and only those are built:
 
 ```ts
-authRouter.post(ApiPath.Register, initCatalystScopes([CatalystScope.Admin]), handler);
+checksRouter.post(ApiPath.Run, initCatalystScopes([CatalystScope.Admin]), handler);
 ```
 
 `initCatalystScopes` calls `zcAuth.init(req, { scope })` from `@zcatalyst/auth` once per
@@ -103,8 +105,9 @@ import { TodoRepository } from "@repo/node-utils/repositories/todo-repository";
 const todo = await TodoRepository.find(req.params.todoId);
 ```
 
-A bucket, cache or job handle is called directly, picking the scope with `runIn` - it reads
-that scope's app off the context for you:
+A bucket or cache handle is called directly, picking the scope with `runIn` - it reads
+that scope's app off the context for you. A job handle is called directly too, and always
+uses the Admin app:
 
 ```ts
 await invoiceBucket.runIn(CatalystScope.User).getObject(invoiceKey);
@@ -140,7 +143,7 @@ pingRouter.get(ApiPath.Ping, (_req, res) => {
 ```
 
 Add any new segment to `ApiPath` first, never as a string literal. Then add one line to
-`src/routes/api-router.ts` - `apiRouter.use(ApiPath.Auth, authRouter)` for a router with a
+`src/routes/api-router.ts` - `apiRouter.use(ApiPath.Checks, checksRouter)` for a router with a
 prefix; `ping` is a single route, so it mounts bare and names `ApiPath.Ping` itself. The `: Router`
 annotation is not optional: the declaration emit cannot infer the type across the package
 boundary without it.
