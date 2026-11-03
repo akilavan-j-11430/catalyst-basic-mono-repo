@@ -1,6 +1,19 @@
 import type { Authentication } from "@zcatalyst/auth/web";
 import { CamelCase } from "@repo/case-conversion/camel-case";
 
+/** An API token as this app holds it - in memory only, gone with the page. */
+interface ApiToken {
+  accessToken: string;
+  expiresAtMs: number;
+}
+
+/** A token this close to expiring is replaced rather than sent, so no request carries one
+ *  that lapses in flight. */
+const API_TOKEN_RENEW_MS = 60_000;
+
+let apiToken: ApiToken | null = null;
+let apiTokenRequest: Promise<ApiToken> | null = null;
+
 export interface SignedInUser {
   emailId: string;
   firstName?: string;
@@ -54,4 +67,28 @@ function toSignedInUser(value: unknown): SignedInUser | null {
 export async function currentUser(): Promise<SignedInUser | null> {
   const auth = await authSession();
   return toSignedInUser(await auth.isUserAuthenticated());
+}
+
+async function generateApiToken(): Promise<ApiToken> {
+  const auth = await authSession();
+  // AppSail accepts the same token as a function, so the "functions" scope serves the API.
+  const { access_token: accessToken, expires_in_sec: expiresInSec } = await auth.generateAuthToken("functions");
+  return { accessToken, expiresAtMs: Date.now() + expiresInSec * 1000 };
+}
+
+/**
+ * The signed-in user's token for every API request. Generated on first use and held in
+ * memory - never written to storage - then reused until shortly before it expires.
+ * Requests that arrive while one is being generated wait for that one rather than each
+ * asking Catalyst for its own.
+ */
+export async function apiAccessToken(): Promise<string> {
+  if (apiToken !== null && apiToken.expiresAtMs - API_TOKEN_RENEW_MS > Date.now()) {
+    return apiToken.accessToken;
+  }
+  apiTokenRequest ??= generateApiToken().finally(() => {
+    apiTokenRequest = null;
+  });
+  apiToken = await apiTokenRequest;
+  return apiToken.accessToken;
 }

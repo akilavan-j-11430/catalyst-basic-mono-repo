@@ -7,6 +7,8 @@ import {
   type QueryValue,
   type RequestOptions,
 } from "@repo/types/http";
+import { apiAccessToken } from "@/catalyst/auth-client";
+import { API_ORIGIN } from "@/env";
 
 /**
  * The shared `HttpResponse` plus the request that produced it, so a failure raised while
@@ -22,10 +24,9 @@ export type { QueryValue, RequestOptions };
 
 export interface ApiClientOptions {
   /**
-   * Prefixed onto every path. Relative on purpose, unlike the server's client, which
-   * demands an absolute URL: `apps/proxy` gives the browser and the API one origin, and
-   * an absolute base would send the call cross-origin, arriving without the session
-   * cookie and without the Catalyst headers `zcAuth.init(req)` reads.
+   * Prefixed onto every path. Relative locally, where `apps/proxy` gives the browser and the
+   * API one origin; the API's own domain in a deployed build, where Slate and AppSail live
+   * apart and the token in `headers` is what identifies the caller.
    */
   baseUrl: string;
   /** Anything every call carries. Resolved per call, so an expiring token can refresh. */
@@ -309,4 +310,9 @@ export async function pagedOf<T>(response: ApiResponse): Promise<Pick<PagedRecor
  * One instance for `apps/api`. The prefix lives here rather than on every path, and stays
  * relative so the proxy keeps the browser and the API on one origin.
  */
-export const api = new ApiClient({ baseUrl: ApiPath.Api + ApiPath.V1 });
+/** Every call carries the signed-in user's token, which Catalyst checks before the request
+ *  reaches the API - locally and deployed alike. */
+export const api = new ApiClient({
+  baseUrl: API_ORIGIN + ApiPath.Api + ApiPath.V1,
+  headers: async () => ({ authorization: `Zoho-oauthtoken ${await apiAccessToken()}` }),
+});

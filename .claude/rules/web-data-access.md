@@ -146,10 +146,20 @@ is `text/plain`, `Blob`/`ArrayBuffer` are binary, and `FormData`/`URLSearchParam
 alone so the multipart boundary generated with their bytes survives. A `content-type`
 header refines that when the default is not specific enough.
 
-`baseUrl` stays **relative**, unlike the server's, which demands an absolute URL. The proxy
-keeps the browser and the API on one origin; an absolute base would send the call
-cross-origin, where it arrives with no session cookie and none of the Catalyst headers
-`zcAuth.init(req)` reads.
+`baseUrl` is `API_ORIGIN` (`src/env.ts`) plus `/api/v1`. Locally `API_ORIGIN` is empty, so
+the base is relative and `apps/proxy` keeps the browser and the API on one origin. A
+deployed build sets it to the API AppSail's domain: Slate and AppSail live apart, so the call
+is cross-origin and no session cookie travels with it.
+
+**Every call carries the signed-in user's token** - `Authorization: Zoho-oauthtoken <token>`,
+added by the client's header resolver, locally and deployed alike. Catalyst checks it before
+the request reaches the API and hands `zcAuth.init(req)` the user it belongs to.
+`apiAccessToken()` (`src/catalyst/auth-client.ts`) generates it with
+`generateAuthToken("functions")` - AppSail accepts a function token - and holds it in memory
+only, reusing it until a minute before it expires. Never store it in `localStorage` or a
+cookie. Cross-origin is allowed by the project's **Authorized Domains** (CORS on for the
+Slate domain), not by the API: never set `Access-Control-*` headers in `apps/api`, or the
+browser sees them twice and rejects the call.
 
 **`recordOf(response)` is how a service reads our own API.** `apps/api` answers every route
 with `{ status, data }`, and `recordOf` is the only place that knows it, so a service

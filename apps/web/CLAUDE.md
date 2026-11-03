@@ -14,6 +14,11 @@ and everything else here. This app has **no rewrite or proxy config of its own**
 request made straight to `:4000/api/...` gets a Next.js 404, and one made to `:8000` is
 cross-origin and missing the Catalyst headers the SDK needs.
 
+Deployed, there is no proxy: Slate and the API AppSail are on different domains. The API's
+origin is `NEXT_PUBLIC_API_URL`, inlined at build time and set in the Slate app's
+environment in the Catalyst Console, and every call carries the signed-in user's token -
+see "Every call carries the signed-in user's token" in `.claude/rules/web-data-access.md`.
+
 Call it through `src/services/`, never `fetch` in a component:
 
 ```

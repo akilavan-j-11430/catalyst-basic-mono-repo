@@ -103,7 +103,11 @@ caller's credentials ride on request headers, because `zcAuth.init(req)` is per 
 
 ## Not covered by this rule
 
-`apps/web` reads no environment at all - no `process.env`, no `NEXT_PUBLIC_*`. Anything the
+`apps/web` reads exactly one key, `NEXT_PUBLIC_API_URL`, in `apps/web/src/env.ts` and
+nowhere else. Next inlines it when it builds, so it is build-time configuration, not
+runtime: a deployed value is set in **Console -> Slate -> web -> environment variables**,
+and `pnpm bundle` stages no env file into `slate/web/`. Locally it stays unset
+and the API is reached on the page's own origin through `apps/proxy`. Anything else the
 browser needs comes from the API.
 
 `turbo.json`'s `globalPassThroughEnv` forwards variables to local tasks and keeps them out
@@ -119,5 +123,6 @@ the inherited task definition. `apps/api/turbo.json` is that file: its `dev` tas
 through every key on the `src/env.ts` template and nothing else. The platform-injected
 reads above are set only when Catalyst runs the app, never under turbo, so they have no
 place there.
-`apps/web` reads no environment and `apps/proxy` has no turbo task that runs it, so
-neither has one.
+`apps/web/turbo.json` lists `NEXT_PUBLIC_API_URL` as its `build` task's `env`, since the
+value is baked into the build output and so belongs in the cache key. `apps/proxy` has no
+turbo task that runs it, so it has no file.

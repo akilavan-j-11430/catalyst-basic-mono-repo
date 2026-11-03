@@ -23,15 +23,19 @@ rebuild of the DevPulse demo app on this monorepo.
 
 ### One-time cloud setup
 
-The `Monitor` and `Probe` tables and the **Function** job pool `LivelyJobPool` (512 MB) exist
-in the `lively` project already. Then:
+The `Monitor` table and the **Function** job pool `LivelyJobPool` (512 MB) exist in the
+`lively` project already. Then:
 
 1. **Deploy** - `pnpm deploy` ships `appsail:api`, `slate:web` and `functions:job-executor`.
    A monitor's cron targets the deployed function, so no probe runs until it exists - locally
    too, since crons run in the cloud. Each new monitor then schedules its own cron.
-2. **Console -> Job Scheduling -> Cron**: one daily cron (Calendar, daily) targeting
-   `LivelyJobPool`, the `job-executor` function, with param `jobName` = `sweep`. It deletes
-   probes older than three days.
+2. **Point the web app at the API.** Slate and the API AppSail are on different domains, so:
+   - **Console -> Slate -> web -> environment variables**: set `NEXT_PUBLIC_API_URL` to the
+     API AppSail's origin (`https://...catalystappsail.com`, no trailing slash), then
+     redeploy the Slate app - the value is inlined when Slate builds.
+   - **Console -> Settings -> Authorized Domains**: add the Slate domain (bare, no
+     `https://`) with CORS on. The API sets no CORS headers of its own.
+   Every request carries the signed-in user's token, which Catalyst checks before the API.
 3. **Console -> Mail -> Email Configuration**: add and verify the sender address, then set
    it as `ALERT_SENDER_EMAIL` on the function (**Console -> Functions -> job-executor ->
    Environment Variables**), and in `apps/job-executor/.env` to run the job locally. Unset,
@@ -361,9 +365,10 @@ Which is `turbo run bundle && catalyst deploy --only appsail:api,slate:web`:
 3. The CLI uploads `slate/web/` - `apps/web` staged with its `@repo/*` packages vendored
    in - as the `web` Slate app, which Slate then builds.
 
-**The proxy is not in that list, and must not be.** It is a local-development
-component only - Catalyst gives you the single origin and auth gate natively in the
-cloud. Deploying it would put a redundant hop in front of your app.
+**The proxy is not in that list, and must not be.** It is a local-development component
+only. In the cloud the web app calls the API AppSail on its own domain, at the
+`NEXT_PUBLIC_API_URL` set in the Slate app's Console environment, with the signed-in user's
+token on every request - see "One-time cloud setup" above.
 
 **Environment variables are not carried by the deploy.** `app-config.json` declares no
 `env_variables`, on purpose - it is committed, so a value there is a value in git. Set

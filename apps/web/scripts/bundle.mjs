@@ -24,6 +24,12 @@ const skippedEntries = new Set([
   "eslint.config.mjs",
 ]);
 
+/** The deployed build's environment is set in the Catalyst Console, so no env file of any
+ *  kind is staged - a local value would silently override the Console's. */
+function isEnvFile(relativePath) {
+  return relativePath.startsWith(".env");
+}
+
 await rm(outDir, { recursive: true, force: true });
 await mkdir(outDir, { recursive: true });
 
@@ -31,6 +37,7 @@ await cp(root, outDir, {
   recursive: true,
   filter: (source) =>
     !skippedEntries.has(relative(root, source)) &&
+    !isEnvFile(relative(root, source)) &&
     !source.endsWith(".tsbuildinfo"),
 });
 
