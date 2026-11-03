@@ -25,73 +25,102 @@ function withRegistered(loaded: LoadedPages, searchedName: string, monitor: List
   return { ...loaded, pages: [{ ...firstPage, data: [monitor, ...firstPage.data] }, ...laterPages] };
 }
 
-/** Every monitor action - the confirmed ones from `MonitorActionDialog`, and the form's
- *  register and edit. Success says nothing - the list shows it; only a failure toasts,
- *  through the query client. Pausing and editing write the server's answer into every
- *  loaded page and the monitor's own, a delete drops the row and a registration adds it -
- *  each then refetches only the counts. A check changes nothing; its popup shows the answer. */
-export function useMonitorActions() {
+function replacing(updated: ListedMonitor): (monitors: ListedMonitor[]) => ListedMonitor[] {
+  return (monitors) => monitors.map((monitor) => (monitor.id === updated.id ? updated : monitor));
+}
+
+/**
+ * Writes an action's answer straight into the cached lists and the monitor's own page, then
+ * refetches only the counts. `settle` comes first: it cancels any refetch already in flight,
+ * which started before the action and would otherwise land after it and put back what the
+ * action changed.
+ */
+function useMonitorCache() {
   const queryClient = useQueryClient();
-  const showInLists = (updated: ListedMonitor): void => {
-    queryClient.setQueriesData<LoadedPages>({ queryKey: QueryKey.monitorLists }, (loaded) =>
-      editMonitors(loaded, (monitors) => monitors.map((monitor) => (monitor.id === updated.id ? updated : monitor))),
-    );
-  };
-
-  // Its answer is shown in the popup and recorded nowhere, so no cache changes.
-  const check = useMutation({ mutationFn: checkMonitor });
-
-  const setState = useMutation({
-    mutationFn: ({ id, state }: { id: string; state: MonitorState }) => updateMonitor(id, { state }),
-    onSuccess: (updated) => {
-      showInLists(updated);
-      // State and health only: the answer carries a list row's probes, fewer than the page keeps.
-      queryClient.setQueryData<MonitorDetail>(QueryKey.monitor(updated.id), (detail) =>
-        detail && { ...detail, state: updated.state, health: updated.health },
-      );
-      void queryClient.invalidateQueries({ queryKey: QueryKey.monitorSummary });
+  return {
+    settle: async (monitorId: string): Promise<void> => {
+      await Promise.all([
+        queryClient.cancelQueries({ queryKey: QueryKey.monitorLists }),
+        queryClient.cancelQueries({ queryKey: QueryKey.monitor(monitorId) }),
+      ]);
     },
-  });
-
-  const remove = useMutation({
-    mutationFn: deleteMonitor,
-    onSuccess: (_, deletedId) => {
-      queryClient.setQueriesData<LoadedPages>({ queryKey: QueryKey.monitorLists }, (loaded) =>
-        editMonitors(loaded, (monitors) => monitors.filter((monitor) => monitor.id !== deletedId)),
-      );
-      // Gone for good, so its page must not refetch it into a 404.
-      queryClient.removeQueries({ queryKey: QueryKey.monitor(deletedId) });
-      // The list is already right; only the counts need the server.
-      void queryClient.invalidateQueries({ queryKey: QueryKey.monitorSummary });
+    editLists: (edit: (monitors: ListedMonitor[]) => ListedMonitor[]): void => {
+      queryClient.setQueriesData<LoadedPages>({ queryKey: QueryKey.monitorLists }, (loaded) => editMonitors(loaded, edit));
     },
-  });
-
-  const register = useMutation({
-    mutationFn: registerMonitor,
-    onSuccess: (registered) => {
-      const lists = queryClient.getQueriesData<LoadedPages>({ queryKey: QueryKey.monitorLists });
-      for (const [queryKey, loaded] of lists) {
+    addToLists: (registered: ListedMonitor): void => {
+      for (const [queryKey, loaded] of queryClient.getQueriesData<LoadedPages>({ queryKey: QueryKey.monitorLists })) {
         // The key is QueryKey.monitorList(name), so its last segment is the search.
         const added = loaded && withRegistered(loaded, String(queryKey.at(-1)), registered);
-        if (added) {
-          queryClient.setQueryData(queryKey, added);
-        }
+        if (added) queryClient.setQueryData(queryKey, added);
       }
-      void queryClient.invalidateQueries({ queryKey: QueryKey.monitorSummary });
+    },
+    editPage: (monitorId: string, edit: (detail: MonitorDetail) => MonitorDetail): void => {
+      queryClient.setQueryData<MonitorDetail>(QueryKey.monitor(monitorId), (detail) => detail && edit(detail));
+    },
+    dropPage: (monitorId: string): void => queryClient.removeQueries({ queryKey: QueryKey.monitor(monitorId) }),
+    refreshCounts: (): void => void queryClient.invalidateQueries({ queryKey: QueryKey.monitorSummary }),
+  };
+}
+
+function useSetState() {
+  const cache = useMonitorCache();
+  return useMutation({
+    mutationFn: ({ id, state }: { id: string; state: MonitorState }) => updateMonitor(id, { state }),
+    onSuccess: async (updated) => {
+      await cache.settle(updated.id);
+      cache.editLists(replacing(updated));
+      // State and health only: the answer carries a list row's probes, fewer than the page keeps.
+      cache.editPage(updated.id, (detail) => ({ ...detail, state: updated.state, health: updated.health }));
+      cache.refreshCounts();
     },
   });
+}
 
-  const edit = useMutation({
+function useEdit() {
+  const cache = useMonitorCache();
+  return useMutation({
     mutationFn: ({ id, settings }: { id: string; settings: NewMonitor }) => editMonitor(id, settings),
-    onSuccess: (edited) => {
-      showInLists(edited);
+    onSuccess: async (edited) => {
+      await cache.settle(edited.id);
+      cache.editLists(replacing(edited));
       // Its history started over, so the page keeps only its own probe capacity.
-      queryClient.setQueryData<MonitorDetail>(QueryKey.monitor(edited.id), (detail) =>
-        detail && { ...edited, maxProbes: detail.maxProbes, latestAlerts: [] },
-      );
-      void queryClient.invalidateQueries({ queryKey: QueryKey.monitorSummary });
+      cache.editPage(edited.id, (detail) => ({ ...edited, maxProbes: detail.maxProbes, latestAlerts: [] }));
+      cache.refreshCounts();
     },
   });
+}
 
-  return { check, setState, remove, register, edit };
+function useRemove() {
+  const cache = useMonitorCache();
+  return useMutation({
+    mutationFn: deleteMonitor,
+    onSuccess: async (_, deletedId) => {
+      await cache.settle(deletedId);
+      cache.editLists((monitors) => monitors.filter((monitor) => monitor.id !== deletedId));
+      // Gone for good, so its page must not refetch it into a 404.
+      cache.dropPage(deletedId);
+      cache.refreshCounts();
+    },
+  });
+}
+
+function useRegister() {
+  const cache = useMonitorCache();
+  return useMutation({
+    mutationFn: registerMonitor,
+    onSuccess: async (registered) => {
+      await cache.settle(registered.id);
+      cache.addToLists(registered);
+      cache.refreshCounts();
+    },
+  });
+}
+
+/** Every monitor action - the confirmed ones from `MonitorActionDialog`, and the form's
+ *  register and edit. Success says nothing - the list shows it; only a failure toasts,
+ *  through the query client. A check changes nothing: recorded nowhere, its popup shows
+ *  the answer. */
+export function useMonitorActions() {
+  const check = useMutation({ mutationFn: checkMonitor });
+  return { check, setState: useSetState(), edit: useEdit(), remove: useRemove(), register: useRegister() };
 }

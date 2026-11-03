@@ -18,6 +18,12 @@ export interface MonitorPageRequest {
   nameContains?: string;
 }
 
+/** A monitor's schedule as the row records it - `null` for a monitor with none, one
+ *  registered before monitors had schedules or whose schedule was already deleted. */
+export interface MonitorSchedule {
+  scheduleId: string | null;
+}
+
 /** One page of the monitor list, and how many monitors match in all. */
 export interface MonitorPage {
   monitors: Monitor[];
@@ -32,7 +38,8 @@ type StoredLatestProbe = [number, number, 0 | 1, 0 | 1];
 /** One alert as `LATEST_ALERTS` stores it: `[firedAt epoch ms, emailedTo]`. */
 type StoredLatestAlert = [number, string | null];
 
-/** The columns a monitor is built from - all the list reads, so it selects no more. */
+/** The columns a monitor is built from. The list selects all but `LATEST_ALERTS`, which it
+ *  never shows, so there that one reads back absent and the monitor has no alerts. */
 type MonitorColumns = Pick<
   StoredRow<MonitorRow>,
   | "ROWID"
@@ -57,8 +64,8 @@ type MonitorColumns = Pick<
  * digits first.
  */
 export class MonitorRepository {
-  /** One `getPagedRows` page, for the reset; ZCQL's 300-row cap is above it. */
-  private static readonly MAX_MONITORS = 200;
+  /** Rows per `getPagedRows` page when the reset collects every schedule. */
+  private static readonly SCHEDULE_PAGE_SIZE = 200;
   private static readonly DIGITS = /^\d+$/;
   /** The `max_length` of the Monitor table's text columns. */
   private static readonly TEXT_COLUMN_LENGTH = 10_000;
@@ -79,8 +86,7 @@ export class MonitorRepository {
         `SELECT ${table.column("ROWID")}, ${table.column("NAME")}, ${table.column("URL")}, ` +
           `${table.column("CHECK_INTERVAL_SECONDS")}, ${table.column("ALERT_THRESHOLD_MISSES")}, ` +
           `${table.column("ALERT_EMAIL")}, ${table.column("STATE")}, ${table.column("HEALTH")}, ` +
-          `${table.column("LATEST_PROBES")}, ` +
-          `${table.column("LATEST_ALERTS")} ` +
+          `${table.column("LATEST_PROBES")} ` +
           `FROM ${table.name}${where} ORDER BY ${table.column("CREATEDTIME")} DESC, ${table.column("ROWID")} DESC LIMIT ${firstRow}, ${page.perPage}`,
       ),
       MonitorRepository.zcql(`SELECT COUNT(${table.column("ROWID")}) FROM ${table.name}${where}`),
@@ -160,20 +166,44 @@ export class MonitorRepository {
       .updateRow({ ROWID: MonitorRepository.digits(monitorId), CRON_ID: scheduleId });
   }
 
-  /** Undefined when the monitor does not exist or was never scheduled. */
-  static async scheduleIdOf(monitorId: string): Promise<string | undefined> {
-    const storedMonitor = await monitorTable
+  /** Forgets the monitor's schedule once it is deleted, so a retry does not ask Catalyst to
+   *  delete it twice. */
+  static async clearScheduleId(monitorId: string): Promise<void> {
+    await monitorTable
       .runIn(CatalystScope.Admin)
-      .getRow(MonitorRepository.digits(monitorId));
-    return storedMonitor?.CRON_ID ?? undefined;
+      .updateRow({ ROWID: MonitorRepository.digits(monitorId), CRON_ID: "" });
   }
 
-  /** Every monitor's schedule id - for the reset, which removes them all. */
+  /**
+   * Undefined when the monitor does not exist. Read through ZCQL rather than `getRow`, which
+   * reads any failure as a missing row: here that would let a delete skip a schedule that
+   * still exists, and leave it probing nothing for good.
+   */
+  static async scheduleOf(monitorId: string): Promise<MonitorSchedule | undefined> {
+    const [scheduleRow] = await MonitorRepository.zcql(
+      `SELECT ${monitorTable.column("CRON_ID")} FROM ${monitorTable.name} ` +
+        `WHERE ${MonitorRepository.rowClause(monitorId)}`,
+    );
+    if (scheduleRow === undefined) {
+      return undefined;
+    }
+    const scheduleId = scheduleRow[monitorTable.name]?.[monitorTable.column("CRON_ID")];
+    return { scheduleId: typeof scheduleId === "string" && scheduleId !== "" ? scheduleId : null };
+  }
+
+  /** Every monitor's schedule id, page by page - for the reset, which removes them all. A
+   *  page left unread would leave its schedules running with nothing to find them by. */
   static async allScheduleIds(): Promise<string[]> {
-    const { rows } = await monitorTable
-      .runIn(CatalystScope.Admin)
-      .getPagedRows({ maxRows: MonitorRepository.MAX_MONITORS });
-    return rows.flatMap((storedMonitor) => (storedMonitor.CRON_ID ? [storedMonitor.CRON_ID] : []));
+    const scheduleIds: string[] = [];
+    let nextToken: string | undefined;
+    do {
+      const page = await monitorTable
+        .runIn(CatalystScope.Admin)
+        .getPagedRows({ nextToken, maxRows: MonitorRepository.SCHEDULE_PAGE_SIZE });
+      scheduleIds.push(...page.rows.flatMap((storedMonitor) => (storedMonitor.CRON_ID ? [storedMonitor.CRON_ID] : [])));
+      nextToken = page.hasMore ? page.nextToken : undefined;
+    } while (nextToken !== undefined);
+    return scheduleIds;
   }
 
   /** Writes what a check changes on its monitor - its health, latest probes and alerts -
@@ -282,10 +312,11 @@ export class MonitorRepository {
   }
 
   /** ZCQL's `LIKE` is case-insensitive and its wildcard is `*`, which has no escape, so a
-   *  `*` in the search is dropped; a quote is escaped by doubling it. Nothing left to match
-   *  on means no filter. */
+   *  `*` in the search is dropped. A backslash is dropped too, so it can never turn the
+   *  doubled quote that escapes a `'` back into a closing one. Nothing left to match on
+   *  means no filter. */
   private static whereNameContains(nameContains: string | undefined): string {
-    const literal = (nameContains ?? "").replaceAll("*", "").replaceAll("'", "''");
+    const literal = (nameContains ?? "").replaceAll("*", "").replaceAll("\\", "").replaceAll("'", "''");
     if (literal === "") {
       return "";
     }

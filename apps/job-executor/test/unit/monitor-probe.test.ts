@@ -129,3 +129,22 @@ describe("MonitorProbe.recordCheck", () => {
     expect(outcome.updatedMonitor.latestAlerts.at(-1)?.firedAtMs).toBe(NOW_MS);
   });
 });
+
+describe("MonitorProbe.isAsRead", () => {
+  const read = monitor({ latestProbes: [stored(true)] });
+
+  it("is true for a monitor nobody touched while it was probed", () => {
+    expect(MonitorProbe.isAsRead(read, { ...read })).toBe(true);
+  });
+
+  it.each([
+    ["deleted", undefined],
+    ["paused", { ...read, state: "inactive" as const }],
+    ["edited to a new URL", { ...read, url: "https://checkout.example.com/ready" }],
+    ["edited to a new threshold", { ...read, alertThresholdMisses: 1 }],
+    ["edited, so its history was cleared", { ...read, latestProbes: [] }],
+    ["saved by another run first", { ...read, latestProbes: [stored(true), { ...stored(false), checkedAtMs: NOW_MS + 60_000 }] }],
+  ])("is false for a monitor %s meanwhile", (_case, current) => {
+    expect(MonitorProbe.isAsRead(read, current)).toBe(false);
+  });
+});

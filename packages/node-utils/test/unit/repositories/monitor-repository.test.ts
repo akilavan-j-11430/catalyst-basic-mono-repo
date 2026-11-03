@@ -6,15 +6,16 @@ import { MonitorRepository, type MonitorPage, type MonitorPageRequest } from "@/
 import type { Alert, Monitor, Probe } from "@repo/types/monitor";
 
 // The SDK is replaced before zcql.ts and table.ts load it, so nothing leaves the process.
-const { executeZcqlQuery, updateRow } = vi.hoisted(() => ({
+const { executeZcqlQuery, updateRow, getPagedRows } = vi.hoisted(() => ({
   executeZcqlQuery: vi.fn(),
   updateRow: vi.fn(async (): Promise<object> => ({})),
+  getPagedRows: vi.fn(),
 }));
 
 vi.mock("@zcatalyst/datastore", () => ({
   Datastore: class {
     executeZCQLQuery = executeZcqlQuery;
-    table = (): object => ({ updateRow });
+    table = (): object => ({ updateRow, getPagedRows });
   },
 }));
 
@@ -87,7 +88,7 @@ describe("MonitorRepository.getPagedRecords", () => {
 
     expect(executeZcqlQuery).toHaveBeenCalledWith(
       "SELECT ROWID, NAME, URL, CHECK_INTERVAL_SECONDS, ALERT_THRESHOLD_MISSES, ALERT_EMAIL, STATE, HEALTH, " +
-        "LATEST_PROBES, LATEST_ALERTS FROM Monitor ORDER BY CREATEDTIME DESC, ROWID DESC LIMIT 1, 20",
+        "LATEST_PROBES FROM Monitor ORDER BY CREATEDTIME DESC, ROWID DESC LIMIT 1, 20",
     );
     expect(executeZcqlQuery).toHaveBeenCalledWith("SELECT COUNT(ROWID) FROM Monitor");
   });
@@ -96,6 +97,12 @@ describe("MonitorRepository.getPagedRecords", () => {
     await readPage({ pageNo: 3, perPage: 20 }, []);
 
     expect(executeZcqlQuery).toHaveBeenCalledWith(expect.stringMatching(/ LIMIT 41, 20$/));
+  });
+
+  it("drops a backslash, so it cannot unescape the doubled quote after it", async () => {
+    await readPage({ pageNo: 1, perPage: 20, nameContains: "x\\'" }, []);
+
+    expect(executeZcqlQuery).toHaveBeenCalledWith("SELECT COUNT(ROWID) FROM Monitor WHERE NAME LIKE '*x''*'");
   });
 
   it("filters both statements on a name containing the search, quotes doubled and stars dropped", async () => {
@@ -172,6 +179,39 @@ describe("MonitorRepository.saveCheckResult", () => {
     expect(storedAlerts.length).toBeLessThanOrEqual(10_000);
     expect(keptAlerts.length).toBeLessThan(100);
     expect(keptAlerts.at(-1)?.[0]).toBe(alerts.at(-1)?.firedAtMs);
+  });
+});
+
+describe("MonitorRepository.scheduleOf", () => {
+  it("reads the schedule id through ZCQL, which reports a failure instead of hiding it", async () => {
+    executeZcqlQuery.mockResolvedValue([{ Monitor: { CRON_ID: "cron-9" } }]);
+
+    expect(await asAdmin(() => MonitorRepository.scheduleOf("1001"))).toEqual({ scheduleId: "cron-9" });
+    expect(executeZcqlQuery).toHaveBeenCalledExactlyOnceWith("SELECT CRON_ID FROM Monitor WHERE ROWID = 1001");
+  });
+
+  it("tells a monitor with no schedule from a monitor that does not exist", async () => {
+    executeZcqlQuery.mockResolvedValueOnce([{ Monitor: { CRON_ID: "" } }]).mockResolvedValueOnce([]);
+
+    expect(await asAdmin(() => MonitorRepository.scheduleOf("1001"))).toEqual({ scheduleId: null });
+    expect(await asAdmin(() => MonitorRepository.scheduleOf("1002"))).toBeUndefined();
+  });
+
+  it("lets a failed read fail rather than read as no schedule", async () => {
+    executeZcqlQuery.mockRejectedValue(new Error("datastore unavailable"));
+
+    await expect(asAdmin(() => MonitorRepository.scheduleOf("1001"))).rejects.toThrow();
+  });
+});
+
+describe("MonitorRepository.allScheduleIds", () => {
+  it("reads every page, skipping monitors with no schedule", async () => {
+    getPagedRows
+      .mockResolvedValueOnce({ data: [{ ROWID: "1", CRON_ID: "cron-1" }, { ROWID: "2", CRON_ID: null }], next_token: "t2", more_records: true })
+      .mockResolvedValueOnce({ data: [{ ROWID: "3", CRON_ID: "cron-3" }], more_records: false });
+
+    expect(await asAdmin(() => MonitorRepository.allScheduleIds())).toEqual(["cron-1", "cron-3"]);
+    expect(getPagedRows).toHaveBeenCalledTimes(2);
   });
 });
 

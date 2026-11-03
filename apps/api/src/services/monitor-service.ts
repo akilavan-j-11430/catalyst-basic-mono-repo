@@ -1,6 +1,7 @@
 import { monitorProbeJob } from "@repo/node-utils/catalyst/resources";
 import { HttpRequestError } from "@repo/node-utils/errors/http-request-error";
 import { HttpClient } from "@repo/node-utils/http/http-client";
+import { PrivateAddress } from "@repo/node-utils/http/private-address";
 import { logger } from "@repo/node-utils/framework/logger";
 import { MonitorRepository, type MonitorPageRequest } from "@repo/node-utils/repositories/monitor-repository";
 import type {
@@ -74,13 +75,16 @@ export class MonitorService {
   /**
    * Stores the monitor, then gives it its own repeating schedule at its interval - the probe
    * job does the probing and alerting from there. Three calls, because the schedule needs the
-   * monitor's id and the monitor keeps the schedule's. If scheduling fails, the monitor is
-   * removed again rather than left stored with nothing probing it.
+   * monitor's id and the monitor keeps the schedule's. If either later call fails, both
+   * halves are undone: no monitor left with nothing probing it, and no schedule left probing
+   * a monitor that is gone.
    */
   static async register(newMonitor: NewMonitor): Promise<ListedMonitor> {
+    await MonitorService.rejectPrivateUrl(newMonitor.url);
     const monitor = await MonitorRepository.register(newMonitor);
+    let scheduleId: string | undefined;
     try {
-      const scheduleId = await monitorProbeJob.scheduleRepeating({
+      scheduleId = await monitorProbeJob.scheduleRepeating({
         scheduleName: MonitorService.scheduleNameOf(monitor.id),
         intervalSeconds: monitor.checkIntervalSeconds,
         params: { monitorId: monitor.id },
@@ -88,7 +92,11 @@ export class MonitorService {
       await MonitorRepository.setScheduleId(monitor.id, scheduleId);
       return MonitorService.toListedMonitor(monitor, LIST_PROBE_SLOTS);
     } catch (error) {
-      await MonitorRepository.delete(monitor.id);
+      const createdScheduleId = scheduleId;
+      await Promise.allSettled([
+        createdScheduleId === undefined ? Promise.resolve() : monitorProbeJob.deleteSchedule(createdScheduleId),
+        MonitorRepository.delete(monitor.id),
+      ]);
       throw error;
     }
   }
@@ -99,6 +107,7 @@ export class MonitorService {
    * only when the interval changed, so a failure there leaves the monitor as it was.
    */
   static async edit(monitorId: string, settings: NewMonitor): Promise<ListedMonitor> {
+    await MonitorService.rejectPrivateUrl(settings.url);
     const monitor = await MonitorRepository.find(monitorId);
     if (monitor === undefined) {
       throw HttpError.NotFound(`No monitor ${monitorId}.`);
@@ -129,13 +138,20 @@ export class MonitorService {
     return MonitorService.toListedMonitor(updated, LIST_PROBE_SLOTS);
   }
 
-  /** The schedule first, so a failure leaves the monitor in place to try again; its probes and
-   *  alerts are columns on the row and go with it. A monitor registered before monitors had
-   *  schedules has none, and is still deleted. */
+  /**
+   * The schedule first, so a failure leaves the monitor in place to try again; its probes and
+   * alerts are columns on the row and go with it. Once the schedule is gone the row forgets
+   * it - one more call, so that a retry after a failed row delete skips the schedule rather
+   * than asking Catalyst to delete it twice. A monitor with no schedule is still deleted.
+   */
   static async delete(monitorId: string): Promise<void> {
-    const scheduleId = await MonitorRepository.scheduleIdOf(monitorId);
-    if (scheduleId !== undefined) {
-      await monitorProbeJob.deleteSchedule(scheduleId);
+    const schedule = await MonitorRepository.scheduleOf(monitorId);
+    if (schedule === undefined) {
+      throw HttpError.NotFound(`No monitor ${monitorId}.`);
+    }
+    if (schedule.scheduleId !== null) {
+      await monitorProbeJob.deleteSchedule(schedule.scheduleId);
+      await MonitorRepository.clearScheduleId(monitorId);
     }
     if (!(await MonitorRepository.delete(monitorId))) {
       throw HttpError.NotFound(`No monitor ${monitorId}.`);
@@ -150,6 +166,7 @@ export class MonitorService {
     if (monitor === undefined) {
       throw HttpError.NotFound(`No monitor ${monitorId}.`);
     }
+    await MonitorService.rejectPrivateUrl(monitor.url);
     const target = new URL(monitor.url);
     const client = new HttpClient({ baseUrl: target.origin, timeoutMs: MonitorService.CHECK_TIMEOUT_MS });
     const startedAtMs = Date.now();
@@ -176,10 +193,16 @@ export class MonitorService {
   /** Every monitor and its schedule - its probes and alerts with it - then registers
    *  `RESET_MONITORS` afresh. The schedules first: Catalyst lists none made from code, so
    *  once their monitors are gone nothing would be left to find them by. One call per
-   *  schedule - the SDK has no bulk delete - and three per monitor added, as `register`. */
+   *  schedule - the SDK has no bulk delete - and three per monitor added, as `register`.
+   *  A schedule that will not delete - most likely one already gone - is logged and passed
+   *  over, so one stale id can never make every reset fail. */
   static async reset(): Promise<ResetResult> {
     const scheduleIds = await MonitorRepository.allScheduleIds();
-    await Promise.all(scheduleIds.map((scheduleId) => monitorProbeJob.deleteSchedule(scheduleId)));
+    const deletions = await Promise.allSettled(scheduleIds.map((scheduleId) => monitorProbeJob.deleteSchedule(scheduleId)));
+    const failed = deletions.filter((deletion) => deletion.status === "rejected").length;
+    if (failed > 0) {
+      logger.warn(`Reset: ${failed} of ${scheduleIds.length} schedules did not delete.`);
+    }
     const monitorsDeleted = await MonitorRepository.deleteAll();
     const added = await Promise.all(MonitorService.RESET_MONITORS.map((monitor) => MonitorService.register(monitor)));
     logger.info(`Reset: deleted ${monitorsDeleted} monitors, added ${added.length}.`);
@@ -211,17 +234,29 @@ export class MonitorService {
     return { firedAt: WireTime.fromEpochMs(firedAtMs), emailedTo };
   }
 
-  /** The monitor's schedule id, or a 404 when there is no monitor to act on. */
   /** Unique in the project, as Catalyst requires, and names the monitor it probes. */
   private static scheduleNameOf(monitorId: string): string {
     return `m_${monitorId}`;
   }
 
+  /** The monitor's schedule id: a 404 when there is no monitor, and a 409 for one that
+   *  exists but has no schedule to pause, resume or move. */
   private static async scheduleIdOf(monitorId: string): Promise<string> {
-    const scheduleId = await MonitorRepository.scheduleIdOf(monitorId);
-    if (scheduleId === undefined) {
+    const schedule = await MonitorRepository.scheduleOf(monitorId);
+    if (schedule === undefined) {
       throw HttpError.NotFound(`No monitor ${monitorId}.`);
     }
-    return scheduleId;
+    if (schedule.scheduleId === null) {
+      throw HttpError.Conflict(`Monitor ${monitorId} has no schedule. Delete it and add it again.`);
+    }
+    return schedule.scheduleId;
+  }
+
+  /** Our servers make the call, so a URL inside a network - loopback, a private range, a
+   *  metadata address - is refused rather than probed. */
+  private static async rejectPrivateUrl(url: string): Promise<void> {
+    if (await PrivateAddress.isPrivateUrl(url)) {
+      throw HttpError.BadRequest("That URL points inside a private network, which Lively does not call.");
+    }
   }
 }

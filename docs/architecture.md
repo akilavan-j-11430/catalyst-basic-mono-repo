@@ -89,16 +89,16 @@ the API and the job function share it and neither sees `ROWID` or the compact st
 
 | Path | Data Store | Job Scheduling | Mail |
 |---|---|---|---|
-| `probe` job (one monitor, per interval) | 1 read + 1 update | - | 0-1 |
+| `probe` job (one monitor, per interval) | 2 reads + 1 update | - | 0-1 |
 | `GET /monitors` | 2 ZCQL (page + count) | - | - |
 | `GET /monitors/summary` | 1 ZCQL `GROUP BY STATE, HEALTH` | - | - |
 | `GET /monitors/:id` | 1 read | - | - |
 | `POST /monitors` | 1 insert + 1 update (the cron id) | 1 create | - |
-| `PATCH /monitors/:id` | 1 read (the cron id) + 1 ZCQL | 1 pause or resume | - |
-| `PUT /monitors/:id` | 1 read + 1 update (+ 1 read of the cron id when the interval changed) | 1 update when the interval changed | - |
-| `DELETE /monitors/:id` | 1 read (the cron id) + 1 ZCQL | 1 delete | - |
+| `PATCH /monitors/:id` | 1 ZCQL (the cron id) + 1 ZCQL update | 1 pause or resume | - |
+| `PUT /monitors/:id` | 1 read + 1 update (+ 1 ZCQL for the cron id when the interval changed) | 1 update when the interval changed | - |
+| `DELETE /monitors/:id` | 1 ZCQL (the cron id) + 1 update (forget it) + 1 ZCQL delete | 1 delete | - |
 | `POST /monitors/:id/check` | 1 read, then one `GET` to the monitor's URL | - | - |
-| `POST /monitors/reset` | 1 list + 1 ZCQL delete, then 2 inserts + 2 updates | 1 delete per monitor + 2 creates | - |
+| `POST /monitors/reset` | 1 list per 200 monitors + 1 ZCQL delete, then 2 inserts + 2 updates | 1 delete per monitor + 2 creates | - |
 
 Plus one `getCurrentUser` per signed-in request (`requireSignedInUser`), which is what
 checks the session.
@@ -113,17 +113,26 @@ checks the session.
 
 ## Failure and recovery
 
-- **A failed probe job is not retried** unless the cron's job is configured with retries;
-  the next interval probes again. Failures appear in the job's records in the Console.
+- **A failed probe run is reported as failed** (`closeWithFailure`), so Catalyst retries it
+  when the job is configured with retries; either way the next interval probes again.
+  Failures appear in the job's records in the Console.
 - **An inactive or deleted monitor stops costing runs.** Its cron is paused or deleted; a
   run already queued finds it inactive or gone and does nothing.
-- **A manual check can race a scheduled run** on the same monitor; both read the row, and
-  the later write wins, so one probe can be lost from `LATEST_PROBES`.
+- **A run racing a person loses.** The job re-reads the monitor just before it saves; if
+  it was edited, paused or deleted meanwhile, or another run saved first, the result is
+  dropped rather than written over the change. The window left is the gap between that read
+  and the write. "Check now" records nothing, so it never races a run.
 - **Crons run in the cloud.** Locally, a monitor's cron still targets the deployed
   `job-executor`; run a job by hand through the proxy's `/jobs` path to exercise local code.
-- **Probes are server-side `GET`s to user-supplied URLs.** Any signed-in user can make the
-  job fetch any URL (SSRF-shaped). Acceptable for a demo with admin-created accounts; put an
-  allow-list in `MonitorProbe.probe` before opening it wider.
+- **Probes are server-side `GET`s to user-supplied URLs.** A URL whose host resolves
+  inside a private network - loopback, a private range, link-local metadata addresses - is
+  refused when it is registered, edited or checked now (`PrivateAddress`), and counted as a
+  miss without being called if it starts resolving there later. DNS can still change between
+  that check and the call; a deliberate rebinding is not closed.
+- **Delete and reset survive half-done work.** Registering undoes both the row and the
+  schedule if either later step fails. Delete forgets a schedule as soon as it is deleted,
+  so a retry after a failed row delete does not ask for it twice; a reset passes over a
+  schedule that will not delete, and reads every page of monitors to find them all.
 
 ## The reset
 

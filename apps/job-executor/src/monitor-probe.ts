@@ -3,6 +3,7 @@ import { CatalystScope } from "@repo/node-utils/enums/catalyst-scope";
 import { logger } from "@repo/node-utils/framework/logger";
 import { HttpRequestError } from "@repo/node-utils/errors/http-request-error";
 import { HttpClient } from "@repo/node-utils/http/http-client";
+import { PrivateAddress } from "@repo/node-utils/http/private-address";
 import { MonitorRepository } from "@repo/node-utils/repositories/monitor-repository";
 import { AlertMessage } from "@repo/app-core/alert-message";
 import type { Monitor, Probe } from "@repo/types/monitor";
@@ -38,7 +39,8 @@ export interface CheckOutcome {
  * means it already fired. N is at most `LATEST_PROBE_LIMIT`, so the probes the monitor keeps
  * always reach far enough.
  *
- * Calls per run: one monitor read, one monitor update, and one email when the alert fires.
+ * Calls per run: two monitor reads, one monitor update, and one email when the alert fires.
+ * The second read is load-bearing - see `isAsRead`.
  */
 export class MonitorProbe {
   private static readonly PROBE_TIMEOUT_MS = 5_000;
@@ -53,11 +55,32 @@ export class MonitorProbe {
       return;
     }
     const outcome = MonitorProbe.recordCheck(monitor, await MonitorProbe.getUrlCheck(monitor.url));
+    if (!MonitorProbe.isAsRead(monitor, await MonitorRepository.find(monitorId))) {
+      logger.info(`Monitor ${monitorId} changed while it was being probed; this result is dropped.`);
+      return;
+    }
     await MonitorRepository.saveCheckResult(outcome.updatedMonitor);
     // After the save, so the monitor's page already shows the alert the email announces.
     if (outcome.alertNotice) {
       await MonitorProbe.sendAlert(outcome.alertNotice);
     }
+  }
+
+  /**
+   * Whether the monitor is still as this run read it, up to five seconds earlier. The save
+   * writes a whole history computed from that read, so if a person edited it (history
+   * cleared, settings changed), paused or deleted it, or another run saved first, the save
+   * would quietly undo that. Re-reading just before the write narrows that window from the
+   * length of the call to the gap between two Catalyst calls.
+   */
+  static isAsRead(read: Monitor, current: Monitor | undefined): boolean {
+    return (
+      current !== undefined &&
+      current.state === read.state &&
+      current.url === read.url &&
+      current.alertThresholdMisses === read.alertThresholdMisses &&
+      current.latestProbes.at(-1)?.checkedAtMs === read.latestProbes.at(-1)?.checkedAtMs
+    );
   }
 
   /** Pure - no Catalyst call and no network - so the tests drive it directly. */
@@ -120,8 +143,13 @@ export class MonitorProbe {
     return probes.length - 1 - lastSuccessIndex;
   }
 
-  /** A non-2xx and an unreachable host are both misses. */
+  /** A non-2xx and an unreachable host are both misses - and so is a URL that now resolves
+   *  inside a private network, which is never called. */
   private static async getUrlCheck(url: string): Promise<UrlCheck> {
+    if (await PrivateAddress.isPrivateUrl(url)) {
+      logger.warn(`Not probing a URL that resolves to a private address.`);
+      return { checkedAtMs: Date.now(), latencyMs: 0, success: false };
+    }
     const target = new URL(url);
     const client = new HttpClient({ baseUrl: target.origin, timeoutMs: MonitorProbe.PROBE_TIMEOUT_MS });
     const startedAtMs = Date.now();

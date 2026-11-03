@@ -12,8 +12,8 @@ export interface NewMonitor {
 /** Whether the monitor is being probed - `inactive` once the user pauses it. */
 export type MonitorState = "active" | "inactive";
 
-/** What the monitor's latest probes say - `unknown` until its first probe. Judged from the
- *  probes alone, so an inactive monitor keeps the health it had when it stopped. */
+/** What the monitor's latest probes say - `unknown` until its first probe, and again
+ *  whenever it is paused, resumed or edited, until the next probe judges it. */
 export type MonitorHealth = "up" | "down" | "unknown";
 
 /** One of a monitor's newest probes, as the API sends it. */

@@ -3,7 +3,13 @@ import { CatalystScope } from "@repo/node-utils/enums/catalyst-scope";
 import { MonitorRepository, type MonitorPageRequest } from "@repo/node-utils/repositories/monitor-repository";
 import { ApiPath } from "@repo/routing/api-path";
 import type { MonitorUpdate, NewMonitor } from "@repo/types/monitor";
-import { MAX_ALERT_THRESHOLD_MISSES, MAX_MONITOR_PAGE_SIZE, MIN_CHECK_INTERVAL_SECONDS, MONITOR_PAGE_SIZE } from "@repo/app-core/monitor-limits";
+import {
+  MAX_ALERT_THRESHOLD_MISSES,
+  MAX_CHECK_INTERVAL_SECONDS,
+  MAX_MONITOR_PAGE_SIZE,
+  MIN_CHECK_INTERVAL_SECONDS,
+  MONITOR_PAGE_SIZE,
+} from "@repo/app-core/monitor-limits";
 import { HttpError } from "@/errors/http-error";
 import { initCatalystScopes, requireResetKey, requireSignedInUser } from "@/middleware";
 import { MonitorService } from "@/services/monitor-service";
@@ -48,7 +54,8 @@ function toMonitorPageRequest(query: Record<string, unknown>): MonitorPageReques
   };
 }
 
-function text(fields: Record<string, unknown>, field: string, maxLength: number): string {
+function text(fields: Record<string, unknown>, rule: { field: string; maxLength: number }): string {
+  const { field, maxLength } = rule;
   const value = fields[field];
   if (typeof value !== "string" || value.trim() === "") {
     throw HttpError.BadRequest(`${field} is required.`);
@@ -60,23 +67,36 @@ function text(fields: Record<string, unknown>, field: string, maxLength: number)
 }
 
 function email(fields: Record<string, unknown>, field: string): string {
-  const value = text(fields, field, 255);
+  const value = text(fields, { field, maxLength: 255 });
   if (!EMAIL_PATTERN.test(value)) {
     throw HttpError.BadRequest(`${field} must be an email address.`);
   }
   return value;
 }
 
+/** Whole minutes, from one minute to a day - the schedule fires on the minute. */
+function checkInterval(fields: Record<string, unknown>): number {
+  const seconds = wholeNumber(fields, {
+    field: "checkIntervalSeconds",
+    min: MIN_CHECK_INTERVAL_SECONDS,
+    max: MAX_CHECK_INTERVAL_SECONDS,
+  });
+  if (seconds % MIN_CHECK_INTERVAL_SECONDS !== 0) {
+    throw HttpError.BadRequest(`checkIntervalSeconds must be a whole number of minutes.`);
+  }
+  return seconds;
+}
+
 function toNewMonitor(body: unknown): NewMonitor {
   const fields = fieldsOf(body);
-  const url = text(fields, "url", 255);
+  const url = text(fields, { field: "url", maxLength: 255 });
   if (!HTTP_URL_PATTERN.test(url) || !URL.canParse(url)) {
     throw HttpError.BadRequest("url must be an http:// or https:// address.");
   }
   return {
-    name: text(fields, "name", MAX_NAME_LENGTH),
+    name: text(fields, { field: "name", maxLength: MAX_NAME_LENGTH }),
     url,
-    checkIntervalSeconds: wholeNumber(fields, { field: "checkIntervalSeconds", min: MIN_CHECK_INTERVAL_SECONDS }),
+    checkIntervalSeconds: checkInterval(fields),
     alertThresholdMisses: wholeNumber(fields, { field: "alertThresholdMisses", min: 1, max: MAX_ALERT_THRESHOLD_MISSES }),
     alertEmail: email(fields, "alertEmail"),
   };

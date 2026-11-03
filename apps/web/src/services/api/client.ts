@@ -307,11 +307,11 @@ export async function pagedOf<T>(response: ApiResponse): Promise<Pick<PagedRecor
 }
 
 /**
- * One instance for `apps/api`. The prefix lives here rather than on every path, and stays
- * relative so the proxy keeps the browser and the API on one origin.
+ * One instance for `apps/api`. The prefix lives here rather than on every path: relative
+ * locally, where the proxy keeps one origin, and the API's own domain in a deployed build.
+ * Every call carries the signed-in user's token, which Catalyst checks before the request
+ * reaches the API - locally and deployed alike.
  */
-/** Every call carries the signed-in user's token, which Catalyst checks before the request
- *  reaches the API - locally and deployed alike. */
 export const api = new ApiClient({
   baseUrl: API_ORIGIN + ApiPath.Api + ApiPath.V1,
   headers: async () => ({ authorization: `Zoho-oauthtoken ${await apiAccessToken()}` }),

@@ -19,5 +19,9 @@ export const MAX_MONITOR_PAGE_SIZE = 100;
  *  dropped as new ones fire - nothing else clears them. */
 export const LATEST_ALERT_LIMIT = 100;
 
-/** The cron fires once a minute, so a shorter interval could never be honoured. */
+/** The cron fires once a minute, so a shorter interval could never be honoured - and an
+ *  interval is a whole number of minutes, for the same reason. */
 export const MIN_CHECK_INTERVAL_SECONDS = 60;
+
+/** A day. A monitor checked less often than that is not watching anything. */
+export const MAX_CHECK_INTERVAL_SECONDS = 86_400;

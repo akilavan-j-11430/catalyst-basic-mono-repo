@@ -22,7 +22,7 @@ see "Every call carries the signed-in user's token" in `.claude/rules/web-data-a
 Call it through `src/services/`, never `fetch` in a component:
 
 ```
-src/services/<domain>.ts       the calls themselves (monitors.ts, alerts.ts)
+src/services/<domain>.ts       the calls themselves (monitors.ts)
 src/services/api/client.ts     transport - returns the whole response, like the server's HttpClient
 ```
 

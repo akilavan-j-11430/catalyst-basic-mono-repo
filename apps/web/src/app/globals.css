@@ -262,8 +262,8 @@
 }
 
 /*
- * Hallmark · component: toast (error) · genre: modern-minimal · theme: project tokens
- * states: default · hover (pauses dismiss) · focus (close) · active (close) · error
+ * Hallmark - component: toast (error) - genre: modern-minimal - theme: project tokens
+ * states: default - hover (pauses dismiss) - focus (close) - active (close) - error
  *         n/a - disabled, loading, success: only failures toast; success is silent
  * contrast: text on --toast passes 4.5:1 in both themes; the diamond passes 3:1
  *

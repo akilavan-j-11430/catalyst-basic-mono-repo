@@ -10,7 +10,7 @@ import { app } from "@/app";
 
 // `zcAuth.init` is faked for the whole workspace by test/setup.ts. The repository, the probe
 // job's schedule and the session check are faked here, so no request reaches Catalyst.
-const { monitorRepository, monitorProbeJob, currentUser } = vi.hoisted(() => ({
+const { monitorRepository, monitorProbeJob, currentUser, privateAddress } = vi.hoisted(() => ({
   monitorRepository: {
     isMonitorId: (value: string): boolean => /^\d+$/.test(value),
     getPagedRecords: vi.fn(),
@@ -22,7 +22,8 @@ const { monitorRepository, monitorProbeJob, currentUser } = vi.hoisted(() => ({
     allScheduleIds: vi.fn(async (): Promise<string[]> => ["cron-9", "cron-10"]),
     deleteAll: vi.fn(async (): Promise<number> => 2),
     setScheduleId: vi.fn(async (): Promise<void> => undefined),
-    scheduleIdOf: vi.fn(async (): Promise<string | undefined> => "cron-9"),
+    scheduleOf: vi.fn(async (): Promise<{ scheduleId: string | null } | undefined> => ({ scheduleId: "cron-9" })),
+    clearScheduleId: vi.fn(async (): Promise<void> => undefined),
     delete: vi.fn(async (): Promise<boolean> => true),
   },
   monitorProbeJob: {
@@ -33,11 +34,14 @@ const { monitorRepository, monitorProbeJob, currentUser } = vi.hoisted(() => ({
     resumeSchedule: vi.fn(async (): Promise<void> => undefined),
   },
   currentUser: vi.fn(async () => ({ userId: "7080", emailId: "asha@example.com" })),
+  privateAddress: { isPrivateUrl: vi.fn(async (): Promise<boolean> => false) },
 }));
 
 vi.mock("@repo/node-utils/repositories/monitor-repository", () => ({ MonitorRepository: monitorRepository }));
 vi.mock("@repo/node-utils/catalyst/resources", () => ({ monitorProbeJob }));
 vi.mock("@repo/node-utils/catalyst/user-management", () => ({ UserManagement: { currentUser } }));
+// No test resolves DNS: a URL counts as public unless a test says otherwise.
+vi.mock("@repo/node-utils/http/private-address", () => ({ PrivateAddress: privateAddress }));
 
 const V1 = ApiPath.Api + ApiPath.V1;
 const MONITORS = V1 + ApiPath.Monitors;
@@ -217,6 +221,41 @@ describe("POST /api/v1/monitors", () => {
     expect(monitorRepository.setScheduleId).not.toHaveBeenCalled();
   });
 
+  it("deletes the new schedule too when the monitor cannot keep its id", async () => {
+    monitorRepository.register.mockResolvedValue(storedMonitor);
+    monitorRepository.setScheduleId.mockRejectedValue(new Error("datastore unavailable"));
+
+    const failure = await request(app).post(MONITORS).send(newMonitor);
+
+    expect(failure.status).toBe(500);
+    expect(monitorProbeJob.deleteSchedule).toHaveBeenCalledExactlyOnceWith("cron-9");
+    expect(monitorRepository.delete).toHaveBeenCalledWith("1001");
+  });
+
+  it("refuses a URL inside a private network without storing anything", async () => {
+    privateAddress.isPrivateUrl.mockResolvedValue(true);
+
+    const rejection = await request(app).post(MONITORS).send({ ...newMonitor, url: "http://169.254.169.254/latest" });
+
+    expect(rejection.status).toBe(400);
+    expect(rejection.body).toEqual({
+      status: "error",
+      message: "That URL points inside a private network, which Lively does not call.",
+    });
+    expect(monitorRepository.register).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    [90, "checkIntervalSeconds must be a whole number of minutes."],
+    [86_460, "checkIntervalSeconds must be a whole number from 60 to 86400."],
+  ])("answers 400 for an interval of %ss", async (checkIntervalSeconds, message) => {
+    const rejection = await request(app).post(MONITORS).send({ ...newMonitor, checkIntervalSeconds });
+
+    expect(rejection.status).toBe(400);
+    expect(rejection.body).toEqual({ status: "error", message });
+    expect(monitorRepository.register).not.toHaveBeenCalled();
+  });
+
   it("answers 400 for a threshold above 100 without storing anything", async () => {
     const rejection = await request(app)
       .post(MONITORS)
@@ -300,6 +339,18 @@ describe("POST /api/v1/monitors/:monitorId/check", () => {
     expect(missing.status).toBe(404);
     expect(missing.body).toEqual({ status: "error", message: "No monitor 1001." });
   });
+
+  it("refuses to call a URL inside a private network", async () => {
+    privateAddress.isPrivateUrl.mockResolvedValue(true);
+
+    const rejection = await checkUrl(`${upstreamUrl}/up`);
+
+    expect(rejection.status).toBe(400);
+    expect(rejection.body).toEqual({
+      status: "error",
+      message: "That URL points inside a private network, which Lively does not call.",
+    });
+  });
 });
 
 describe("PUT /api/v1/monitors/:monitorId", () => {
@@ -348,23 +399,44 @@ describe("PUT /api/v1/monitors/:monitorId", () => {
 });
 
 describe("DELETE /api/v1/monitors/:monitorId", () => {
-  it("deletes the monitor's schedule, then the monitor", async () => {
+  it("deletes the monitor's schedule, forgets it, then deletes the monitor", async () => {
     const deleted = await request(app).delete(`${MONITORS}/1001`);
 
     expect(deleted.status).toBe(200);
     expect(deleted.body).toEqual({ status: "success", data: { id: "1001" } });
     expect(monitorProbeJob.deleteSchedule).toHaveBeenCalledExactlyOnceWith("cron-9");
+    expect(monitorRepository.clearScheduleId).toHaveBeenCalledWith("1001");
     expect(monitorRepository.delete).toHaveBeenCalledWith("1001");
   });
 
-  it("still deletes a monitor registered before monitors had schedules", async () => {
-    monitorRepository.scheduleIdOf.mockResolvedValue(undefined);
+  it("still deletes a monitor with no schedule - one whose schedule an earlier attempt already deleted", async () => {
+    monitorRepository.scheduleOf.mockResolvedValue({ scheduleId: null });
 
     const deleted = await request(app).delete(`${MONITORS}/1001`);
 
     expect(deleted.status).toBe(200);
     expect(monitorProbeJob.deleteSchedule).not.toHaveBeenCalled();
     expect(monitorRepository.delete).toHaveBeenCalledWith("1001");
+  });
+
+  it("answers 404, deleting nothing, for a monitor that does not exist", async () => {
+    monitorRepository.scheduleOf.mockResolvedValue(undefined);
+
+    const missing = await request(app).delete(`${MONITORS}/1001`);
+
+    expect(missing.status).toBe(404);
+    expect(monitorProbeJob.deleteSchedule).not.toHaveBeenCalled();
+    expect(monitorRepository.delete).not.toHaveBeenCalled();
+  });
+
+  it("keeps the monitor when its schedule will not delete, so the delete can be tried again", async () => {
+    monitorProbeJob.deleteSchedule.mockRejectedValue(new Error("cron service down"));
+
+    const failed = await request(app).delete(`${MONITORS}/1001`);
+
+    expect(failed.status).toBe(500);
+    expect(monitorRepository.clearScheduleId).not.toHaveBeenCalled();
+    expect(monitorRepository.delete).not.toHaveBeenCalled();
   });
 });
 
@@ -432,6 +504,16 @@ describe("PATCH /api/v1/monitors/:monitorId", () => {
     expect(rejection.body).toEqual({ status: "error", message: 'state must be "active" or "inactive".' });
     expect(monitorRepository.setState).not.toHaveBeenCalled();
   });
+
+  it("answers 409 for a monitor that exists but has no schedule to pause", async () => {
+    monitorRepository.scheduleOf.mockResolvedValue({ scheduleId: null });
+
+    const conflict = await request(app).patch(`${MONITORS}/1001`).send({ state: "inactive" });
+
+    expect(conflict.status).toBe(409);
+    expect(conflict.body).toEqual({ status: "error", message: "Monitor 1001 has no schedule. Delete it and add it again." });
+    expect(monitorRepository.setState).not.toHaveBeenCalled();
+  });
 });
 
 describe("POST /api/v1/monitors/reset", () => {
@@ -455,6 +537,16 @@ describe("POST /api/v1/monitors/reset", () => {
     ]);
     expect(monitorProbeJob.scheduleRepeating).toHaveBeenCalledTimes(2);
     expect(catalystAuth.init).toHaveBeenCalledExactlyOnceWith(expect.anything(), { scope: CatalystScope.Admin });
+  });
+
+  it("carries on past a schedule that will not delete, so one stale id cannot block every reset", async () => {
+    monitorRepository.register.mockResolvedValue(storedMonitor);
+    monitorProbeJob.deleteSchedule.mockRejectedValueOnce(new Error("cron not found"));
+
+    const reset = await request(app).post(`${MONITORS}/reset`).set("x-reset-key", RESET_KEY);
+
+    expect(reset.status).toBe(200);
+    expect(monitorRepository.deleteAll).toHaveBeenCalled();
   });
 
   it.each([

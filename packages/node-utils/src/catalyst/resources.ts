@@ -2,9 +2,9 @@ import { Job } from "@/catalyst/job";
 import { Table } from "@/catalyst/table";
 import type { MonitorHealth, MonitorState } from "@repo/types/monitor";
 
-/** Data Store answers every int column as a string, so the rows say so. */
-/** An endpoint being watched, plus the read model of its latest probes - kept on the row
- *  so one read answers both the list and the uptime bars. */
+/** An endpoint being watched, plus the read model of its latest probes and alerts - kept
+ *  on the row so one read answers both the list and the uptime bars. Data Store answers
+ *  every int column as a string, so the row says so. */
 export interface MonitorRow {
   NAME: string;
   URL: string;
@@ -17,14 +17,14 @@ export interface MonitorRow {
   /** JSON array of the latest probes, oldest first, capped at `LATEST_PROBE_LIMIT`, each a
    *  compact tuple the monitor repository reads and writes. Unset until the first probe. */
   LATEST_PROBES?: string;
-  /** JSON array of the epoch ms each alert fired at, oldest first, capped at
-   *  `LATEST_ALERT_LIMIT`. Unset until the first probe. */
+  /** JSON array of the latest alerts, oldest first, capped at `LATEST_ALERT_LIMIT`, each a
+   *  `[firedAt epoch ms, emailedTo]` tuple. Unset until the first alert. */
   LATEST_ALERTS?: string;
-  /** Where alerts are emailed. Optional in the table only because rows registered before
-   *  alerts were emailed have none; the API requires it on every new monitor. */
+  /** Where alerts are emailed. Empty for a monitor the reset added - its alerts are
+   *  recorded but not emailed; the API requires one on every monitor a person registers. */
   ALERT_EMAIL?: string;
   /** The monitor's Periodic cron. Catalyst lists no cron made from code, so this is the
-   *  only handle for pausing or deleting it. */
+   *  only handle for pausing or deleting it. Emptied once the cron is deleted. */
   CRON_ID?: string;
 }
 

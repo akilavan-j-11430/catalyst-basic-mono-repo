@@ -126,10 +126,10 @@ function CheckResult({ result }: { result: UrlCheckResult | undefined }) {
  *  a plain button, not `AlertDialogAction`, which would close it on click. A check stays open
  *  after that too, to show what came back. A failure closes it; the query client has already
  *  shown the error. */
-export function MonitorActionDialog({ request, onClose, onDeleted }: MonitorActionDialogProps) {
+/** Runs the confirmed action. A check keeps the popup open for its answer; anything else
+ *  closes it once settled, and a failure closes it too - the query client has reported it. */
+function useConfirmedAction({ request, onClose, onDeleted }: MonitorActionDialogProps) {
   const { check, setState, remove } = useMonitorActions();
-  const pending = check.isPending || setState.isPending || remove.isPending;
-  const checkResult = request?.action === "check" ? check.data : undefined;
   // The next check starts from the question, not from this one's answer.
   const close = (): void => {
     check.reset();
@@ -138,15 +138,22 @@ export function MonitorActionDialog({ request, onClose, onDeleted }: MonitorActi
   const confirm = (): void => {
     if (request === null) return;
     const { action, monitor } = request;
-    const whenDone = { onSettled: onClose };
     if (action === "check") {
       check.mutate(monitor.id, { onError: close });
     } else if (action === "delete") {
-      remove.mutate(monitor.id, { ...whenDone, onSuccess: onDeleted });
+      remove.mutate(monitor.id, { onSettled: onClose, onSuccess: onDeleted });
     } else {
-      setState.mutate({ id: monitor.id, state: action === "pause" ? "inactive" : "active" }, whenDone);
+      setState.mutate({ id: monitor.id, state: action === "pause" ? "inactive" : "active" }, { onSettled: onClose });
     }
   };
+  const pending = check.isPending || setState.isPending || remove.isPending;
+  const checkResult = request?.action === "check" ? check.data : undefined;
+  return { pending, isChecking: check.isPending, checkResult, close, confirm };
+}
+
+export function MonitorActionDialog(props: MonitorActionDialogProps) {
+  const { request } = props;
+  const { pending, isChecking, checkResult, close, confirm } = useConfirmedAction(props);
   const copy = request === null ? undefined : copyFor(request);
   return (
     <AlertDialog open={request !== null} onOpenChange={(open) => !open && !pending && close()}>
@@ -156,13 +163,13 @@ export function MonitorActionDialog({ request, onClose, onDeleted }: MonitorActi
           <AlertDialogDescription>{copy?.description}</AlertDialogDescription>
         </AlertDialogHeader>
         {/* Held from the moment the check is confirmed, so the popup grows once, not twice. */}
-        {request?.action === "check" && (check.isPending || checkResult) && <CheckResult result={checkResult} />}
+        {request?.action === "check" && (isChecking || checkResult) && <CheckResult result={checkResult} />}
         <AlertDialogFooter>
           <AlertDialogCancel disabled={pending}>{checkResult ? "Close" : "Cancel"}</AlertDialogCancel>
           {!checkResult && (
             <Button variant={request?.action === "delete" ? "destructive" : "default"} disabled={pending} onClick={confirm}>
               {pending && <Spinner aria-hidden />}
-              {pending && request?.action === "check" ? "Checking..." : copy?.confirmLabel}
+              {isChecking ? "Checking..." : copy?.confirmLabel}
             </Button>
           )}
         </AlertDialogFooter>

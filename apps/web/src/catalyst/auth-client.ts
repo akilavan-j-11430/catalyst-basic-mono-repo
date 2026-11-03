@@ -69,11 +69,24 @@ export async function currentUser(): Promise<SignedInUser | null> {
   return toSignedInUser(await auth.isUserAuthenticated());
 }
 
+/** Catalyst would not issue an API token - the session has ended. The query client sends
+ *  the person to sign in rather than reporting it as a failed request. */
+export class SignInRequired extends Error {
+  constructor(cause: unknown) {
+    super("Your session has ended. Sign in again.", { cause });
+    this.name = "SignInRequired";
+  }
+}
+
 async function generateApiToken(): Promise<ApiToken> {
   const auth = await authSession();
-  // AppSail accepts the same token as a function, so the "functions" scope serves the API.
-  const { access_token: accessToken, expires_in_sec: expiresInSec } = await auth.generateAuthToken("functions");
-  return { accessToken, expiresAtMs: Date.now() + expiresInSec * 1000 };
+  try {
+    // AppSail accepts the same token as a function, so the "functions" scope serves the API.
+    const { access_token: accessToken, expires_in_sec: expiresInSec } = await auth.generateAuthToken("functions");
+    return { accessToken, expiresAtMs: Date.now() + expiresInSec * 1000 };
+  } catch (cause) {
+    throw new SignInRequired(cause);
+  }
 }
 
 /**
