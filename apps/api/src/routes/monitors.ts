@@ -5,7 +5,7 @@ import { ApiPath } from "@repo/routing/api-path";
 import type { MonitorUpdate, NewMonitor } from "@repo/types/monitor";
 import { MAX_ALERT_THRESHOLD_MISSES, MAX_MONITOR_PAGE_SIZE, MIN_CHECK_INTERVAL_SECONDS, MONITOR_PAGE_SIZE } from "@repo/app-core/monitor-limits";
 import { HttpError } from "@/errors/http-error";
-import { initCatalystScopes, requireSignedInUser } from "@/middleware";
+import { initCatalystScopes, requireResetKey, requireSignedInUser } from "@/middleware";
 import { MonitorService } from "@/services/monitor-service";
 import { toPagedResponse, toRecordResponse } from "@/utils/api";
 
@@ -101,10 +101,10 @@ function monitorIdOf(monitorId: string | undefined): string {
 export const monitorsRouter: Router = Router();
 
 // Wipes every monitor, its cron, its probes and its alerts, then adds the two Catalyst sites
-// to start from. Deliberately public - no sign-in and no role check - so a demo can be
-// returned to a known state from a plain `curl`. It is
-// registered above the router's sign-in, so only the Admin app is built for it.
-monitorsRouter.post(ApiPath.Reset, initCatalystScopes([CatalystScope.Admin]), async (_req, res) => {
+// to start from. No sign-in - the showcase site calls it - but the caller must hold the reset
+// key, checked before any Catalyst app is built. It is registered above the router's
+// sign-in, so only the Admin app is built for it.
+monitorsRouter.post(ApiPath.Reset, requireResetKey, initCatalystScopes([CatalystScope.Admin]), async (_req, res) => {
   res.json(toRecordResponse(await MonitorService.reset()));
 });
 

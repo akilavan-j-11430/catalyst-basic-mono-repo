@@ -128,6 +128,7 @@ checks the session.
 ## The reset
 
 `POST /api/v1/monitors/reset` deletes every monitor's cron and every monitor - their probes
-and alerts with them. It is deliberately public - no sign-in, no role - so a demo can be
-cleaned from a plain `curl`; it is registered above the monitors router's sign-in check. In
-the cloud, anyone who can reach the `api` AppSail can call it.
+and alerts with them - then registers two monitors to start from. It needs no sign-in, so
+the showcase site can call it, but it needs the shared secret: the `x-reset-key` header must
+equal the API's `RESET_KEY`, compared in constant time before any Catalyst app is built.
+With no key configured, reset is off rather than open.

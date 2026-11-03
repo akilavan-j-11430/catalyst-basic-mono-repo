@@ -16,7 +16,7 @@ src/
 |-- routes/api-router.ts  the only place a router mounts
 |-- routes/ping.ts        reference route - copy this shape
 |-- routes/monitors.ts    list, detail, register, pause/resume, delete, a live check of the URL, and the
-|                         public POST /monitors/reset that wipes everything
+|                         POST /monitors/reset, gated by the x-reset-key header, that wipes everything
 |-- services/monitor-service.ts  MonitorService - every monitor operation; routes parse and respond
 |-- errors/http-error.ts  typed failures that map to HTTP statuses
 |-- utils/api.ts          response builders

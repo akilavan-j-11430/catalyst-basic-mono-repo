@@ -17,7 +17,7 @@ rebuild of the DevPulse demo app on this monorepo.
 | **Check now** | `POST /api/v1/monitors/:id/check` calls the URL once and answers with the result; it records nothing |
 | **Alert email** | Catalyst Mail, one email per outage, from `ALERT_SENDER_EMAIL` (set on the function) |
 | **Accounts** | No self-signup. Add users in **Console -> Authentication -> Users**. |
-| **Reset** | `POST /api/v1/monitors/reset` wipes every monitor, its cron, its probes and its alerts, then adds two to start from - `console.catalyst.zoho.com` and `catalyst.zoho.com`, probed every minute, alerts recorded but not emailed. Public by design. |
+| **Reset** | `POST /api/v1/monitors/reset` wipes every monitor, its cron, its probes and its alerts, then adds two to start from - `console.catalyst.zoho.com` and `catalyst.zoho.com`, probed every minute, alerts recorded but not emailed. No sign-in, but the caller must send the `x-reset-key` header matching the API's `RESET_KEY`. |
 
 `docs/architecture.md` covers the design: patterns, calls per path, retention and failure.
 
@@ -53,11 +53,14 @@ curl -X POST http://localhost:3001/jobs/probe \
 ### Resetting
 
 ```bash
-curl -X POST https://<api-appsail-domain>/api/v1/monitors/reset
+curl -X POST https://<api-appsail-domain>/api/v1/monitors/reset -H 'x-reset-key: <RESET_KEY>'
 # {"data":{"monitorsDeleted":4,"monitorsAdded":2},"status":"success"}
 ```
 
-Locally it goes through the proxy, which requires a signed-in session cookie.
+The key is `RESET_KEY`, set in **Console -> AppSail -> api -> Environment Variables** (and in
+`apps/api/.env` locally). Unset, reset is off; a missing or wrong key answers `401` before
+anything is touched. Locally the request also goes through the proxy, which requires a
+signed-in session cookie.
 
 ---
 

@@ -14,8 +14,9 @@ import { CatalystScope } from "@repo/node-utils/enums/catalyst-scope";
 import { Catalyst } from "@repo/node-utils/catalyst/catalyst";
 import { UserManagement } from "@repo/node-utils/catalyst/user-management";
 import { logger } from "@repo/node-utils/framework/logger";
-import { randomUUID } from "crypto";
+import { randomUUID, timingSafeEqual } from "crypto";
 import { zcAuth } from "@zcatalyst/auth";
+import { env } from "@/env";
 import { HttpError } from "@/errors/http-error";
 import { toErrorResponse } from "@/utils/api";
 
@@ -87,6 +88,24 @@ export const requireSignedInUser: RequestHandler = async (_req, _res, next) => {
   } catch (cause) {
     logger.info(`No signed-in user: ${String(cause)}`);
     throw HttpError.Unauthorized("Sign in to continue.");
+  }
+  next();
+};
+
+/** The header a caller proves with that it may reset the app - the showcase site's Reset
+ *  button sends it. Not `Authorization`: Catalyst's gateway claims that one. */
+export const RESET_KEY_HEADER = "x-reset-key";
+
+/**
+ * Lets a request through only when it carries `RESET_KEY`. Fails closed - with no key
+ * configured, reset is off rather than open - and compares in constant time, so the
+ * response time says nothing about how much of a guess was right.
+ */
+export const requireResetKey: RequestHandler = (req, _res, next) => {
+  const expected = Buffer.from(env.optional("RESET_KEY") ?? "");
+  const given = Buffer.from(req.get(RESET_KEY_HEADER) ?? "");
+  if (expected.length === 0 || given.length !== expected.length || !timingSafeEqual(given, expected)) {
+    throw HttpError.Unauthorized("A valid reset key is required.");
   }
   next();
 };

@@ -1,7 +1,7 @@
 import { createServer } from "node:http";
 import type { AddressInfo } from "node:net";
 import request from "supertest";
-import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { CatalystScope } from "@repo/node-utils/enums/catalyst-scope";
 import { ApiPath } from "@repo/routing/api-path";
 import type { LatestProbe, ListedMonitor, Monitor, Probe } from "@repo/types/monitor";
@@ -435,10 +435,16 @@ describe("PATCH /api/v1/monitors/:monitorId", () => {
 });
 
 describe("POST /api/v1/monitors/reset", () => {
+  const RESET_KEY = "reset-key-for-tests";
+
+  beforeEach(() => {
+    vi.stubEnv("RESET_KEY", RESET_KEY);
+  });
+
   it("deletes every cron and monitor, then adds the Catalyst sites, without a signed-in caller", async () => {
     monitorRepository.register.mockResolvedValue(storedMonitor);
 
-    const reset = await request(app).post(`${MONITORS}/reset`);
+    const reset = await request(app).post(`${MONITORS}/reset`).set("x-reset-key", RESET_KEY);
 
     expect(reset.status).toBe(200);
     expect(reset.body).toEqual({ status: "success", data: { monitorsDeleted: 2, monitorsAdded: 2 } });
@@ -449,6 +455,29 @@ describe("POST /api/v1/monitors/reset", () => {
     ]);
     expect(monitorProbeJob.scheduleRepeating).toHaveBeenCalledTimes(2);
     expect(catalystAuth.init).toHaveBeenCalledExactlyOnceWith(expect.anything(), { scope: CatalystScope.Admin });
+  });
+
+  it.each([
+    ["no key", undefined],
+    ["a wrong key", "not-the-key"],
+    ["a key of the wrong length", `${RESET_KEY}-and-more`],
+  ])("answers 401 for %s, before touching Catalyst", async (_case, key) => {
+    const attempt = request(app).post(`${MONITORS}/reset`);
+    const rejection = await (key === undefined ? attempt : attempt.set("x-reset-key", key));
+
+    expect(rejection.status).toBe(401);
+    expect(rejection.body).toEqual({ status: "error", message: "A valid reset key is required." });
+    expect(catalystAuth.init).not.toHaveBeenCalled();
+    expect(monitorRepository.deleteAll).not.toHaveBeenCalled();
+  });
+
+  it("stays off when no reset key is configured", async () => {
+    vi.stubEnv("RESET_KEY", "");
+
+    const rejection = await request(app).post(`${MONITORS}/reset`).set("x-reset-key", "");
+
+    expect(rejection.status).toBe(401);
+    expect(monitorRepository.deleteAll).not.toHaveBeenCalled();
   });
 });
 

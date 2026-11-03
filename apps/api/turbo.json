@@ -1,9 +1,14 @@
 {
   "$schema": "https://turbo.build/schema.json",
-  "extends": ["//"],
+  "extends": [
+    "//"
+  ],
   "tasks": {
     "dev": {
-      "passThroughEnv": ["TZ"]
+      "passThroughEnv": [
+        "RESET_KEY",
+        "TZ"
+      ]
     }
   }
 }
