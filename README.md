@@ -30,7 +30,7 @@ The `Monitor` table and the **Function** job pool `LivelyJobPool` (512 MB) exist
    A monitor's cron targets the deployed function, so no probe runs until it exists - locally
    too, since crons run in the cloud. Each new monitor then schedules its own cron.
 2. **Point the web app at the API.** Slate and the API AppSail are on different domains, so:
-   - **Console -> Slate -> web -> environment variables**: set `NEXT_PUBLIC_API_URL` to the
+   - **Console -> Slate -> web -> environment variables**: set `NEXT_PUBLIC_API_ORIGIN` to the
      API AppSail's origin (`https://...catalystappsail.com`, no trailing slash), then
      redeploy the Slate app - the value is inlined when Slate builds.
    - **Console -> Settings -> Authorized Domains**: add the Slate domain (bare, no
@@ -367,7 +367,7 @@ Which is `turbo run bundle && catalyst deploy --only appsail:api,slate:web`:
 
 **The proxy is not in that list, and must not be.** It is a local-development component
 only. In the cloud the web app calls the API AppSail on its own domain, at the
-`NEXT_PUBLIC_API_URL` set in the Slate app's Console environment, with the signed-in user's
+`NEXT_PUBLIC_API_ORIGIN` set in the Slate app's Console environment, with the signed-in user's
 token on every request - see "One-time cloud setup" above.
 
 **Environment variables are not carried by the deploy.** `app-config.json` declares no

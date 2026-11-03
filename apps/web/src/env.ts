@@ -4,4 +4,4 @@
  * never in the code or a committed file. Unset, as it is locally, the API is on this
  * origin, behind `apps/proxy`.
  */
-export const API_ORIGIN = process.env.NEXT_PUBLIC_API_URL ?? "";
+export const API_ORIGIN = process.env.NEXT_PUBLIC_API_ORIGIN ?? "";
