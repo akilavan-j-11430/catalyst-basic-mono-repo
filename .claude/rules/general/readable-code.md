@@ -31,8 +31,8 @@ function toRegisteredUser(details: RegisteredUserDetails): RegisteredUser {
 - ESLint enforces it (`@typescript-eslint/naming-convention`, from `@repo/eslint-config`).
   The vendor seams are exempt through `allowVendorNames(files)` - `catalyst/` and
   `repositories/` in `node-utils`, plus `apps/api`'s `env.ts` and `catalyst-logger.ts` - and
-  so are two tests, `case-conversion`'s `camel-case.test.ts` and `node-utils`' `env.test.ts`,
-  whose inputs are vendor-cased. `apps/web` builds on Next's config instead and leaves
+  so are three tests whose inputs are vendor-cased: `case-conversion`'s `camel-case.test.ts`,
+  and `node-utils`' `env.test.ts` and `user-management.test.ts`. `apps/web` builds on Next's config instead and leaves
   `src/catalyst/` out of the rule's `files` with `ignores`. A key that needs quotes
   (`"content-type"`, `"--width"`) is a wire string and is never checked. Add a file to the
   exemption only when it is a seam, or a test whose input is the vendor's casing - the

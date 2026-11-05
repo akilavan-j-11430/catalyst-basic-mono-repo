@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { ApiPath } from "@repo/routing/api-path";
 import { authRouter } from "@/routes/auth";
+import { meRouter } from "@/routes/me";
 import { pingRouter } from "@/routes/ping";
 
 /** Every /api/v1 route. Mounting lives here so `index.ts` never grows a line per feature, and
@@ -8,4 +9,5 @@ import { pingRouter } from "@/routes/ping";
 export const apiRouter: Router = Router();
 
 apiRouter.use(pingRouter);
+apiRouter.use(meRouter);
 apiRouter.use(ApiPath.Auth, authRouter);

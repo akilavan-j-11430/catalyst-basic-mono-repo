@@ -1,6 +1,6 @@
 import { UserManagement as UserManagementClient } from "@zcatalyst/auth";
 import { CamelCase } from "@repo/case-conversion/camel-case";
-import type { NewUser, RegisteredUser } from "@repo/types/user";
+import type { CurrentUser, NewUser, RegisteredUser } from "@repo/types/user";
 import { CatalystScope } from "@/enums/catalyst-scope";
 import { CatalystError } from "@/errors/catalyst-error";
 import { currentContext } from "@/framework/async-context";
@@ -10,12 +10,9 @@ type RegisteredUserDetails = Awaited<
 >["user_details"];
 
 /** Fresh per call. The app is per-request and carries the caller's credentials,
- *  so a service must never be hoisted to module scope. Admin, because registering a
- *  user is not a browser SDK method and its caller has no account yet. */
-function userManagement(): UserManagementClient {
-  return new UserManagementClient(
-    currentContext().manager.catalyst.getApp(CatalystScope.Admin),
-  );
+ *  so a service must never be hoisted to module scope. */
+function userManagement(scope: CatalystScope): UserManagementClient {
+  return new UserManagementClient(currentContext().manager.catalyst.getApp(scope));
 }
 
 /** Picks only the fields we expose, so the rest of Catalyst's user record never leaks. */
@@ -33,7 +30,9 @@ export class UserManagement {
     redirectUrl: string,
   ): Promise<RegisteredUser> {
     try {
-      const registered = await userManagement().registerUser(
+      // Admin, because registering a user is not a browser SDK method and its caller has
+      // no account yet.
+      const registered = await userManagement(CatalystScope.Admin).registerUser(
         {
           platform_type: "web",
           redirect_url: redirectUrl,
@@ -50,6 +49,18 @@ export class UserManagement {
         `Failed to register ${user.emailId}`,
         cause,
       );
+    }
+  }
+
+  /** The app user the request is signed in as. User scope, because only the caller's own
+   *  credentials say who they are - an Admin app has no user behind it. */
+  static async currentUser(): Promise<CurrentUser> {
+    try {
+      const catalystUser = await userManagement(CatalystScope.User).getCurrentUser();
+      const { userId, emailId, firstName, lastName } = CamelCase.convertKeys(catalystUser);
+      return { userId, emailId, firstName, lastName };
+    } catch (cause) {
+      throw CatalystError.InvalidResource("Failed to read the signed-in user", cause);
     }
   }
 }

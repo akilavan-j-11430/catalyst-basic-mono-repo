@@ -9,6 +9,7 @@ export const ApiPath = {
   Ping: "/ping",
   Auth: "/auth",
   Register: "/register",
+  Me: "/me",
 } as const;
 
 export type ApiPath = (typeof ApiPath)[keyof typeof ApiPath];

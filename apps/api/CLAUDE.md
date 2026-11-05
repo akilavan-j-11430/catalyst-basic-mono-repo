@@ -16,6 +16,7 @@ src/
 |-- routes/api-router.ts  the only place a router mounts
 |-- routes/ping.ts        reference route - copy this shape
 |-- routes/auth.ts        POST /auth/register - registers a Catalyst app user
+|-- routes/me.ts          GET /me - the app user the request is signed in as
 |-- errors/http-error.ts  typed failures that map to HTTP statuses
 |-- utils/api.ts          response builders
 `-- framework/catalyst-logger.ts   console -> Catalyst log pipe, imported for side effect
