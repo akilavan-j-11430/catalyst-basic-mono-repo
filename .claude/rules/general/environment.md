@@ -65,7 +65,7 @@ static async register(user: NewUser, redirectUrl: string): Promise<RegisteredUse
 await UserManagement.register(user, env.get("AUTH_REDIRECT_URL"));
 ```
 
-It is the same rule as `.claude/rules/catalyst-sdk.md` - a wrapper takes and returns plain
+It is the same rule as `.claude/rules/general/catalyst-sdk.md` - a wrapper takes and returns plain
 values - and it is what makes the failure land in the route, which is what the variable
 configures.
 

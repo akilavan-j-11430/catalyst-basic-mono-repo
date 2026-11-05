@@ -151,16 +151,26 @@ runtime does not have.
 
 ## Conventions
 
-Topic rules live one-per-file in `.claude/rules/` and load automatically: `catalyst-sdk.md`
-covers every Catalyst call and how few of them a solution makes, `outbound-http.md` every
-call to a service outside this repo, `web-data-access.md` every call the browser makes to
-our own API and every form that collects one, `environment.md` every environment
-variable, `typography.md` every font, `code-design.md` every class and the pattern it
-follows, `readable-code.md` casing, naming and when complexity is worth it,
-`vendor-boundaries.md` where each vendor is reached and how little a migration touches,
-`testing.md` where tests live, how Catalyst is faked and what to run before calling a change
-done. Add a file there rather than growing this one, and
-give it `paths:` frontmatter if it only applies to part of the tree.
+Topic rules live one-per-file in `.claude/rules/` and load automatically, in two folders.
+
+`.claude/rules/general/` holds the rules for the whole repo:
+- `catalyst-sdk.md` - every Catalyst call, and how few of them a solution makes.
+- `outbound-http.md` - every call to a service outside this repo.
+- `environment.md` - every environment variable.
+- `code-design.md` - every class, and the pattern it follows.
+- `readable-code.md` - casing, naming, and when complexity is worth it.
+- `vendor-boundaries.md` - where each vendor is reached, and how little a migration touches.
+- `testing.md` - where tests live, how Catalyst is faked, and what to run before calling a
+  change done.
+
+`.claude/rules/web/` holds the rules that apply only to `apps/web`, each scoped with
+`paths:` frontmatter:
+- `web-data-access.md` - every call the browser makes to our own API, and every form that
+  collects one.
+- `typography.md` - every font.
+
+Add a file to the folder it belongs to rather than growing this one. Give a rule `paths:`
+frontmatter when it applies to only part of the tree.
 
 - `@/*` resolves to `./src/*` in every app and every built package. Use it instead of `../../`.
 - Shared packages expose subpaths, not a barrel: `@repo/types/api`, `@repo/routing/api-path`,
@@ -172,7 +182,7 @@ give it `paths:` frontmatter if it only applies to part of the tree.
 - Identifiers and JSON keys are camelCase: `emailId`, `nextPageToken`. The exception is
   a wire shape a vendor defines - Catalyst sends `email_id`, `job_name`, `ROWID` - which
   is named as the vendor names it and converted at the wrapper, never leaked past it.
-  See `.claude/rules/readable-code.md`.
+  See `.claude/rules/general/readable-code.md`.
 - Workspace deps are `"workspace:*"`.
 - **A file earns its existence from a second caller or from a boundary, not from
   tidiness.** Something used in exactly one place lives where it is used; split it out
@@ -190,7 +200,7 @@ give it `paths:` frontmatter if it only applies to part of the tree.
   response body before it is parsed, a caught `error`, a value the SDK itself leaves
   untyped. Narrow it at the first point you can, and type the result. What this rules out
   is `any`/`unknown` standing in for a type nobody looked up: derive it from the signature
-  that produces it, or declare it. `.claude/rules/catalyst-sdk.md` shows how when the
+  that produces it, or declare it. `.claude/rules/general/catalyst-sdk.md` shows how when the
   vendor types are awkward.
 
 In `apps/web`:
@@ -201,9 +211,9 @@ In `apps/web`:
 - Server state is react-query, form state is react-hook-form. Both are installed; neither
   gets re-implemented with `useState`.
 - Failures are reported by the query client as a toast, so a call site handles success only.
-- The full rule is `.claude/rules/web-data-access.md`.
+- The full rule is `.claude/rules/web/web-data-access.md`.
 - Fonts come from the tokens in `globals.css` and nowhere else. Never set a family on a
-  component - see `.claude/rules/typography.md`.
+  component - see `.claude/rules/web/typography.md`.
 
 In `apps/api`:
 
@@ -211,7 +221,7 @@ In `apps/api`:
   `@repo/node-utils/catalyst/resources`, where every table, bucket, cache segment
   and job is declared once with the wrapper's `create` factory. Never construct a wrapper
   in a handler, never initialize Catalyst yourself, and never read the app off the context
-  - see `.claude/rules/catalyst-sdk.md`.
+  - see `.claude/rules/general/catalyst-sdk.md`.
 - Throw `HttpError.BadRequest | Unauthorized | NotFound | Conflict`
   (`src/errors/http-error.ts`) instead of setting a status by hand. `errorHandler`
   maps them; anything else becomes a 500.
@@ -220,13 +230,13 @@ In `apps/api`:
 - Log through `logger` from `@repo/node-utils/framework/logger`, not `console`.
 - Call external services through `HttpClient` (`@repo/node-utils/http/http-client`), never
   `fetch` or another client directly. It stamps the request's execution id on every
-  outbound call as `app-execution-id`. See `.claude/rules/outbound-http.md`.
+  outbound call as `app-execution-id`. See `.claude/rules/general/outbound-http.md`.
 - Read environment variables through `env` (`@/env`), never `process.env`. This app owns
   its keys - add one to the template in `src/env.ts` first, so a typo is a compile error.
   Values live in `.env`, never in `app-config.json` or any other Catalyst file, and
   nothing Catalyst-related belongs in the environment at all. The platform-injected reads
   at module scope in `index.ts` and `framework/catalyst-logger.ts` are the exception.
-  See `.claude/rules/environment.md`.
+  See `.claude/rules/general/environment.md`.
 
 ## Adding to the repo
 
@@ -241,7 +251,7 @@ naming the scopes it uses - `router.use` it instead when every route on the rout
 domain type in `packages/types`, and a repository in
 `packages/node-utils/src/repositories/<name>-repository.ts` that is the only importer of the
 handle and maps rows to the domain type. Routes call the repository. See
-`.claude/rules/vendor-boundaries.md`.
+`.claude/rules/general/vendor-boundaries.md`.
 
 **An AppSail app** - copy `apps/api` as the shape. Four things must agree:
 `scripts/bundle.mjs` (output `appsails/<name>/`), `app-config.json`, the `catalyst.json`
@@ -257,9 +267,9 @@ tests. A package `apps/web` consumes is
 framework-free and sets `"types": []` - copy `packages/routing` - or `@types/node` from the
 repo root lets Node APIs compile in its `src/`. A server-only package declares `@types/node`
 and `"types": ["node"]` instead - copy `packages/node-utils`. `@repo/testing` is the one
-exception to all of this - see `.claude/rules/testing.md`.
+exception to all of this - see `.claude/rules/general/testing.md`.
 
-**Tests** - see `.claude/rules/testing.md`. Run `pnpm verify` before calling any change done.
+**Tests** - see `.claude/rules/general/testing.md`. Run `pnpm verify` before calling any change done.
 
 ## Catalyst notes
 
