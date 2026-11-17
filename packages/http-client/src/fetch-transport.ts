@@ -1,4 +1,4 @@
-import type { HttpTransport } from "@/types/http";
+import type { HttpTransport } from "@/http-types";
 
 /**
  * The default transport. Node and the browser both ship fetch globally, so this costs no

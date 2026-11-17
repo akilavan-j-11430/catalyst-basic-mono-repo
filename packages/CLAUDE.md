@@ -1,13 +1,14 @@
 # packages/
 
-Shared code for the monorepo. All eight are private and consumed as `"workspace:*"`.
+Shared code for the monorepo. All nine are private and consumed as `"workspace:*"`.
 
 | Package | Holds |
 |---|---|
 | `@repo/routing` | API path segments (`ApiPath`) shared by `apps/api` and `apps/web` |
 | `@repo/case-conversion` | `CamelCase` - renames a vendor's snake_case/kebab-case keys, for `node-utils`; framework-free, so `apps/web` may use it too |
 | `@repo/types` | API response shapes shared by `apps/api` and `apps/web` |
-| `@repo/node-utils` | `ExecutionContext`, `logger`, `env`, `RuntimeError`, `HttpClient`, and the Catalyst wrappers (`table`, `bucket`, `cache`, `job`, `zcql`, `user-management`) plus the resource handles built from them |
+| `@repo/http-client` | `HttpClient` - every call to a service outside this repo. Framework-free and browser-safe: it reads nothing ambient, and the caller passes in what a call carries |
+| `@repo/node-utils` | `ExecutionContext`, `logger`, `env`, `RuntimeError`, and the Catalyst wrappers (`table`, `bucket`, `cache`, `job`, `zcql`, `user-management`) plus the resource handles built from them |
 | `@repo/http-server` | The Express plumbing every app that serves HTTP shares - `initExecutionContext`, `initCatalystScopes`, `errorHandler`, `HttpError`, the response builders, and `RequestInput` for zod-checked request input. The one package that may import `express` |
 | `@repo/typescript-config` | `base.json` that every tsconfig extends |
 | `@repo/eslint-config` | flat ESLint config: the import boundaries and the camelCase naming rule |
@@ -15,7 +16,7 @@ Shared code for the monorepo. All eight are private and consumed as `"workspace:
 
 ## Import paths
 
-`@repo/types`, `@repo/routing`, `@repo/case-conversion` and `@repo/node-utils` expose **subpaths**, not a barrel. The `exports`
+`@repo/types`, `@repo/routing`, `@repo/case-conversion`, `@repo/http-client` and `@repo/node-utils` expose **subpaths**, not a barrel. The `exports`
 block maps `./*` onto `./dist/*.js` + `./dist/*.d.ts`, so the import path mirrors the
 path under `src/`:
 
@@ -66,10 +67,11 @@ Consumers must be built after these. Turborepo handles that via `dependsOn: ["^b
   package code is **inlined at bundle time**. Anything that needs to resolve at runtime
   - a file read relative to the package, a native module - will break in AppSail.
 - kebab-case file names, `@/*` for internal imports.
-- `HttpClient` (`src/http/`) is the only way anything in this repo talks to an external
-  service. Types live in `src/types/`, named constants in `src/enums/`, and the transport
-  seam is `src/types/http.ts` - see `.claude/rules/general/outbound-http.md` before adding an HTTP
-  dependency.
+- `HttpClient` (`@repo/http-client`) is the only way anything in this repo talks to an
+  external service. The transport seam is its `src/http-types.ts` - see
+  `.claude/rules/general/outbound-http.md` before adding an HTTP dependency. It sets
+  `"types": []` in `tsconfig.build.json`, so a Node API in its `src/` fails the build and it
+  stays usable from the browser.
 - **These packages own the env mechanism, never a key.** `src/utils/env.ts` exports
   `defineEnv<T>()`, which is generic and names no variable; each app declares what it
   reads in its own `src/env.ts`. A package that needs a configured value **takes it as a

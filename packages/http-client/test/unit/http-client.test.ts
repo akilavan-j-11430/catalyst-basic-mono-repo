@@ -1,8 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
-import { ContentType } from "@/enums/content-type";
-import { HttpHeader } from "@/enums/http-header";
-import { HttpClient } from "@/http/http-client";
-import type { TransportRequest } from "@/types/http";
+import { ContentType } from "@/content-type";
+import { HttpHeader } from "@/http-header";
+import { HttpClient } from "@/http-client";
+import type { TransportRequest } from "@/http-types";
 
 /** A client whose transport records what it was asked to send and answers 200. */
 function recordingClient(

@@ -17,5 +17,5 @@ export default [
     "test/unit/utils/env.test.ts",
     "test/unit/catalyst/user-management.test.ts",
   ]),
-  allowTestsIn(["unit", "integration"]),
+  allowTestsIn(["unit"]),
 ];

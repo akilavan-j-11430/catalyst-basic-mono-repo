@@ -2,8 +2,8 @@ import { createServer } from "node:http";
 import type { AddressInfo } from "node:net";
 import { once } from "node:events";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { HttpRequestError } from "@/errors/http-request-error";
-import { HttpClient } from "@/http/http-client";
+import { HttpRequestError } from "@/http-request-error";
+import { HttpClient } from "@/http-client";
 
 // A real upstream on a free local port, so the requests go through the real fetch
 // transport and the real network stack.

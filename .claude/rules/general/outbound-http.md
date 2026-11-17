@@ -1,9 +1,9 @@
 # Outbound HTTP
 
 Every request to a service outside this monorepo goes through `HttpClient`
-(`@repo/node-utils/http/http-client`). No `fetch`, no `axios`, no `node:https`, no other
+(`@repo/http-client/http-client`). No `fetch`, no `axios`, no `node:https`, no other
 client in `apps/api` or `packages/*`. ESLint enforces this; the transports under
-`packages/node-utils/src/http/` are the only exemption.
+`packages/http-client/src/` (`*-transport.ts`) are the only exemption.
 
 The point is one seam. Transport, auth headers, encoding, timeout, logging and error
 mapping all live in the client, so moving off `fetch` means adding one `HttpTransport`
@@ -14,7 +14,7 @@ implementation - not touching call sites.
 One instance per external service, built once at module scope:
 
 ```ts
-import { HttpClient } from "@repo/node-utils/http/http-client";
+import { HttpClient } from "@repo/http-client/http-client";
 
 const billing = new HttpClient({
   baseUrl: "https://billing.example.com/v2",
@@ -82,8 +82,8 @@ When the default is not specific enough, say so with a `content-type` header. Th
 separate option for it - one channel, with both halves named:
 
 ```ts
-import { ContentType } from "@repo/node-utils/enums/content-type";
-import { HttpHeader } from "@repo/node-utils/enums/http-header";
+import { ContentType } from "@repo/http-client/content-type";
+import { HttpHeader } from "@repo/http-client/http-header";
 
 await api.post("/orders", "<order/>", {
   headers: { [HttpHeader.ContentType]: ContentType.Xml },
@@ -129,7 +129,7 @@ still readable.
 ## Failures
 
 Both a non-2xx and an unreachable host reject with `HttpRequestError`
-(`@repo/node-utils/errors/http-request-error`). Everything needed to debug is flat and
+(`@repo/http-client/http-request-error`). Everything needed to debug is flat and
 synchronous - `method`, `url`, `status`, `headers`, `body` - so logging a failure never
 has to await, and its `toString()` prints all of it plus the stack:
 
@@ -161,7 +161,7 @@ try {
 
 ## Adding a transport
 
-`packages/node-utils/src/types/http.ts` is the seam: a transport takes a request whose
+`packages/http-client/src/http-types.ts` is the seam: a transport takes a request whose
 body is already encoded and returns the status, the headers and the raw response bytes.
 It never decides what a status means and never throws for a non-2xx.
 
@@ -174,7 +174,7 @@ Node-only, so they go in a transport of their own beside `fetch-transport.ts` - 
 an undici `Dispatcher` (not a `node:http` `Agent`, which fetch does not take) - passed as
 `transport:` to the client that needs it.
 
-To move to axios, add `packages/node-utils/src/http/axios-transport.ts` beside
+To move to axios, add `packages/http-client/src/axios-transport.ts` beside
 `fetch-transport.ts` and pass `transport: axiosTransport`; its equivalent option would be
 `httpAgent`/`httpsAgent` in the same position. Note axios would be a new runtime
 dependency, which per the root instructions is a decision to bring back to the user - and

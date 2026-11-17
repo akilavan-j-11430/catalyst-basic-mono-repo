@@ -1,4 +1,4 @@
-import type { HttpMethod } from "@/enums/http-method";
+import type { HttpMethod } from "@/http-method";
 
 /** Everything known about a failed call, flat and synchronous so it can be logged. */
 interface Failure {

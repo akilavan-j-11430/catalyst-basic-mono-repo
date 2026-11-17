@@ -187,7 +187,7 @@ The shapes live in `@repo/types/api` so the web app imports the same ones.
 
 ## Calling an external API
 
-Through `HttpClient` from `@repo/node-utils/http/http-client` - never `fetch` or another
+Through `HttpClient` from `@repo/http-client/http-client` - never `fetch` or another
 client directly. One instance per service at module scope; the full rule, the body and
 response shapes and the transport seam are in `.claude/rules/general/outbound-http.md`.
 

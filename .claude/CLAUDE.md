@@ -79,6 +79,7 @@ catalyst serve      <- entry point, port assigned by the CLI (3000, 3001, 3002, 
 | `packages/routing` | `@repo/routing` | - |
 | `packages/case-conversion` | `@repo/case-conversion` | - |
 | `packages/node-utils` | `@repo/node-utils` | - |
+| `packages/http-client` | `@repo/http-client` | - |
 | `packages/http-server` | `@repo/http-server` | - |
 | `packages/typescript-config` | `@repo/typescript-config` | - |
 | `packages/eslint-config` | `@repo/eslint-config` | - |
@@ -156,7 +157,8 @@ root `package.json` stopped reaching the workspaces - `node:stream`, `process` a
 all went unresolved in `packages/node-utils` under 6.0.3 while 5.9.3 stayed clean. Hence two
 standing rules: every workspace that compiles Node code **declares `@types/node` itself** and
 sets `"types": ["node"]` in its tsconfig (`packages/node-utils`, `apps/api`, `apps/proxy`,
-`packages/testing`, and `packages/case-conversion` for its tests and Vitest config - not
+`packages/testing`, and `packages/case-conversion` and `packages/http-client` for their tests
+and Vitest config - not
 `base.json`, which `packages/types` shares and which must stay framework-free). Note that
 a package imported *by name* is unaffected: module resolution still walks up to the workspace
 root. Only ambient type packages, which are never imported, need declaring.
@@ -205,6 +207,7 @@ frontmatter when it applies to only part of the tree.
   `@repo/case-conversion/camel-case`,
   `@repo/node-utils/framework/logger`, `@repo/node-utils/framework/async-context`,
   `@repo/node-utils/catalyst/resources`, `@repo/node-utils/utils/env`,
+  `@repo/http-client/http-client`,
   `@repo/http-server/middleware`, `@repo/http-server/http-error`, `@repo/http-server/response`,
   `@repo/http-server/request-input`,
   `@repo/testing/vitest-projects`.
@@ -261,7 +264,7 @@ In `apps/api`:
 - Build every response with `toRecordResponse`, `toPagedResponse`, or
   `toErrorResponse` (`@repo/http-server/response`) so payloads share one envelope.
 - Log through `logger` from `@repo/node-utils/framework/logger`, not `console`.
-- Call external services through `HttpClient` (`@repo/node-utils/http/http-client`), never
+- Call external services through `HttpClient` (`@repo/http-client/http-client`), never
   `fetch` or another client directly. A client that should carry the request's execution
   id as `app-execution-id` passes it through its `headers` resolver. See
   `.claude/rules/general/outbound-http.md`.

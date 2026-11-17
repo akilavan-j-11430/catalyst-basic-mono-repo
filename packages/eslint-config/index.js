@@ -3,7 +3,7 @@ import globals from "globals";
 import tseslint from "typescript-eslint";
 
 const USE_HTTP_CLIENT =
-  "Use HttpClient from @repo/node-utils/http/http-client. See .claude/rules/general/outbound-http.md.";
+  "Use HttpClient from @repo/http-client/http-client. See .claude/rules/general/outbound-http.md.";
 const USE_CATALYST_PACKAGE =
   "Call Catalyst through @repo/node-utils/catalyst/*. See .claude/rules/general/catalyst-sdk.md.";
 
@@ -208,7 +208,7 @@ export default tseslint.config(
   {
     // The transports are the seam HttpClient sits on, so they use the real thing - fetch, an
     // undici dispatcher, or a client like axios in a new transport.
-    files: ["**/http/*-transport.ts"],
+    files: ["**/*-transport.ts"],
     rules: {
       "no-restricted-globals": "off",
       "no-restricted-imports": restrictedImports({ allowHttpClients: true }),

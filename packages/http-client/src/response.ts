@@ -1,6 +1,6 @@
-import type { HttpMethod } from "@/enums/http-method";
-import { HttpRequestError } from "@/errors/http-request-error";
-import type { HttpResponse, TransportResponse } from "@/types/http";
+import type { HttpMethod } from "@/http-method";
+import { HttpRequestError } from "@/http-request-error";
+import type { HttpResponse, TransportResponse } from "@/http-types";
 
 export function toHttpResponse(
   method: HttpMethod,

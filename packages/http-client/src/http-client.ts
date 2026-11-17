@@ -1,9 +1,9 @@
-import { ContentType } from "@/enums/content-type";
-import { HttpHeader } from "@/enums/http-header";
-import { HttpMethod } from "@/enums/http-method";
-import { HttpRequestError } from "@/errors/http-request-error";
-import { fetchTransport } from "@/http/fetch-transport";
-import { toHttpResponse } from "@/http/response";
+import { ContentType } from "@/content-type";
+import { HttpHeader } from "@/http-header";
+import { HttpMethod } from "@/http-method";
+import { HttpRequestError } from "@/http-request-error";
+import { fetchTransport } from "@/fetch-transport";
+import { toHttpResponse } from "@/response";
 import type {
   HeaderResolver,
   HttpClientOptions,
@@ -12,7 +12,7 @@ import type {
   QueryValue,
   RequestBody,
   RequestOptions,
-} from "@/types/http";
+} from "@/http-types";
 
 const DEFAULT_TIMEOUT_MS = 10_000;
 

@@ -4,11 +4,11 @@ Vitest runs every test. A tested workspace keeps its tests in `test/`, beside `s
 folders that mirror the layout of `src/`. The folder decides the kind:
 
 ```
-packages/node-utils/
-  src/http/http-client.ts
+packages/http-client/
+  src/http-client.ts
   test/
-    unit/http/http-client.test.ts          one class or function, no network, SDKs mocked
-    integration/http/http-client.test.ts   several pieces over real HTTP
+    unit/http-client.test.ts          one class or function, no network, SDKs mocked
+    integration/http-client.test.ts   several pieces over real HTTP
   vitest.config.ts
   tsconfig.json           src + test + vitest.config.ts, no emit - editor and typecheck
   tsconfig.build.json     src only, emits dist/ - build and dev
@@ -36,9 +36,9 @@ packages/node-utils/
   the code imports itself.
 - `tsconfig.json` covers the tests, so `pnpm typecheck` checks them and the editor resolves
   `@/` in them. Only `tsconfig.build.json` emits, and it never sees `test/`.
-- A framework-free package (`routing`, `types`, `case-conversion`) - anything `apps/web`
+- A framework-free package (`routing`, `types`, `case-conversion`, `http-client`) - anything `apps/web`
   may import - sets `"types": []` so a Node API in its `src/` does not compile. One without
-  tests sets it in `tsconfig.json`. One with tests (`case-conversion`) needs Node types for
+  tests sets it in `tsconfig.json`. One with tests (`case-conversion`, `http-client`) needs Node types for
   them, so it sets `"types": []` in `tsconfig.build.json` only: there the editor and
   `pnpm typecheck` accept a Node API in `src/`, and only `build` - which `pnpm verify` runs -
   catches it.
