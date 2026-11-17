@@ -49,6 +49,17 @@ export const initExecutionContext: RequestHandler = (_req, _res, next) => {
   runWithContext(context, next);
 };
 
+/** The SDK's init error carries the request headers - Catalyst credential tokens included -
+ *  in its `value`, which its `toString` and `toJSON` both print. So only its code and
+ *  message ever reach a log line or a rethrown error. */
+function describeInitFailure(cause: unknown): string {
+  if (!(cause instanceof Error)) {
+    return "unknown failure";
+  }
+  const code = "code" in cause ? String(cause.code) : cause.name;
+  return `${code} - ${cause.message}`;
+}
+
 /** Builds the Catalyst app for each listed scope, and only those, for the route it guards. */
 export function initCatalystScopes(scopes: CatalystScope[]): RequestHandler {
   // Catalyst reads both the project details and the caller's credentials off the headers,
@@ -64,11 +75,12 @@ export function initCatalystScopes(scopes: CatalystScope[]): RequestHandler {
             await zcAuth.init(req as unknown as Parameters<typeof zcAuth.init>[0], { scope }),
           );
         } catch (cause) {
-          logger.info(`No ${scope}-scope Catalyst app: ${String(cause)}`);
+          const failure = `No ${scope}-scope Catalyst app: ${describeInitFailure(cause)}`;
+          logger.info(failure);
           if (scope === CatalystScope.User) {
             throw HttpError.Unauthorized("Sign in to continue.");
           }
-          throw cause;
+          throw new Error(failure);
         }
       }),
     );

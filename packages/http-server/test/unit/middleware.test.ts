@@ -44,12 +44,35 @@ describe("initCatalystScopes", () => {
     expect(next).not.toHaveBeenCalled();
   });
 
-  it("passes an Admin failure through unchanged, which errorHandler turns into a 500", async () => {
-    const cause = new Error("app/invalid_project_details");
-    catalystAuth.init.mockRejectedValue(cause);
+  it("rethrows an Admin failure as its code and message, which errorHandler turns into a 500", async () => {
+    catalystAuth.init.mockRejectedValue(new Error("app/invalid_project_details"));
 
     const { finished } = runScopeGuard([CatalystScope.Admin]);
 
-    await expect(finished).rejects.toBe(cause);
+    await expect(finished).rejects.toThrow(
+      "No admin-scope Catalyst app: Error - app/invalid_project_details",
+    );
+  });
+
+  it("never logs or rethrows the request headers the SDK error carries", async () => {
+    const logLine = vi.spyOn(console, "log").mockImplementation(() => undefined);
+    catalystAuth.init.mockRejectedValue(sdkInitError("x-zc-admin-cred-token", "secret-token"));
+
+    const { finished } = runScopeGuard([CatalystScope.Admin]);
+
+    const thrown: unknown = await finished.catch((error: unknown) => error);
+    expect(String(thrown)).not.toContain("secret-token");
+    expect(String(thrown)).toContain("app/AUTH_ERROR - User not authenticated");
+    expect(logLine.mock.calls.flat().join("\n")).not.toContain("secret-token");
   });
 });
+
+/** Shaped like the SDK's own error: `toString` prints `value`, which holds the headers. */
+function sdkInitError(header: string, token: string): Error {
+  const value = { [header]: token };
+  return Object.assign(new Error("User not authenticated"), {
+    code: "app/AUTH_ERROR",
+    value,
+    toString: () => JSON.stringify({ code: "app/AUTH_ERROR", value }),
+  });
+}
