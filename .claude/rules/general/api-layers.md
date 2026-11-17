@@ -16,7 +16,7 @@ A route reads as five lines: validate, call, respond.
 
 ```ts
 meRouter.get(ApiPath.Me, initCatalystScopes([CatalystScope.User]), async (_req, res) => {
-  res.json(toRecordResponse(await UserManagement.currentUser()));
+  res.json(toRecordResponse(await UserManagement.currentUser(catalystSessionOf(res))));
 });
 ```
 
@@ -40,7 +40,7 @@ Add one when the work is more than a single data call:
   route. Logic written in a route is reachable only over HTTP.
 
 Until then a route calls the repository or wrapper directly, as `/me` calls
-`UserManagement.currentUser()`. A service that only forwards one call is the empty layer
+`UserManagement.currentUser(session)`. A service that only forwards one call is the empty layer
 the root instructions rule out - the same rule as "a file earns its existence from a second
 caller".
 

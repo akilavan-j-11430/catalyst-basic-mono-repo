@@ -32,9 +32,7 @@ node-utils, as a route would. The handler stays short and just calls it.
 ```ts
 // src/handler.ts
 import { randomUUID } from "node:crypto";
-import { zcAuth } from "@zcatalyst/auth";
-import { Catalyst } from "@repo/node-utils/catalyst/catalyst";
-import { CatalystScope } from "@repo/node-utils/enums/catalyst-scope";
+import { CatalystSession } from "@repo/node-utils/catalyst/catalyst-session";
 import { ExecutionContext, runWithContext } from "@repo/node-utils/framework/async-context";
 import { logger } from "@repo/node-utils/framework/logger";
 import { TodoRepository } from "@repo/node-utils/repositories/todo-repository";
@@ -59,16 +57,10 @@ export async function handler(context: BasicIoContext, basicIo: BasicIo): Promis
     context.close();
     return;
   }
-  const catalyst = new Catalyst();
-  const execution = new ExecutionContext({ executionId: randomUUID(), catalyst, extras: {} });
+  const execution = new ExecutionContext({ executionId: randomUUID(), extras: {} });
+  const session = CatalystSession.fromHeaders(context.catalystHeaders);
   try {
-    catalyst.setApp(
-      CatalystScope.Admin,
-      await zcAuth.init(context as unknown as Parameters<typeof zcAuth.init>[0], {
-        scope: CatalystScope.Admin,
-      }),
-    );
-    const todo = await runWithContext(execution, () => TodoRepository.find(todoId));
+    const todo = await runWithContext(execution, () => TodoRepository.find(session, todoId));
     basicIo.write(JSON.stringify(todo ?? null));
   } catch (error) {
     logger.error(error);
@@ -94,9 +86,9 @@ module.exports = handler;
   A run that is never closed holds the caller until it times out.
 - **Use Admin scope.** No one has checked yet whether a Basic I/O context can build a
   User app. Check that before a function relies on knowing who called it.
-- The export, the awaited init and the logger are the same for every function, and
-  `function-entry-point.md` explains each one. `eslint.config.mjs` adds
-  `allowCatalystSdk(["src/handler.ts"])`.
+- The export, the session and the logger are the same for every function, and
+  `function-entry-point.md` explains each one. The handler imports no `@zcatalyst/*` -
+  the session builds the app - so the function needs no `allowCatalystSdk`.
 
 ## The dev server
 

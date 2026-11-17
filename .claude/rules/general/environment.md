@@ -59,10 +59,16 @@ needs as a parameter, so the app that owns the variable is the one that reads it
 
 ```ts
 // packages/node-utils/src/catalyst/user-management.ts
-static async register(user: NewUser, redirectUrl: string): Promise<RegisteredUser>
+static async register(
+  session: CatalystSession,
+  registration: { user: NewUser; redirectUrl: string },
+): Promise<RegisteredUser>
 
 // apps/api/src/routes/auth.ts
-await UserManagement.register(user, env.get("AUTH_REDIRECT_URL"));
+await UserManagement.register(catalystSessionOf(res), {
+  user,
+  redirectUrl: env.get("AUTH_REDIRECT_URL"),
+});
 ```
 
 It is the same rule as `.claude/rules/general/catalyst-sdk.md` - a wrapper takes and returns plain

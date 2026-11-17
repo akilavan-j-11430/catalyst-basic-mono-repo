@@ -50,6 +50,7 @@ apps/<name>/
 
 ```ts
 // src/signal-dispatcher.ts
+import type { CatalystSession } from "@repo/node-utils/catalyst/catalyst-session";
 import { RuntimeError } from "@repo/node-utils/errors/runtime-error";
 import { logger } from "@repo/node-utils/framework/logger";
 import { CacheItemCreatedSignal } from "@/signals/cache-item-created";
@@ -62,11 +63,14 @@ export interface SignalEvent {
 
 /** Strategy: runs the handler an event's name selects. */
 export class SignalDispatcher {
-  private static readonly handlers: Record<string, (data: Record<string, unknown>) => Promise<void>> = {
+  private static readonly handlers: Record<
+    string,
+    (session: CatalystSession, data: Record<string, unknown>) => Promise<void>
+  > = {
     [CacheItemCreatedSignal.apiName]: CacheItemCreatedSignal.run,
   };
 
-  static async run(signalEvent: SignalEvent): Promise<void> {
+  static async run(session: CatalystSession, signalEvent: SignalEvent): Promise<void> {
     const { apiName, data } = signalEvent;
     if (!apiName) {
       throw new RuntimeError("Signal event carries no api_name.");
@@ -76,12 +80,12 @@ export class SignalDispatcher {
       throw new RuntimeError(`No handler is registered for event "${apiName}".`);
     }
     logger.info(`Handling event ${apiName}`);
-    await handle(data);
+    await handle(session, data);
   }
 }
 ```
 
-Each handler is a class with a `static readonly apiName` and a `static async run(data)`.
+Each handler is a class with a `static readonly apiName` and a `static async run(session, data)`.
 The class holds the event name, so the dispatcher never writes it as a string literal:
 
 ```ts
@@ -89,8 +93,9 @@ The class holds the event name, so the dispatcher never writes it as a string li
 export class CacheItemCreatedSignal {
   static readonly apiName = "cache_item_created";
 
-  static async run(data: Record<string, unknown>): Promise<void> {
+  static async run(session: CatalystSession, data: Record<string, unknown>): Promise<void> {
     // narrow `data` to the fields this event carries, then call repositories and handles
+    // with the session
   }
 }
 ```
@@ -116,12 +121,15 @@ interface SignalsEvent {
   getRawData(): Record<string, unknown>;
 }
 
-// inside handler(event: SignalsEvent, context), after the Admin app is set:
+// inside handler(event: SignalsEvent, context), after the session is built:
 const { events } = CamelCase.convertKeys(event.getRawData() as unknown as SignalsDelivery);
 await runWithContext(execution, async () => {
   // One at a time, so a failure names the event that caused it.
   for (const signalEvent of events) {
-    await SignalDispatcher.run({ apiName: signalEvent.eventConfig.apiName, data: signalEvent.data });
+    await SignalDispatcher.run(session, {
+      apiName: signalEvent.eventConfig.apiName,
+      data: signalEvent.data,
+    });
   }
 });
 context.closeWithSuccess();
@@ -143,7 +151,7 @@ app.post(
   initCatalystScopes([CatalystScope.Admin]),
   async (req, res) => {
     const { eventName } = req.params;
-    await SignalDispatcher.run({ apiName: eventName, data: req.body });
+    await SignalDispatcher.run(catalystSessionOf(res), { apiName: eventName, data: req.body });
     res.json(toRecordResponse({ eventName }));
   },
 );

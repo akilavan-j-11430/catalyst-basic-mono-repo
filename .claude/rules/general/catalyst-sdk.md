@@ -4,18 +4,19 @@ Every Catalyst SDK call goes through `packages/node-utils/src/catalyst/`. No
 `@zcatalyst/*` package may be imported anywhere else, and ESLint enforces it.
 
 One file per component - `bucket.ts`, `table.ts`, `zcql.ts`, `cache.ts`, `job.ts` - plus
-`resources.ts`, which names the resources. Each component builds the SDK client
-it needs itself, in a module-private accessor at the top of the file, and reaches for the
-app nowhere else:
+`resources.ts`, which names the resources, and `catalyst-session.ts`, which builds the apps.
+Each component builds the SDK client it needs itself, in a module-private accessor at the
+top of the file, from the app the caller's session hands it, and reaches for an app nowhere
+else:
 
 ```ts
 // packages/node-utils/src/catalyst/bucket.ts
 import { Stratus } from "@zcatalyst/stratus";
 import type { CatalystScope } from "@/enums/catalyst-scope";
-import { currentContext } from "@/framework/async-context";
+import type { CatalystSession } from "@/catalyst/catalyst-session";
 
-function stratus(scope: CatalystScope): Stratus {
-  return new Stratus(currentContext().manager.catalyst.getApp(scope));
+async function stratus(session: CatalystSession, scope: CatalystScope): Promise<Stratus> {
+  return new Stratus(await session.app(scope));
 }
 ```
 
@@ -59,7 +60,7 @@ bucket, cache or job handle may be imported wherever it is needed:
 import { CatalystScope } from "@/enums/catalyst-scope";
 import { todoTable } from "@/catalyst/resources";
 
-const storedTodo = await todoTable.runIn(CatalystScope.User).getRow(todoId);
+const storedTodo = await todoTable.runIn(session, CatalystScope.User).getRow(todoId);
 ```
 
 It lives here rather than in an app because `apps/api` is one AppSail among however many a
@@ -84,8 +85,8 @@ schedules it, and its `cronName` is required, unique in the project, and capped 
 characters like the alias:
 
 ```ts
-await reminderJob.submitJob({ params: { todoId: "1" } });
-await reminderJob.submitOneTimeCron({
+await reminderJob.runIn(session).submitJob({ params: { todoId: "1" } });
+await reminderJob.runIn(session).submitOneTimeCron({
   timeOfExecution: runAt,          // epoch milliseconds
   params: { todoId: "1" },
   cronName: "remind-0001",
@@ -103,8 +104,8 @@ export const nightlyReportJob = Job.create({
   jobTargetFunctionName: "report_executor",
 });
 
-await nightlyReportJob.submitJob({});
-await nightlyReportJob.submitOneTimeCron({ timeOfExecution: runAt, cronName: "nightly-01" });
+await nightlyReportJob.runIn(session).submitJob({});
+await nightlyReportJob.runIn(session).submitOneTimeCron({ timeOfExecution: runAt, cronName: "nightly-01" });
 ```
 
 The generic decides which, so the two cannot be confused: passing a payload to a void job,
@@ -150,7 +151,7 @@ the path - through the SDK `COUNT(ROWID)` reads back as `COUNT(ROWID)`, through 
 and `DELETE` answers `{ Table: { DELETED_ROWS_COUNT } }`.
 
 ```ts
-const [countRow] = await Zcql.runIn(CatalystScope.User).executeQuery(
+const [countRow] = await Zcql.runIn(session, CatalystScope.User).executeQuery(
   `SELECT COUNT(${table.column("ROWID")}) FROM ${table.name}`,
 );
 const todoCount = Number(Object.values(countRow?.[table.name] ?? {})[0] ?? 0);
@@ -162,7 +163,7 @@ A statement returns at most 300 rows, so a read that can exceed that pages with
 
 `Zcql` is the exception and has no handle. A query joins across tables and belongs to no
 single one, so it is static and starts from `runIn` -
-`Zcql.runIn(CatalystScope.User).executeQuery("SELECT ...")`.
+`Zcql.runIn(session, CatalystScope.User).executeQuery("SELECT ...")`.
 
 This is a starter kit, so it ships no resources. `resources.ts` arrives with the first one.
 
@@ -182,32 +183,53 @@ That is why every accessor is a function and every method calls it again, and it
 makes the handle safe to hoist. Nothing structural enforces it - the accessors live in five
 files - so check it when reviewing a wrapper.
 
-## One app per scope
+## One session per request
+
+The app is built from a request's headers - its project details and the caller's
+credentials - so it belongs to that request alone. `CatalystSession` (`catalyst-session.ts`)
+holds them: the entry point builds one per request with
+`CatalystSession.fromHeaders(headers)` and passes it down, and every Catalyst call names it.
+Nothing reads an app from ambient state, so the same wrappers serve an Express route, a
+Next.js server component or a Catalyst function - each builds the session from the headers
+it has.
+
+```ts
+// apps/api - initCatalystScopes builds it; the handler takes it from the response
+await UserManagement.currentUser(catalystSessionOf(res));
+```
+
+`session.app(scope)` builds that scope's app on first use and reuses it for the rest of the
+request. A scope it cannot build - User, when the request carries no signed-in user -
+rejects with `CatalystError` (`SCOPE_UNAVAILABLE`), holding only the SDK's code and message:
+the SDK's own error carries the request headers, credential tokens included, so it is never
+attached or logged. In `apps/api`, a route that calls Catalyst still mounts
+`initCatalystScopes([...])` (`@repo/http-server/middleware`), which builds the named scopes
+up front so a route needing a signed-in caller answers 401 before its handler runs.
+
+**Never hold a session at module scope** or store it on a handle. It is the one object here
+that carries a caller's credentials, so one kept past its request serves another user's
+data.
 
 User scope covers only the methods the browser SDK exposes
 (https://docs.catalyst.zoho.com/en/sdk/javascript/v1/webpack-bundler/#browser-supported-javascript-methods);
-everything else needs Admin. So the context carries a `Catalyst` (`catalyst.ts`) holding one
-app per `CatalystScope`. It starts empty: a route that calls Catalyst mounts
-`initCatalystScopes([...])` (`@repo/http-server/middleware`), which builds only the scopes it
-names from the request's headers, so a route that never touches Catalyst never pays for an
-init. A named scope that cannot be built fails the request - User, when the request carries
-no signed-in user, is a 401. A scope the route did not name is never built, and
-`getApp(scope)` throws `CatalystError` with `SCOPE_UNAVAILABLE` when something asks for it.
+everything else needs Admin. Use User unless the method is missing from the browser list.
+Cache is admin-only.
 
-Use User unless the method is missing from the browser list. Cache is admin-only.
-
-**Table, Bucket and Zcql take the scope at the call site, never in `resources.ts`.** A handle
-holds a name and exposes only `runIn(scope)`, which returns the scoped operations
-(`ScopedTable`, `ScopedBucket`, `ScopedZcql`). Skipping it is a compile error, not a
-default, so every call names whose credentials it uses:
+**Every handle starts from `runIn`, never from `resources.ts`.** A handle holds a name and
+exposes only `runIn`, which returns the operations bound to a session: Table, Bucket and
+Zcql take the session and a scope (`ScopedTable`, `ScopedBucket`, `ScopedZcql`), and Cache
+and Job, whose scope is fixed, take the session alone (`ScopedCache`, `ScopedJob`).
+Skipping it is a compile error, not a default, so every call names whose credentials it
+uses:
 
 ```ts
-await todoTable.runIn(CatalystScope.User).insertRow(row);
-await Zcql.runIn(CatalystScope.Admin).executeQuery("SELECT ...");
+await todoTable.runIn(session, CatalystScope.User).insertRow(row);
+await Zcql.runIn(session, CatalystScope.Admin).executeQuery("SELECT ...");
+await sessionCache.runIn(session).getValue(key);
 ```
 
 `runIn` returns a new object and never mutates the handle. The handle is a module-level
-singleton shared by every request, so a scope stored on it would leak across concurrent
+singleton shared by every request, so a session stored on it would leak across concurrent
 requests. A method that makes no Catalyst call - `Bucket.buildKey` - stays on the handle.
 The scoped classes are exported as types only, so `runIn` is the only way to build one.
 
@@ -224,7 +246,7 @@ the fewest calls that answer the question**, and a review asks how many each pat
   in a single ZCQL statement, rather than selecting the ROWID first:
 
   ```ts
-  await Zcql.runIn(CatalystScope.Admin).executeQuery(
+  await Zcql.runIn(session, CatalystScope.Admin).executeQuery(
     `DELETE FROM ${table.name} WHERE ${table.column("TITLE")} = '${title}'`,
   );
   ```
@@ -264,7 +286,7 @@ repo's vocabulary to a Catalyst call, so:
 ## A missing capability is a new method
 
 **When a route needs something the wrapper does not do yet, add the method to the
-wrapper.** Never reach past it - not to the SDK, not to the app on the context, not with
+wrapper.** Never reach past it - not to the SDK, not to the app on the session, not with
 a one-off client built at the call site. The ESLint boundary stops the import, but the
 rule is about intent: the point of `catalyst/` is that one directory answers
 what this repo asks of Catalyst, and a capability used from a route is invisible there.
@@ -280,7 +302,7 @@ async copyObject(sourceKey: string, targetKey: string): Promise<void> {
 }
 
 // apps/api/src/routes/invoice.ts
-await invoiceBucket.runIn(CatalystScope.User).copyObject(draftKey, finalKey);
+await invoiceBucket.runIn(session, CatalystScope.User).copyObject(draftKey, finalKey);
 ```
 
 A method that turns out to be single-use is still the right shape. It costs one small
@@ -321,7 +343,8 @@ interface FunctionJobRequest {
 }
 
 const job: FunctionJobRequest = { ... };
-await jobScheduling().JOB.submitJob(job as unknown as SdkJobMeta);
+const scheduling = await jobScheduling(this.session);
+await scheduling.JOB.submitJob(job as unknown as SdkJobMeta);
 ```
 
 `job.ts` is the worked example. The cast is the seam: it is the one place the SDK's

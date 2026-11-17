@@ -42,6 +42,7 @@ instead of finishing as a silent success.
 
 ```ts
 // src/job-dispatcher.ts
+import type { CatalystSession } from "@repo/node-utils/catalyst/catalyst-session";
 import type { JobParams } from "@repo/node-utils/catalyst/job";
 import { reminderJob } from "@repo/node-utils/catalyst/resources";
 import { RuntimeError } from "@repo/node-utils/errors/runtime-error";
@@ -50,11 +51,14 @@ import { ReminderJob } from "@/jobs/reminder";
 
 /** Strategy: runs the job a submission names. */
 export class JobDispatcher {
-  private static readonly jobs: Record<string, (params: JobParams) => Promise<void>> = {
+  private static readonly jobs: Record<
+    string,
+    (session: CatalystSession, params: JobParams) => Promise<void>
+  > = {
     [reminderJob.config.jobName]: ReminderJob.run,
   };
 
-  static async run(params: JobParams): Promise<void> {
+  static async run(session: CatalystSession, params: JobParams): Promise<void> {
     const { jobName, jobId } = params;
     if (!jobName) {
       throw new RuntimeError("Job params carry no jobName.");
@@ -64,7 +68,7 @@ export class JobDispatcher {
       throw new RuntimeError(`No job is registered for jobName "${jobName}".`);
     }
     logger.info(`Running job ${jobName} (${jobId ?? "no jobId"})`);
-    await job(params);
+    await job(session, params);
   }
 }
 ```
@@ -78,27 +82,28 @@ export class JobDispatcher {
 
 ```ts
 // src/jobs/reminder.ts
+import type { CatalystSession } from "@repo/node-utils/catalyst/catalyst-session";
 import type { JobParams } from "@repo/node-utils/catalyst/job";
 import { RuntimeError } from "@repo/node-utils/errors/runtime-error";
 
 /** Sends the reminder for one todo. */
 export class ReminderJob {
-  static async run(params: JobParams): Promise<void> {
+  static async run(session: CatalystSession, params: JobParams): Promise<void> {
     const { todoId } = params;
     if (!todoId) {
       throw new RuntimeError("Reminder job needs a todoId.");
     }
-    // repositories and handles from node-utils, as a route would call them
+    // repositories and handles from node-utils, passed the session, as a route calls them
   }
 }
 ```
 
-- **One class per job**, with a `static async run(params)`. The file is named after the
+- **One class per job**, with a `static async run(session, params)`. The file is named after the
   jobName in kebab-case.
 - **Check its own params first.** A param typed on the handle (`Job.create<{ todoId:
   string }>`) is still a string the job has to check: the dispatcher only knows `jobName`.
-- **It reaches Catalyst the way a route does**, through repositories and handles. Only
-  Admin is available, as described below.
+- **It reaches Catalyst the way a route does**, through repositories and handles, passing
+  them the session. Only Admin is available, as described below.
 - **Only Admin is available.** No signed-in user starts a job, so a wrapper that asks for
   User throws `SCOPE_UNAVAILABLE`. That includes `Job`'s own accessor, so a job that
   submits another job needs an Admin path added to `job.ts` first.
@@ -110,10 +115,8 @@ export class ReminderJob {
 ```ts
 // src/index.ts
 import { randomUUID } from "node:crypto";
-import { zcAuth } from "@zcatalyst/auth";
+import { CatalystSession } from "@repo/node-utils/catalyst/catalyst-session";
 import type { JobParams } from "@repo/node-utils/catalyst/job";
-import { Catalyst } from "@repo/node-utils/catalyst/catalyst";
-import { CatalystScope } from "@repo/node-utils/enums/catalyst-scope";
 import { ExecutionContext, runWithContext } from "@repo/node-utils/framework/async-context";
 import { logger } from "@repo/node-utils/framework/logger";
 import { JobDispatcher } from "@/job-dispatcher";
@@ -123,7 +126,7 @@ interface JobRequest {
   getAllJobParams(): JobParams;
 }
 
-/** `catalystHeaders` is what `zcAuth.init` reads in place of a request's headers. */
+/** `catalystHeaders` carries what a request's headers carry: the project and the credentials. */
 interface JobContext {
   catalystHeaders: Record<string, string | number>;
   closeWithSuccess(): void;
@@ -131,16 +134,12 @@ interface JobContext {
 }
 
 async function handler(jobRequest: JobRequest, context: JobContext): Promise<void> {
-  const catalyst = new Catalyst();
-  const execution = new ExecutionContext({ executionId: randomUUID(), catalyst, extras: {} });
+  const execution = new ExecutionContext({ executionId: randomUUID(), extras: {} });
+  const session = CatalystSession.fromHeaders(context.catalystHeaders);
   try {
-    catalyst.setApp(
-      CatalystScope.Admin,
-      await zcAuth.init(context as unknown as Parameters<typeof zcAuth.init>[0], {
-        scope: CatalystScope.Admin,
-      }),
+    await runWithContext(execution, () =>
+      JobDispatcher.run(session, jobRequest.getAllJobParams()),
     );
-    await runWithContext(execution, () => JobDispatcher.run(jobRequest.getAllJobParams()));
     context.closeWithSuccess();
   } catch (error) {
     logger.error(error);
@@ -153,9 +152,9 @@ module.exports = handler;
 
 - **Every run ends in `closeWithSuccess()` or `closeWithFailure()`.** A run that is never
   closed waits out the 15-minute limit and is then marked failed.
-- `eslint.config.mjs` adds `allowCatalystSdk(["src/index.ts", "src/dev-server.ts"])`,
-  since both build the Admin app themselves.
-- The export, the awaited init and the logger are the same for every function -
+- Neither file imports `@zcatalyst/*`: the session builds the app the first time a
+  wrapper asks for one, so the function needs no `allowCatalystSdk`.
+- The export, the session and the logger are the same for every function -
   `function-entry-point.md` explains each.
 
 ## The dev server
@@ -170,7 +169,12 @@ import express from "express";
 import { randomUUID } from "node:crypto";
 import { JobExecutorPath } from "@repo/routing/job-executor-path";
 import { CatalystScope } from "@repo/node-utils/enums/catalyst-scope";
-import { errorHandler, initCatalystScopes, initExecutionContext } from "@repo/http-server/middleware";
+import {
+  catalystSessionOf,
+  errorHandler,
+  initCatalystScopes,
+  initExecutionContext,
+} from "@repo/http-server/middleware";
 import { toRecordResponse } from "@repo/http-server/response";
 import { JobDispatcher } from "@/job-dispatcher";
 
@@ -182,7 +186,7 @@ app.post(
   initCatalystScopes([CatalystScope.Admin]),
   async (req, res) => {
     const { jobName } = req.params;
-    await JobDispatcher.run({ ...req.body, jobName, jobId: randomUUID() });
+    await JobDispatcher.run(catalystSessionOf(res), { ...req.body, jobName, jobId: randomUUID() });
     res.json(toRecordResponse({ jobName }));
   },
 );

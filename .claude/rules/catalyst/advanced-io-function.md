@@ -50,8 +50,9 @@ Everything `apps/api/CLAUDE.md` says about routes holds here. Only the import pa
 changes, because the shared plumbing comes from `@repo/http-server` (`.claude/skills/deployable-steps.md`):
 - `initExecutionContext`, then the routers, then a JSON 404, then `errorHandler`, in that
   order.
-- A route that calls Catalyst mounts `initCatalystScopes([...])`, which calls
-  `zcAuth.init(req, { scope })` on the request Catalyst hands the function.
+- A route that calls Catalyst mounts `initCatalystScopes([...])`, which builds the
+  request's `CatalystSession` from the headers Catalyst hands the function, and the handler
+  passes `catalystSessionOf(res)` to each wrapper it calls.
 - Failures are thrown as `HttpError`, responses are built with the response builders, and
   logging goes through `logger`.
 - Data goes through repositories and handles. The app never constructs an SDK client.

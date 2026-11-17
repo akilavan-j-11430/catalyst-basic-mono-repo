@@ -253,8 +253,9 @@ In `apps/api`:
 - Reach Catalyst through a resource handle imported from
   `@repo/node-utils/catalyst/resources`, where every table, bucket, cache segment
   and job is declared once with the wrapper's `create` factory. Never construct a wrapper
-  in a handler, never initialize Catalyst yourself, and never read the app off the context
-  - see `.claude/rules/general/catalyst-sdk.md`.
+  in a handler and never initialize Catalyst yourself. A handler passes the request's
+  `CatalystSession` - `catalystSessionOf(res)`, built by `initCatalystScopes` - to every
+  Catalyst call it makes - see `.claude/rules/general/catalyst-sdk.md`.
 - Throw `HttpError.BadRequest | Unauthorized | NotFound | Conflict`
   (`@repo/http-server/http-error`) instead of setting a status by hand. `errorHandler`
   maps them; anything else becomes a 500.
