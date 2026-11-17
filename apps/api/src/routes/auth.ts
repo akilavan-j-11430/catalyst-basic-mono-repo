@@ -4,7 +4,7 @@ import { ApiPath } from "@repo/routing/api-path";
 import { CatalystScope } from "@repo/node-utils/enums/catalyst-scope";
 import { UserManagement } from "@repo/node-utils/catalyst/user-management";
 import type { NewUser } from "@repo/types/user";
-import { initCatalystScopes } from "@repo/http-server/middleware";
+import { catalystSessionOf, initCatalystScopes } from "@repo/http-server/middleware";
 import { RequestInput } from "@repo/http-server/request-input";
 import { toRecordResponse } from "@repo/http-server/response";
 import { env } from "@/env";
@@ -29,10 +29,10 @@ authRouter.post(
   initCatalystScopes([CatalystScope.Admin]),
   async (req, res) => {
     const user: NewUser = RequestInput.parse(newUserSchema, req.body);
-    const registered = await UserManagement.register(
+    const registered = await UserManagement.register(catalystSessionOf(res), {
       user,
-      env.get("AUTH_REDIRECT_URL"),
-    );
+      redirectUrl: env.get("AUTH_REDIRECT_URL"),
+    });
     res.status(201).json(toRecordResponse(registered));
   },
 );

@@ -1,7 +1,7 @@
 import { CatalystError } from "@/errors/catalyst-error";
 import { Datastore } from "@zcatalyst/datastore";
 import type { CatalystScope } from "@/enums/catalyst-scope";
-import { currentContext } from "@/framework/async-context";
+import type { CatalystSession } from "@/catalyst/catalyst-session";
 
 /** One table's columns in a ZCQL result row. A query picks its own columns, so no table's
  *  row type describes them. */
@@ -16,18 +16,22 @@ export type ZcqlRow = Record<string, ZcqlColumns>;
  *
  *  Both statements run through `Datastore` rather than `@zcatalyst/zcql`: the latter is
  *  still at 0.0.2 and has no OLAP method, so one client covers both modes. */
-function datastore(scope: CatalystScope): Datastore {
-  return new Datastore(currentContext().manager.catalyst.getApp(scope));
+async function datastore(session: CatalystSession, scope: CatalystScope): Promise<Datastore> {
+  return new Datastore(await session.app(scope));
 }
 
-/** ZCQL statements bound to a scope. Reached only through `Zcql.runIn`. */
+/** ZCQL statements bound to a request and a scope. Reached only through `Zcql.runIn`. */
 class ScopedZcql {
-  constructor(private readonly scope: CatalystScope) {}
+  constructor(
+    private readonly session: CatalystSession,
+    private readonly scope: CatalystScope,
+  ) {}
 
   /** Runs a ZCQL statement. Each row keeps its columns under their table's name. */
   async executeQuery(query: string): Promise<ZcqlRow[]> {
+    const datastoreClient = await datastore(this.session, this.scope);
     try {
-      const queryResult = await datastore(this.scope).executeZCQLQuery(query);
+      const queryResult = await datastoreClient.executeZCQLQuery(query);
       return queryResult as ZcqlRow[];
     } catch (cause) {
       throw CatalystError.InvalidResource(`query failed: ${query}`, cause);
@@ -36,8 +40,9 @@ class ScopedZcql {
 
   /** Same, in OLAP mode - the analytical engine, for aggregates over large scans. */
   async executeOlapQuery(query: string): Promise<ZcqlRow[]> {
+    const datastoreClient = await datastore(this.session, this.scope);
     try {
-      const queryResult = await datastore(this.scope).executeOLAPQuery(query);
+      const queryResult = await datastoreClient.executeOLAPQuery(query);
       return queryResult as ZcqlRow[];
     } catch (cause) {
       throw CatalystError.InvalidResource(`olap query failed: ${query}`, cause);
@@ -50,8 +55,8 @@ export type { ScopedZcql };
 /** ZCQL statements. A query joins across tables and belongs to no single one, so this
  *  names no resource and has no handle in `resources.ts`. */
 export class Zcql {
-  /** The ZCQL operations, acting with the scope's credentials. */
-  static runIn(scope: CatalystScope): ScopedZcql {
-    return new ScopedZcql(scope);
+  /** The ZCQL operations, acting with the session's credentials for the scope. */
+  static runIn(session: CatalystSession, scope: CatalystScope): ScopedZcql {
+    return new ScopedZcql(session, scope);
   }
 }

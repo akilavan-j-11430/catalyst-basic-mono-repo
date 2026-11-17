@@ -1,10 +1,8 @@
 import { AsyncLocalStorage } from "node:async_hooks";
-import type { Catalyst } from "@/catalyst/catalyst";
 import { RuntimeError } from "@/errors/runtime-error";
 
 /** Per-request values carried on the execution context. */
 export interface ExecutionInfo {
-  catalyst: Catalyst;
   executionId: string;
   /** Any other values that need to be carried through the request. */
   extras: Record<string, unknown>;
@@ -19,10 +17,6 @@ class ExecutionManager {
 
   get executionId(): string {
     return this.values.executionId;
-  }
-
-  get catalyst(): Catalyst {
-    return this.values.catalyst;
   }
 
   getExtras<T>(key: string): T | undefined {

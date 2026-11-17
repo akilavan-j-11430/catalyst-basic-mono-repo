@@ -1,10 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
-import { Catalyst, type CatalystApp } from "@/catalyst/catalyst";
+import { CatalystSession } from "@/catalyst/catalyst-session";
 import { Zcql, type ZcqlRow } from "@/catalyst/zcql";
 import { CatalystScope } from "@/enums/catalyst-scope";
 import { ErrorCode } from "@/enums/error-codes";
 import { CatalystError } from "@/errors/catalyst-error";
-import { ExecutionContext, runWithContext } from "@/framework/async-context";
 
 // The SDK is replaced before zcql.ts loads it, so no call leaves the process. vi.hoisted
 // makes the spy exist by then, since vi.mock is hoisted above the imports.
@@ -16,14 +15,10 @@ vi.mock("@zcatalyst/datastore", () => ({
   },
 }));
 
-/** Runs the query the way a route would: inside a request whose User app is built. */
+/** Runs the query the way a route would, with the request's session. `zcAuth` is faked by
+ *  test/setup.ts, so the session's User app builds from no headers at all. */
 function queryAsUser(query: string): Promise<ZcqlRow[]> {
-  const catalyst = new Catalyst();
-  catalyst.setApp(CatalystScope.User, {} as CatalystApp);
-  const context = new ExecutionContext({ executionId: "execution-1", catalyst, extras: {} });
-  return runWithContext(context, () =>
-    Zcql.runIn(CatalystScope.User).executeQuery(query),
-  );
+  return Zcql.runIn(CatalystSession.fromHeaders({}), CatalystScope.User).executeQuery(query);
 }
 
 describe("Zcql.executeQuery", () => {

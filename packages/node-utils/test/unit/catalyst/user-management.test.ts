@@ -1,27 +1,27 @@
 import { describe, expect, it, vi } from "vitest";
 import type { CurrentUser } from "@repo/types/user";
-import { Catalyst, type CatalystApp } from "@/catalyst/catalyst";
+import { CatalystSession } from "@/catalyst/catalyst-session";
 import { UserManagement } from "@/catalyst/user-management";
-import { CatalystScope } from "@/enums/catalyst-scope";
 import { ErrorCode } from "@/enums/error-codes";
 import { CatalystError } from "@/errors/catalyst-error";
-import { ExecutionContext, runWithContext } from "@/framework/async-context";
 
 // The SDK is replaced before user-management.ts loads it, so no call leaves the process.
 const { getCurrentUser } = vi.hoisted(() => ({ getCurrentUser: vi.fn() }));
 
-vi.mock("@zcatalyst/auth", () => ({
-  UserManagement: class {
-    getCurrentUser = getCurrentUser;
-  },
-}));
+// This replaces test/setup.ts's mock of the same module, so it fakes `zcAuth` too.
+vi.mock("@zcatalyst/auth", async () => {
+  const { catalystAuth } = await import("@repo/testing/catalyst-auth");
+  return {
+    zcAuth: catalystAuth,
+    UserManagement: class {
+      getCurrentUser = getCurrentUser;
+    },
+  };
+});
 
-/** Reads the user the way a route would: inside a request whose User app is built. */
+/** Reads the user the way a route would, with the request's session. */
 function readAsUser(): Promise<CurrentUser> {
-  const catalyst = new Catalyst();
-  catalyst.setApp(CatalystScope.User, {} as CatalystApp);
-  const context = new ExecutionContext({ executionId: "execution-1", catalyst, extras: {} });
-  return runWithContext(context, () => UserManagement.currentUser());
+  return UserManagement.currentUser(CatalystSession.fromHeaders({}));
 }
 
 describe("UserManagement.currentUser", () => {

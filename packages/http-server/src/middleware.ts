@@ -11,10 +11,9 @@ import {
   runWithContext,
 } from "@repo/node-utils/framework/async-context";
 import { CatalystScope } from "@repo/node-utils/enums/catalyst-scope";
-import { Catalyst } from "@repo/node-utils/catalyst/catalyst";
+import { CatalystSession } from "@repo/node-utils/catalyst/catalyst-session";
 import { logger } from "@repo/node-utils/framework/logger";
 import { randomUUID } from "crypto";
-import { zcAuth } from "@zcatalyst/auth";
 import { HttpError } from "@/http-error";
 import { toErrorResponse } from "@/response";
 
@@ -38,54 +37,59 @@ export function recordRequestTiming(
   next();
 }
 
-/** Establishes the execution context for the request and runs the chain inside it. Catalyst
- *  starts empty - a route that needs it mounts `initCatalystScopes`. */
+/** Establishes the execution context for the request and runs the chain inside it. */
 export const initExecutionContext: RequestHandler = (_req, _res, next) => {
   const context = new ExecutionContext({
     executionId: randomUUID(),
-    catalyst: new Catalyst(),
     extras: {},
   });
   runWithContext(context, next);
 };
 
-/** The SDK's init error carries the request headers - Catalyst credential tokens included -
- *  in its `value`, which its `toString` and `toJSON` both print. So only its code and
- *  message ever reach a log line or a rethrown error. */
-function describeInitFailure(cause: unknown): string {
-  if (!(cause instanceof Error)) {
-    return "unknown failure";
-  }
-  const code = "code" in cause ? String(cause.code) : cause.name;
-  return `${code} - ${cause.message}`;
-}
+/** Where `initCatalystScopes` leaves the request's session for the handlers after it. */
+const CATALYST_SESSION_KEY = "catalystSession";
 
-/** Builds the Catalyst app for each listed scope, and only those, for the route it guards. */
+/**
+ * Builds the request's Catalyst session and checks each listed scope can be built, so a route
+ * that needs a signed-in caller answers 401 before its handler runs. Catalyst reads both the
+ * project details and the caller's credentials off the headers, so nothing needs to be
+ * configured in the environment.
+ */
 export function initCatalystScopes(scopes: CatalystScope[]): RequestHandler {
-  // Catalyst reads both the project details and the caller's credentials off the headers,
-  // so the apps are per-request and nothing needs to be configured in the environment.
-  // `init` loads its implementation through a dynamic import, so it must be awaited.
-  return async (req, _res, next) => {
-    const catalyst = currentContext().manager.catalyst;
+  return async (req, res, next) => {
+    const session = catalystSessionIn(res) ?? CatalystSession.fromHeaders(req.headers);
     await Promise.all(
       scopes.map(async (scope) => {
         try {
-          catalyst.setApp(
-            scope,
-            await zcAuth.init(req as unknown as Parameters<typeof zcAuth.init>[0], { scope }),
-          );
-        } catch (cause) {
-          const failure = `No ${scope}-scope Catalyst app: ${describeInitFailure(cause)}`;
-          logger.info(failure);
+          await session.app(scope);
+        } catch (error) {
+          // A CatalystError carrying only the SDK's code and message - never the headers.
+          logger.info(String(error));
           if (scope === CatalystScope.User) {
             throw HttpError.Unauthorized("Sign in to continue.");
           }
-          throw new Error(failure);
+          throw error;
         }
       }),
     );
+    res.locals[CATALYST_SESSION_KEY] = session;
     next();
   };
+}
+
+/** The request's Catalyst session, for a handler to pass to the wrappers it calls. Throws
+ *  when the route never mounted `initCatalystScopes`. */
+export function catalystSessionOf(res: Response): CatalystSession {
+  const session = catalystSessionIn(res);
+  if (session === undefined) {
+    throw new Error("No Catalyst session - mount initCatalystScopes([...]) ahead of this handler.");
+  }
+  return session;
+}
+
+function catalystSessionIn(res: Response): CatalystSession | undefined {
+  const session: unknown = res.locals[CATALYST_SESSION_KEY];
+  return session instanceof CatalystSession ? session : undefined;
 }
 
 /** Terminal error handler - maps HttpError to its status, anything else to 500. */

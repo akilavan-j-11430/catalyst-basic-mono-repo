@@ -1,36 +1,37 @@
 import type { Request, Response } from "express";
 import { describe, expect, it, vi, type Mock } from "vitest";
-import { Catalyst } from "@repo/node-utils/catalyst/catalyst";
+import { CatalystSession } from "@repo/node-utils/catalyst/catalyst-session";
 import { CatalystScope } from "@repo/node-utils/enums/catalyst-scope";
-import { ExecutionContext, runWithContext } from "@repo/node-utils/framework/async-context";
 import { catalystAuth } from "@repo/testing/catalyst-auth";
 import { HttpError } from "@/http-error";
-import { initCatalystScopes } from "@/middleware";
+import { catalystSessionOf, initCatalystScopes } from "@/middleware";
 
 interface ScopeGuardRun {
-  catalyst: Catalyst;
+  res: Response;
   next: Mock<() => void>;
   finished: Promise<void>;
 }
 
-/** Runs `initCatalystScopes` the way Express would: inside the request's execution context. */
+/** Runs `initCatalystScopes` the way Express would, on a request carrying the given headers. */
 function runScopeGuard(scopes: CatalystScope[]): ScopeGuardRun {
-  const catalyst = new Catalyst();
+  const res = { locals: {} } as Response;
   const next = vi.fn<() => void>();
-  const context = new ExecutionContext({ executionId: "execution-1", catalyst, extras: {} });
-  const finished = runWithContext(context, () =>
-    initCatalystScopes(scopes)({} as Request, {} as Response, next),
-  );
-  return { catalyst, next, finished: Promise.resolve(finished) };
+  const req = { headers: { "x-zc-projectid": "1" } } as unknown as Request;
+  const finished = initCatalystScopes(scopes)(req, res, next);
+  return { res, next, finished: Promise.resolve(finished) };
 }
 
 describe("initCatalystScopes", () => {
-  it("builds the app for each listed scope, then continues", async () => {
-    const { catalyst, next, finished } = runScopeGuard([CatalystScope.User]);
+  it("builds each listed scope from the request headers, leaves the session for the handler, then continues", async () => {
+    const { res, next, finished } = runScopeGuard([CatalystScope.User]);
 
     await finished;
 
-    expect(catalyst.getApp(CatalystScope.User)).toEqual({});
+    expect(catalystAuth.init).toHaveBeenCalledExactlyOnceWith(
+      { headers: { "x-zc-projectid": "1" } },
+      { scope: CatalystScope.User },
+    );
+    expect(catalystSessionOf(res)).toBeInstanceOf(CatalystSession);
     expect(next).toHaveBeenCalledOnce();
   });
 
@@ -44,13 +45,13 @@ describe("initCatalystScopes", () => {
     expect(next).not.toHaveBeenCalled();
   });
 
-  it("rethrows an Admin failure as its code and message, which errorHandler turns into a 500", async () => {
+  it("rejects an Admin failure with its code and message, which errorHandler turns into a 500", async () => {
     catalystAuth.init.mockRejectedValue(new Error("app/invalid_project_details"));
 
     const { finished } = runScopeGuard([CatalystScope.Admin]);
 
     await expect(finished).rejects.toThrow(
-      "No admin-scope Catalyst app: Error - app/invalid_project_details",
+      "No admin-scope Catalyst app for this request: Error - app/invalid_project_details",
     );
   });
 
@@ -64,6 +65,12 @@ describe("initCatalystScopes", () => {
     expect(String(thrown)).not.toContain("secret-token");
     expect(String(thrown)).toContain("app/AUTH_ERROR - User not authenticated");
     expect(logLine.mock.calls.flat().join("\n")).not.toContain("secret-token");
+  });
+});
+
+describe("catalystSessionOf", () => {
+  it("throws when the route never mounted initCatalystScopes", () => {
+    expect(() => catalystSessionOf({ locals: {} } as Response)).toThrow(/initCatalystScopes/);
   });
 });
 

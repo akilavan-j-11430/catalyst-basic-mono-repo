@@ -1,7 +1,7 @@
 import { CatalystError } from "@/errors/catalyst-error";
 import { JobScheduling } from "@zcatalyst/job-scheduling";
 import { CatalystScope } from "@/enums/catalyst-scope";
-import { currentContext } from "@/framework/async-context";
+import type { CatalystSession } from "@/catalyst/catalyst-session";
 import { randomUUID } from "node:crypto";
 
 /** Catalyst rejects an alias longer than this. */
@@ -39,8 +39,8 @@ interface OneTimeCronRequest {
 
 /** Fresh per call. The app is per-request and carries the caller's credentials,
  *  so a service must never be hoisted to module scope. */
-function jobScheduling(): JobScheduling {
-  return new JobScheduling(currentContext().manager.catalyst.getApp(CatalystScope.User));
+async function jobScheduling(session: CatalystSession): Promise<JobScheduling> {
+  return new JobScheduling(await session.app(CatalystScope.User));
 }
 
 /** Catalyst carries job params as strings. A job that takes none is `Job<void>`. */
@@ -74,8 +74,12 @@ interface JobConfig {
   jobTargetFunctionName: string;
 }
 
-export class Job<T extends JobParams | void = void> {
-  private constructor(readonly config: JobConfig) {}
+/** A job bound to a request. Reached only through `Job.runIn`. */
+class ScopedJob<T extends JobParams | void> {
+  constructor(
+    private readonly config: JobConfig,
+    private readonly session: CatalystSession,
+  ) {}
 
   /** Queues the job for immediate execution. */
   async submitJob(...[input]: SubmitJobArgs<T>): Promise<void> {
@@ -87,7 +91,8 @@ export class Job<T extends JobParams | void = void> {
       target_name: this.config.jobTargetFunctionName,
       params: { ...params, jobId, jobName: this.config.jobName },
     };
-    await jobScheduling().JOB.submitJob(job as unknown as SdkJobMeta);
+    const scheduling = await jobScheduling(this.session);
+    await scheduling.JOB.submitJob(job as unknown as SdkJobMeta);
   }
 
   /** Queues the job to run once. `cronName` names the cron, must be unique in the
@@ -113,7 +118,20 @@ export class Job<T extends JobParams | void = void> {
         params: { ...params, jobName: this.config.jobName },
       },
     };
-    await jobScheduling().CRON.createCron(cron as unknown as SdkCronDetails);
+    const scheduling = await jobScheduling(this.session);
+    await scheduling.CRON.createCron(cron as unknown as SdkCronDetails);
+  }
+}
+
+export type { ScopedJob };
+
+/** A Catalyst job. Holds its config only; every submission goes through `runIn`. */
+export class Job<T extends JobParams | void = void> {
+  private constructor(readonly config: JobConfig) {}
+
+  /** The job's submissions, acting with the session's User credentials. */
+  runIn(session: CatalystSession): ScopedJob<T> {
+    return new ScopedJob<T>(this.config, session);
   }
 
   static create<T extends JobParams | void = void>(config: JobConfig): Job<T> {

@@ -1,5 +1,6 @@
 import request from "supertest";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { CatalystSession } from "@repo/node-utils/catalyst/catalyst-session";
 import { CatalystScope } from "@repo/node-utils/enums/catalyst-scope";
 import { ApiPath } from "@repo/routing/api-path";
 import { catalystAuth } from "@repo/testing/catalyst-auth";
@@ -57,7 +58,10 @@ describe("POST /api/v1/auth/register", () => {
 
     expect(registration.status).toBe(201);
     expect(registration.body).toEqual({ status: "success", data: registeredUser });
-    expect(registerUser).toHaveBeenCalledWith(newUser, "https://app.example.com/welcome");
+    expect(registerUser).toHaveBeenCalledExactlyOnceWith(expect.any(CatalystSession), {
+      user: newUser,
+      redirectUrl: "https://app.example.com/welcome",
+    });
     expect(catalystAuth.init).toHaveBeenCalledExactlyOnceWith(expect.anything(), {
       scope: CatalystScope.Admin,
     });

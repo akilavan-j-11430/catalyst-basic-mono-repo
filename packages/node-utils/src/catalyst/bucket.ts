@@ -1,7 +1,7 @@
 import { CatalystError } from "@/errors/catalyst-error";
 import { Stratus } from "@zcatalyst/stratus";
 import type { CatalystScope } from "@/enums/catalyst-scope";
-import { currentContext } from "@/framework/async-context";
+import type { CatalystSession } from "@/catalyst/catalyst-session";
 import { Readable } from "node:stream";
 
 type CatalystBucket = ReturnType<Stratus["bucket"]>;
@@ -12,8 +12,8 @@ type ObjectFormat = "stream" | "text" | "json";
 
 /** Fresh per call. The app is per-request and carries the caller's credentials,
  *  so a service must never be hoisted to module scope. */
-function stratus(scope: CatalystScope): Stratus {
-  return new Stratus(currentContext().manager.catalyst.getApp(scope));
+async function stratus(session: CatalystSession, scope: CatalystScope): Promise<Stratus> {
+  return new Stratus(await session.app(scope));
 }
 
 /** `listPagedObjects` returns either a plain detail record or an object handle. */
@@ -29,15 +29,16 @@ async function readStream(stream: Readable): Promise<string> {
   return Buffer.concat(chunks).toString("utf8");
 }
 
-/** A Stratus bucket bound to a scope. Reached only through `Bucket.runIn`. */
+/** A Stratus bucket bound to a request and a scope. Reached only through `Bucket.runIn`. */
 class ScopedBucket {
   constructor(
     private readonly name: string,
+    private readonly session: CatalystSession,
     private readonly scope: CatalystScope,
   ) {}
 
-  private bucket(): CatalystBucket {
-    return stratus(this.scope).bucket(this.name);
+  private async bucket(): Promise<CatalystBucket> {
+    return (await stratus(this.session, this.scope)).bucket(this.name);
   }
 
   async listObject(options: {
@@ -45,7 +46,8 @@ class ScopedBucket {
     prefix?: string;
     nextToken?: string;
   }): Promise<{ items: string[]; nextToken?: string }> {
-    const objects = await this.bucket().listPagedObjects({
+    const bucket = await this.bucket();
+    const objects = await bucket.listPagedObjects({
       prefix: options.prefix,
       maxKeys: options.maxKeys?.toString(),
       continuationToken: options.nextToken,
@@ -72,14 +74,16 @@ class ScopedBucket {
     if (options?.ttl !== undefined) {
       uploadOptions.ttl = options.ttl.toString();
     }
-    await this.bucket().putObject(key, data, uploadOptions);
+    const bucket = await this.bucket();
+    await bucket.putObject(key, data, uploadOptions);
   }
 
   async generatePreSignedUrl(
     key: string,
     expiryInSeconds: number,
   ): Promise<string> {
-    const result = await this.bucket().generatePreSignedUrl(key, "GET", {
+    const bucket = await this.bucket();
+    const result = await bucket.generatePreSignedUrl(key, "GET", {
       expiryIn: expiryInSeconds.toString(),
     });
     if (!result.signature) {
@@ -91,8 +95,9 @@ class ScopedBucket {
   }
 
   private async openObject(key: string): Promise<Readable> {
+    const bucket = await this.bucket();
     try {
-      return await this.bucket().getObject(key);
+      return await bucket.getObject(key);
     } catch (cause) {
       throw CatalystError.ResourceNotFound(
         `Object with key ${key} not found in bucket ${this.name}`,
@@ -132,11 +137,13 @@ class ScopedBucket {
 
 
   async deleteObject(key: string): Promise<void> {
-    await this.bucket().deleteObject(key);
+    const bucket = await this.bucket();
+    await bucket.deleteObject(key);
   }
 
   async deletePath(path: string): Promise<void> {
-    await this.bucket().deletePath(path);
+    const bucket = await this.bucket();
+    await bucket.deletePath(path);
   }
 }
 
@@ -146,9 +153,9 @@ export type { ScopedBucket };
 export class Bucket {
   private constructor(private readonly name: string) {}
 
-  /** The bucket's operations, acting with the scope's credentials. */
-  runIn(scope: CatalystScope): ScopedBucket {
-    return new ScopedBucket(this.name, scope);
+  /** The bucket's operations, acting with the session's credentials for the scope. */
+  runIn(session: CatalystSession, scope: CatalystScope): ScopedBucket {
+    return new ScopedBucket(this.name, session, scope);
   }
 
   buildKey(...parts: string[]): string {
