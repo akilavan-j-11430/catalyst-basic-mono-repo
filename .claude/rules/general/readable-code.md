@@ -32,7 +32,7 @@ function toRegisteredUser(details: RegisteredUserDetails): RegisteredUser {
   The vendor seams are exempt through `allowVendorNames(files)` - all of `catalyst-node`'s
   `src/`, the package that wraps Catalyst, plus `apps/api`'s `env.ts` and
   `catalyst-logger.ts` - and so are three tests whose inputs are vendor-cased:
-  `case-conversion`'s `camel-case.test.ts`, `node-utils`' `env.test.ts` and `catalyst-node`'s
+  `case-conversion`'s `camel-case.test.ts`, `env`'s `define-env.test.ts` and `catalyst-node`'s
   `user-management.test.ts`. `apps/web` builds on Next's config instead and leaves
   `src/catalyst/` out of the rule's `files` with `ignores`. A key that needs quotes
   (`"content-type"`, `"--width"`) is a wire string and is never checked. Add a file to the

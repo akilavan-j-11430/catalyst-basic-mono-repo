@@ -18,6 +18,7 @@
   "type": "commonjs",
   "dependencies": {
     "@repo/catalyst-node": "workspace:*",
+    "@repo/env": "workspace:*",
     "@repo/http-server": "workspace:*",
     "@repo/node-utils": "workspace:*",
     "@repo/routing": "workspace:*",

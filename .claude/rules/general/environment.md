@@ -1,12 +1,12 @@
 # Environment variables
 
-`node-utils` owns the mechanism, an app owns its keys. `defineEnv`
-(`@repo/node-utils/utils/env`) is generic and names no variable; each app declares what it
+`@repo/env` owns the mechanism, an app owns its keys. `defineEnv`
+(`@repo/env/define-env`) is generic and names no variable; each app declares what it
 reads in its own `src/env.ts` and exports the handle:
 
 ```ts
 // apps/api/src/env.ts
-import { defineEnv } from "@repo/node-utils/utils/env";
+import { defineEnv } from "@repo/env/define-env";
 
 type ApiEnv = {
   /** Where Catalyst sends a new user from the confirmation email. */
@@ -118,7 +118,7 @@ so a deployed build is told where each one lives.
 - Read once, as a literal `process.env.NEXT_PUBLIC_<NAME>_URL`, in
   `src/services/api/client.ts`, beside that backend's clients. Next inlines it at
   `next build` and inlines nothing it cannot see written out, so there is no template or
-  `defineEnv` here - that is `node-utils`, which the browser cannot import.
+  `defineEnv` here - that reads `process.env` at runtime, which a browser bundle does not have.
 - Set in **Console -> Slate -> web -> Environment Variables**, and left unset locally, where
   calls stay relative and go through `apps/proxy`. `apps/web/.env.example` documents it.
 - `scripts/bundle.mjs` never stages a `.env*` file, so a local value cannot ship.

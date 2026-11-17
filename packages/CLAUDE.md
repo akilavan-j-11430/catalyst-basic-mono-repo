@@ -1,6 +1,6 @@
 # packages/
 
-Shared code for the monorepo. All ten are private and consumed as `"workspace:*"`.
+Shared code for the monorepo. All eleven are private and consumed as `"workspace:*"`.
 
 | Package | Holds |
 |---|---|
@@ -9,7 +9,8 @@ Shared code for the monorepo. All ten are private and consumed as `"workspace:*"
 | `@repo/types` | API response shapes shared by `apps/api` and `apps/web` |
 | `@repo/http-client` | `HttpClient` - every call to a service outside this repo. Framework-free and browser-safe: it reads nothing ambient, and the caller passes in what a call carries |
 | `@repo/catalyst-node` | `CatalystSession` and the Catalyst wrappers (`table`, `bucket`, `cache`, `job`, `zcql`, `user-management`) plus the resource handles built from them - every Catalyst SDK call, on the server |
-| `@repo/node-utils` | `ExecutionContext`, `logger`, `env`, `RuntimeError` |
+| `@repo/env` | `defineEnv` - reads one app's declared environment variables; throws `MissingEnvVariableError` for an unset one |
+| `@repo/node-utils` | `ExecutionContext`, `logger`, `RuntimeError` |
 | `@repo/http-server` | The Express plumbing every app that serves HTTP shares - `initExecutionContext`, `initCatalystScopes`, `errorHandler`, `HttpError`, the response builders, and `RequestInput` for zod-checked request input. The one package that may import `express` |
 | `@repo/typescript-config` | `base.json` that every tsconfig extends |
 | `@repo/eslint-config` | flat ESLint config: the import boundaries and the camelCase naming rule |
@@ -17,7 +18,7 @@ Shared code for the monorepo. All ten are private and consumed as `"workspace:*"
 
 ## Import paths
 
-`@repo/types`, `@repo/routing`, `@repo/case-conversion`, `@repo/http-client`, `@repo/catalyst-node` and `@repo/node-utils` expose **subpaths**, not a barrel. The `exports`
+`@repo/types`, `@repo/routing`, `@repo/case-conversion`, `@repo/http-client`, `@repo/catalyst-node`, `@repo/env` and `@repo/node-utils` expose **subpaths**, not a barrel. The `exports`
 block maps `./*` onto `./dist/*.js` + `./dist/*.d.ts`, so the import path mirrors the
 path under `src/`:
 
@@ -26,7 +27,7 @@ import type { RecordResponse } from "@repo/types/api";              // src/api.t
 import { logger } from "@repo/node-utils/framework/logger";         // src/framework/logger.ts
 import { currentContext } from "@repo/node-utils/framework/async-context";
 import { todoTable } from "@repo/catalyst-node/resources";         // src/resources.ts
-import { defineEnv } from "@repo/node-utils/utils/env";               // src/utils/env.ts
+import { defineEnv } from "@repo/env/define-env";                  // src/define-env.ts
 ```
 
 There is no `@repo/types` root import. Adding a file under `src/` is enough to publish
@@ -73,7 +74,7 @@ Consumers must be built after these. Turborepo handles that via `dependsOn: ["^b
   `.claude/rules/general/outbound-http.md` before adding an HTTP dependency. It sets
   `"types": []` in `tsconfig.build.json`, so a Node API in its `src/` fails the build and it
   stays usable from the browser.
-- **These packages own the env mechanism, never a key.** `src/utils/env.ts` exports
+- **These packages own the env mechanism, never a key.** `@repo/env` exports
   `defineEnv<T>()`, which is generic and names no variable; each app declares what it
   reads in its own `src/env.ts`. A package that needs a configured value **takes it as a
   parameter** - `UserManagement.register(session, { user, redirectUrl })`, `setLogTimeZone(zone)` - so

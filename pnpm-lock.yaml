@@ -51,6 +51,9 @@ importers:
       '@repo/catalyst-node':
         specifier: workspace:*
         version: link:../../packages/catalyst-node
+      '@repo/env':
+        specifier: workspace:*
+        version: link:../../packages/env
       '@repo/http-server':
         specifier: workspace:*
         version: link:../../packages/http-server
@@ -281,6 +284,30 @@ importers:
         specifier: ^5.0.5
         version: 5.0.5(@types/node@24.13.6)(vite@8.3.5(@types/node@24.13.6)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15))
 
+  packages/env:
+    devDependencies:
+      '@repo/eslint-config':
+        specifier: workspace:*
+        version: link:../eslint-config
+      '@repo/testing':
+        specifier: workspace:*
+        version: link:../testing
+      '@repo/typescript-config':
+        specifier: workspace:*
+        version: link:../typescript-config
+      '@types/node':
+        specifier: ^24.13.6
+        version: 24.13.6
+      concurrently:
+        specifier: ^10.0.5
+        version: 10.0.5
+      eslint:
+        specifier: ^9.39.5
+        version: 9.39.5(jiti@2.7.0)
+      vitest:
+        specifier: ^5.0.5
+        version: 5.0.5(@types/node@24.13.6)(vite@8.3.5(@types/node@24.13.6)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15))
+
   packages/eslint-config:
     dependencies:
       '@eslint/js':
@@ -375,9 +402,6 @@ importers:
       '@repo/eslint-config':
         specifier: workspace:*
         version: link:../eslint-config
-      '@repo/testing':
-        specifier: workspace:*
-        version: link:../testing
       '@repo/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config
@@ -390,9 +414,6 @@ importers:
       eslint:
         specifier: ^9.39.5
         version: 9.39.5(jiti@2.7.0)
-      vitest:
-        specifier: ^5.0.5
-        version: 5.0.5(@types/node@24.13.6)(vite@8.3.5(@types/node@24.13.6)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15))
 
   packages/routing:
     devDependencies:

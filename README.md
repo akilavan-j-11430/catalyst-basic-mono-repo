@@ -217,6 +217,7 @@ curl http://localhost:3001/api/v1/nope
 |   |-- types/              @repo/types              shared API response shapes
 |   |-- node-utils/         @repo/node-utils         execution context, logger, errors
 |   |-- catalyst-node/      @repo/catalyst-node      Catalyst wrappers and CatalystSession
+|   |-- env/                @repo/env                defineEnv, each app's declared variables
 |   |-- http-client/        @repo/http-client        HttpClient, for Node and the browser
 |   |-- http-server/        @repo/http-server        shared Express middleware and responses
 |   |-- case-conversion/    @repo/case-conversion    vendor keys -> camelCase
@@ -237,7 +238,8 @@ curl http://localhost:3001/api/v1/nope
 | `apps/web` | Next.js frontend. Calls the API with relative `/api/...` paths. |
 | `@repo/routing` | `ApiPath` segments, combined with `+` - the API mounts them and the web app calls them, so no path is a string literal in either. |
 | `@repo/types` | `RecordResponse`, `PagedRecordResponse`, `ErrorResponse` - imported by both the API and the web app so the contract is written once. |
-| `@repo/node-utils` | `ExecutionContext` over `AsyncLocalStorage`, a `logger` that stamps execution IDs, `RuntimeError`, `env`. |
+| `@repo/node-utils` | `ExecutionContext` over `AsyncLocalStorage`, a `logger` that stamps execution IDs, `RuntimeError`. |
+| `@repo/env` | `defineEnv` - each app declares the variables it reads, so a typo is a compile error and an unset one throws `MissingEnvVariableError`. |
 | `@repo/catalyst-node` | `CatalystSession` and the Catalyst wrappers plus the resource handles built from them - the only package that imports `@zcatalyst/*`. Each entry point builds a session from its request's headers and passes it to every call. |
 | `@repo/http-client` | `HttpClient` - every call to a service outside this repo. Reads nothing ambient, so it runs in Node and in the browser. |
 | `@repo/case-conversion` | `CamelCase.convertKeys` - renames a vendor's snake_case or kebab-case keys at any depth, for `catalyst-node`. Framework-free, so the web app may use it too. |

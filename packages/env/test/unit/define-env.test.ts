@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { defineEnv, MissingEnvVariableError } from "@/utils/env";
+import { defineEnv, MissingEnvVariableError } from "@/define-env";
 
 const env = defineEnv<{ BILLING_URL: string }>();
 

@@ -82,6 +82,7 @@ catalyst serve      <- entry point, port assigned by the CLI (3000, 3001, 3002, 
 | `packages/case-conversion` | `@repo/case-conversion` | - |
 | `packages/node-utils` | `@repo/node-utils` | - |
 | `packages/catalyst-node` | `@repo/catalyst-node` | - |
+| `packages/env` | `@repo/env` | - |
 | `packages/http-client` | `@repo/http-client` | - |
 | `packages/http-server` | `@repo/http-server` | - |
 | `packages/typescript-config` | `@repo/typescript-config` | - |
@@ -160,7 +161,7 @@ root `package.json` stopped reaching the workspaces - `node:stream`, `process` a
 all went unresolved in `packages/node-utils` under 6.0.3 while 5.9.3 stayed clean. Hence two
 standing rules: every workspace that compiles Node code **declares `@types/node` itself** and
 sets `"types": ["node"]` in its tsconfig (`packages/node-utils`, `packages/catalyst-node`,
-`apps/api`, `apps/proxy`,
+`packages/env`, `apps/api`, `apps/proxy`,
 `packages/testing`, and `packages/case-conversion` and `packages/http-client` for their tests
 and Vitest config - not
 `base.json`, which `packages/types` shares and which must stay framework-free). Note that
@@ -210,7 +211,7 @@ frontmatter when it applies to only part of the tree.
 - Shared packages expose subpaths, not a barrel: `@repo/types/api`, `@repo/routing/api-path`,
   `@repo/case-conversion/camel-case`,
   `@repo/node-utils/framework/logger`, `@repo/node-utils/framework/async-context`,
-  `@repo/catalyst-node/resources`, `@repo/node-utils/utils/env`,
+  `@repo/catalyst-node/resources`, `@repo/env/define-env`,
   `@repo/http-client/http-client`,
   `@repo/http-server/middleware`, `@repo/http-server/http-error`, `@repo/http-server/response`,
   `@repo/http-server/request-input`,

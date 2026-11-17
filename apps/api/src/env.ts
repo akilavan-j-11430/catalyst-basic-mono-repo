@@ -1,4 +1,4 @@
-import { defineEnv } from "@repo/node-utils/utils/env";
+import { defineEnv } from "@repo/env/define-env";
 
 /**
  * Every environment variable this app reads. Requiredness is expressed at the
