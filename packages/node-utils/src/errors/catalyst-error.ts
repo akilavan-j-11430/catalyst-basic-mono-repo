@@ -1,8 +1,7 @@
 import { ErrorCode } from "@/enums/error-codes";
-import { RuntimeError } from "@/errors/runtime-error";
 
 /** A Catalyst operation that failed in a way the caller can act on. */
-export class CatalystError extends RuntimeError {
+export class CatalystError extends Error {
   readonly code: ErrorCode;
   /** The SDK error this was raised from, kept for the log line. */
   readonly cause?: unknown;
