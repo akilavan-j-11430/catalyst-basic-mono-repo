@@ -28,7 +28,7 @@ an `undefined` at runtime:
 ```ts
 import { env } from "@/env";
 
-env.get("AUTH_REDIRECT_URL");   // string - throws RuntimeError naming it when unset
+env.get("AUTH_REDIRECT_URL");   // string - throws MissingEnvVariableError naming it when unset
 env.optional("TZ");             // string | undefined - for a key with a fallback
 ```
 

@@ -1,4 +1,10 @@
-import { RuntimeError } from "@/errors/runtime-error";
+/** A key the app declared and needs is unset or empty in this environment. */
+export class MissingEnvVariableError extends Error {
+  constructor(readonly variableName: string) {
+    super(`Required environment variable ${variableName} is not set.`);
+    this.name = "MissingEnvVariableError";
+  }
+}
 
 /** The keys one app reads, each mapped to the string the environment holds. */
 export type EnvKeys = Record<string, string>;
@@ -11,13 +17,11 @@ export class Env<T extends EnvKeys> {
     return value === undefined || value === "" ? undefined : value;
   }
 
-  /** Reads one key. Throws `RuntimeError` naming it when it is unset or empty. */
+  /** Reads one key. Throws `MissingEnvVariableError` naming it when it is unset or empty. */
   get<K extends keyof T & string>(name: K): string {
     const value = this.optional(name);
     if (value === undefined) {
-      throw new RuntimeError(
-        `Required environment variable ${name} is not set.`,
-      );
+      throw new MissingEnvVariableError(name);
     }
     return value;
   }
