@@ -38,6 +38,15 @@ describe("HttpClient request encoding", () => {
     expect(sentRequests[0]?.body).toBe("paid in full");
     expect(sentRequests[0]?.headers[HttpHeader.ContentType]).toBe(ContentType.Text);
   });
+
+  it("rejects bytes over a shared buffer, which fetch cannot send", async () => {
+    const { billing, sentRequests } = recordingClient();
+
+    const sending = billing.post("/uploads", new Uint8Array(new SharedArrayBuffer(4)));
+
+    await expect(sending).rejects.toThrow(TypeError);
+    expect(sentRequests).toHaveLength(0);
+  });
 });
 
 describe("HttpClient declared content type", () => {

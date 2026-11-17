@@ -47,9 +47,10 @@ interface EncodedBody {
   contentType?: string;
 }
 
-function isBinary(body: unknown): body is Uint8Array | ArrayBuffer | Blob {
+/** fetch sends a view only over a plain `ArrayBuffer`; `encodeBody` rejects any other. */
+function isBinary(body: unknown): body is Uint8Array<ArrayBuffer> | ArrayBuffer | Blob {
   return (
-    body instanceof Uint8Array ||
+    (body instanceof Uint8Array && body.buffer instanceof ArrayBuffer) ||
     body instanceof ArrayBuffer ||
     body instanceof Blob
   );
@@ -87,6 +88,9 @@ function encodeBody(body: unknown, declared?: string): EncodedBody {
   }
   if (typeof body === "string") {
     return { body, contentType: declared ?? ContentType.Text };
+  }
+  if (body instanceof Uint8Array && !(body.buffer instanceof ArrayBuffer)) {
+    throw new TypeError("A Uint8Array body must be backed by an ArrayBuffer - fetch cannot send a shared one.");
   }
   if (isBinary(body)) {
     return { body, contentType: declared ?? ContentType.OctetStream };

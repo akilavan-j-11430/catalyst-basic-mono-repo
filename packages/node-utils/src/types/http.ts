@@ -19,7 +19,7 @@ export type {
  *  `BodyInit`: that includes streams, which not every client can consume. */
 export type RequestBody =
   | string
-  | Uint8Array
+  | Uint8Array<ArrayBuffer>
   | ArrayBuffer
   | Blob
   | URLSearchParams
