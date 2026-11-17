@@ -1,17 +1,17 @@
-import { describe, expect, it } from "vitest";
-import { Catalyst } from "@/catalyst/catalyst";
+import { describe, expect, it, vi } from "vitest";
 import { ContentType } from "@/enums/content-type";
 import { HttpHeader } from "@/enums/http-header";
-import { RuntimeError } from "@/errors/runtime-error";
-import { ExecutionContext, runWithContext } from "@/framework/async-context";
 import { HttpClient } from "@/http/http-client";
 import type { TransportRequest } from "@/types/http";
 
 /** A client whose transport records what it was asked to send and answers 200. */
-function recordingClient(): { billing: HttpClient; sentRequests: TransportRequest[] } {
+function recordingClient(
+  headers?: () => Record<string, string>,
+): { billing: HttpClient; sentRequests: TransportRequest[] } {
   const sentRequests: TransportRequest[] = [];
   const billing = new HttpClient({
     baseUrl: "https://billing.example.com/v2",
+    headers,
     transport: async (request) => {
       sentRequests.push(request);
       return { status: 200, headers: {}, body: new Uint8Array() };
@@ -48,7 +48,7 @@ describe("HttpClient declared content type", () => {
       headers: { [HttpHeader.ContentType]: ContentType.Xml },
     });
 
-    await expect(sending).rejects.toThrow(RuntimeError);
+    await expect(sending).rejects.toThrow(TypeError);
     expect(sentRequests).toHaveLength(0);
   });
 
@@ -59,26 +59,30 @@ describe("HttpClient declared content type", () => {
       headers: { [HttpHeader.ContentType]: ContentType.Multipart },
     });
 
-    await expect(sending).rejects.toThrow(RuntimeError);
+    await expect(sending).rejects.toThrow(TypeError);
     expect(sentRequests).toHaveLength(0);
   });
 });
 
 describe("HttpClient execution id", () => {
-  it("stamps the request's execution id inside a request context", async () => {
-    const { billing, sentRequests } = recordingClient();
-    const context = new ExecutionContext({
-      executionId: "execution-1",
-      catalyst: new Catalyst(),
-      extras: {},
-    });
+  it("sends the execution id the caller's headers supply, and logs it with the call", async () => {
+    const callLine = vi.spyOn(console, "info").mockImplementation(() => undefined);
+    const { billing, sentRequests } = recordingClient(() => ({
+      [HttpHeader.AppExecutionId]: "execution-1",
+    }));
 
-    await runWithContext(context, () => billing.get("/invoices/1"));
+    await billing.get("/invoices/1");
 
     expect(sentRequests[0]?.headers[HttpHeader.AppExecutionId]).toBe("execution-1");
+    expect(callLine).toHaveBeenCalledExactlyOnceWith(
+      expect.stringMatching(
+        /^GET https:\/\/billing\.example\.com\/v2\/invoices\/1 -> 200 in \d+ ms \(app-execution-id: execution-1\)$/,
+      ),
+    );
   });
 
-  it("leaves the header off outside a request context", async () => {
+  it("adds none of its own", async () => {
+    vi.spyOn(console, "info").mockImplementation(() => undefined);
     const { billing, sentRequests } = recordingClient();
 
     await billing.get("/invoices/1");

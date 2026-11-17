@@ -262,8 +262,9 @@ In `apps/api`:
   `toErrorResponse` (`@repo/http-server/response`) so payloads share one envelope.
 - Log through `logger` from `@repo/node-utils/framework/logger`, not `console`.
 - Call external services through `HttpClient` (`@repo/node-utils/http/http-client`), never
-  `fetch` or another client directly. It stamps the request's execution id on every
-  outbound call as `app-execution-id`. See `.claude/rules/general/outbound-http.md`.
+  `fetch` or another client directly. A client that should carry the request's execution
+  id as `app-execution-id` passes it through its `headers` resolver. See
+  `.claude/rules/general/outbound-http.md`.
 - Read environment variables through `env` (`@/env`), never `process.env`. This app owns
   its keys - add one to the template in `src/env.ts` first, so a typo is a compile error.
   Values live in `.env`, never in `app-config.json` or any other Catalyst file, and

@@ -1,5 +1,4 @@
 import type { HttpMethod } from "@/enums/http-method";
-import { RuntimeError } from "@/errors/runtime-error";
 
 /** Everything known about a failed call, flat and synchronous so it can be logged. */
 interface Failure {
@@ -20,7 +19,7 @@ export interface ResponseFailure {
 }
 
 /** An outbound request that did not come back with a usable 2xx, or did not come back. */
-export class HttpRequestError extends RuntimeError {
+export class HttpRequestError extends Error {
   readonly method: HttpMethod;
   readonly url: string;
   /** Absent only when nothing came back - timeout, DNS failure, connection refused. */
@@ -68,7 +67,7 @@ export class HttpRequestError extends RuntimeError {
     );
   }
 
-  /** What `logger` prints, so a failure is diagnosable from the log line alone. */
+  /** What a log line prints, so a failure is diagnosable from that line alone. */
   override toString(): string {
     const lines = [`${this.name}: ${this.message}`];
     if (this.status !== undefined) {

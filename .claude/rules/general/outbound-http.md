@@ -32,26 +32,28 @@ const invoice = toInvoice(await body.json());
   The client has no `parse` hook on purpose; a plain function call does the same job.
 - `timeoutMs` on the client is the default; pass it per call for a slow export or a big
   upload rather than loosening it for everything.
-- Each call logs `METHOD url -> status in N ms`. Bodies and headers are never logged, so
-  keep secrets out of the URL.
-- Every call carries `app-execution-id` automatically - see below.
+- Each call logs `METHOD url -> status in N ms`, plus the `app-execution-id` it sent. Bodies
+  and other headers are never logged, so keep secrets out of the URL.
+- The client reads nothing ambient, so it runs in Node and in the browser alike. Whatever a
+  call should carry - a token, an execution id - comes in through `headers`.
 
 ## Request correlation
 
-The client stamps `app-execution-id` on every outbound request, taken from the in-flight
-request's `ExecutionContext`. It is the same id the logger prints as `Execution ID`, so one
-id ties this repo's log lines to the upstream's for a single request. Nothing to pass at
-the call site:
+An outbound call carries `app-execution-id`, the id of the request or run that caused it,
+so one id ties this repo's log lines to the upstream's. The client does not look the id
+up - it has no request context to read, and in the browser there is none. The app that
+owns the request supplies it through the client's `headers` resolver, which runs on
+every call:
 
+```ts
+const billing = new HttpClient({
+  baseUrl: "https://billing.example.com/v2",
+  headers: () => ({ [HttpHeader.AppExecutionId]: currentContext().manager.executionId }),
+});
 ```
-app-execution-id: 0f3c1a9e-...    <- currentContext().manager.executionId
-```
 
-Outside a request context - a cron, a job, a call at startup - there is no execution to
-attribute it to and the header is simply left off. The client does not throw.
-
-It is merged first, so both the client's `headers` resolver and a per-call `headers` entry
-override it. Pass one explicitly only when an upstream insists on its own correlation id:
+A per-call `headers` entry overrides the resolver, for an upstream that insists on its own
+correlation id:
 
 ```ts
 await billing.get("/invoices/42", {
@@ -163,18 +165,14 @@ try {
 body is already encoded and returns the status, the headers and the raw response bytes.
 It never decides what a status means and never throws for a non-2xx.
 
-Connection pooling, keep-alive, proxying and mTLS are transport concerns, not client
-ones, so they are configured where the transport is built:
+`fetchTransport` is the default, and it is plain fetch, so it works in Node and in the
+browser. On Node, undici's global dispatcher already pools connections and keeps them
+alive.
 
-```ts
-const billing = new HttpClient({
-  baseUrl: "https://billing.example.com/v2",
-  transport: createFetchTransport({ dispatcher: myUndiciAgent }),
-});
-```
-
-Note this is an undici `Dispatcher`, not a `node:http` `Agent` - fetch does not take the
-latter. Omit it and undici's global dispatcher already pools connections.
+Proxying, mTLS or a tuned pool are transport concerns, not client ones, and they are
+Node-only, so they go in a transport of their own beside `fetch-transport.ts` - fetch with
+an undici `Dispatcher` (not a `node:http` `Agent`, which fetch does not take) - passed as
+`transport:` to the client that needs it.
 
 To move to axios, add `packages/node-utils/src/http/axios-transport.ts` beside
 `fetch-transport.ts` and pass `transport: axiosTransport`; its equivalent option would be

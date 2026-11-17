@@ -61,22 +61,7 @@ export interface HttpClientOptions {
   /** Authorization and anything else every call to this service carries. */
   headers?: HeaderResolver;
   timeoutMs?: number;
-  /** Swap seam - defaults to fetch. Pass `createFetchTransport({ dispatcher })` to
-   *  control pooling, proxying or TLS. */
+  /** Swap seam - defaults to `fetchTransport`. A Node-only transport - an undici
+   *  dispatcher for pooling, proxying or mTLS - is written beside it when one is needed. */
   transport?: HttpTransport;
-}
-
-/**
- * Node's answer to an `http.Agent`: connection pooling and keep-alive, proxying, mTLS
- * client certs, a custom CA. An `http.Agent` itself does nothing here - fetch takes an
- * undici `Dispatcher`.
- *
- * Taken off the global `RequestInit` rather than imported from `undici-types`, which is
- * a transitive type-only package this workspace cannot resolve.
- */
-export type FetchDispatcher = NonNullable<RequestInit["dispatcher"]>;
-
-export interface FetchTransportOptions {
-  /** Omit it and undici uses its global dispatcher, which already pools connections. */
-  dispatcher?: FetchDispatcher;
 }

@@ -2,10 +2,7 @@ import { ContentType } from "@/enums/content-type";
 import { HttpHeader } from "@/enums/http-header";
 import { HttpMethod } from "@/enums/http-method";
 import { HttpRequestError } from "@/errors/http-request-error";
-import { RuntimeError } from "@/errors/runtime-error";
-import { currentContext } from "@/framework/async-context";
-import { logger } from "@/framework/logger";
-import { createFetchTransport } from "@/http/fetch-transport";
+import { fetchTransport } from "@/http/fetch-transport";
 import { toHttpResponse } from "@/http/response";
 import type {
   HeaderResolver,
@@ -18,9 +15,6 @@ import type {
 } from "@/types/http";
 
 const DEFAULT_TIMEOUT_MS = 10_000;
-
-/** Shared so every client without its own transport reuses undici's global pool. */
-const defaultTransport = createFetchTransport();
 
 /** A content type carries parameters - `application/json; charset=utf-8` - which are not
  *  part of the type itself, so comparisons only ever look at the media type. */
@@ -71,13 +65,13 @@ function isBinary(body: unknown): body is Uint8Array | ArrayBuffer | Blob {
 function encodeBody(body: unknown, declared?: string): EncodedBody {
   if (body === undefined) {
     if (declared) {
-      throw new RuntimeError(`Got a ${declared} content type but no body to send.`);
+      throw new TypeError(`Got a ${declared} content type but no body to send.`);
     }
     return {};
   }
   if (body instanceof FormData) {
     if (declared) {
-      throw new RuntimeError(
+      throw new TypeError(
         `A FormData body is always ${ContentType.Multipart} with a generated boundary, so it cannot be sent as ${declared}.`,
       );
     }
@@ -85,7 +79,7 @@ function encodeBody(body: unknown, declared?: string): EncodedBody {
   }
   if (body instanceof URLSearchParams) {
     if (declared && mediaType(declared) !== ContentType.FormUrlEncoded) {
-      throw new RuntimeError(
+      throw new TypeError(
         `A URLSearchParams body is always ${ContentType.FormUrlEncoded}, so it cannot be sent as ${declared}.`,
       );
     }
@@ -98,26 +92,18 @@ function encodeBody(body: unknown, declared?: string): EncodedBody {
     return { body, contentType: declared ?? ContentType.OctetStream };
   }
   if (declared && mediaType(declared) !== ContentType.Json) {
-    throw new RuntimeError(
+    throw new TypeError(
       `This body is serialized as ${ContentType.Json}, so it cannot be sent as ${declared}. Encode it yourself and pass a string.`,
     );
   }
   return { body: JSON.stringify(body), contentType: declared ?? ContentType.Json };
 }
 
-/** Stamps the in-flight request's execution id on the call so an upstream log line can be
- *  traced back to the request that caused it. Left off outside a request context - a cron
- *  or a startup call has no execution to attribute it to. */
-function executionHeader(): Record<string, string> {
-  try {
-    return { [HttpHeader.AppExecutionId]: currentContext().manager.executionId };
-  } catch {
-    // outside request context
-    return {};
-  }
-}
-
-/** One instance per external service. Every outbound request in this repo goes through here. */
+/**
+ * One instance per external service. Every outbound request in this repo goes through here.
+ * It runs in Node and in the browser alike, so it reads nothing ambient: an execution id or a
+ * token reaches the wire through the `headers` resolver the caller passes in.
+ */
 export class HttpClient {
   private readonly baseUrl: string;
   private readonly resolveHeaders: HeaderResolver;
@@ -126,14 +112,14 @@ export class HttpClient {
 
   constructor(options: HttpClientOptions) {
     if (!URL.canParse(options.baseUrl)) {
-      throw new RuntimeError(
+      throw new TypeError(
         `HttpClient needs an absolute baseUrl, got "${options.baseUrl}"`,
       );
     }
     this.baseUrl = options.baseUrl.replace(/\/+$/, "");
     this.resolveHeaders = options.headers ?? (() => ({}));
     this.timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
-    this.transport = options.transport ?? defaultTransport;
+    this.transport = options.transport ?? fetchTransport;
   }
 
   get(path: string, options?: RequestOptions): Promise<HttpResponse> {
@@ -176,7 +162,6 @@ export class HttpClient {
   ): Promise<HttpResponse> {
     const url = this.resolveUrl(path, options?.query);
     const headers = {
-      ...executionHeader(),
       ...(await this.resolveHeaders()),
       ...options?.headers,
     };
@@ -200,8 +185,8 @@ export class HttpClient {
       const cause = error instanceof Error ? error.message : String(error);
       throw HttpRequestError.Unreachable(method, url, cause);
     }
-    logger.info(
-      `${method} ${url} -> ${transported.status} in ${Date.now() - startedAt} ms`,
+    console.info(
+      `${method} ${url} -> ${transported.status} in ${Date.now() - startedAt} ms${HttpClient.describeExecution(headers)}`,
     );
 
     if (transported.status < 200 || transported.status >= 300) {
@@ -214,6 +199,12 @@ export class HttpClient {
       });
     }
     return toHttpResponse(method, url, transported);
+  }
+
+  /** The execution id the caller sent, so this line matches the upstream's log for the call. */
+  private static describeExecution(headers: Record<string, string>): string {
+    const executionId = headers[HttpHeader.AppExecutionId];
+    return executionId === undefined ? "" : ` (${HttpHeader.AppExecutionId}: ${executionId})`;
   }
 
   private resolveUrl(path: string, query?: Record<string, QueryValue>): string {
