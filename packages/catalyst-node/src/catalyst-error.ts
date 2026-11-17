@@ -1,4 +1,4 @@
-import { ErrorCode } from "@/enums/error-codes";
+import { ErrorCode } from "@/error-codes";
 
 /** A Catalyst operation that failed in a way the caller can act on. */
 export class CatalystError extends Error {

@@ -96,11 +96,11 @@ handler.
 
 Handlers must **not** initialize Catalyst themselves, and must not reach for the app at
 all. `initCatalystScopes` leaves the request's `CatalystSession` on the response, and the
-handler passes `catalystSessionOf(res)` to each call. Table data goes through a repository in `packages/node-utils/src/repositories/`, which
+handler passes `catalystSessionOf(res)` to each call. Table data goes through a repository in `packages/catalyst-node/src/repositories/`, which
 takes and returns domain types - a route never imports a table handle or `Zcql`:
 
 ```ts
-import { TodoRepository } from "@repo/node-utils/repositories/todo-repository";
+import { TodoRepository } from "@repo/catalyst-node/repositories/todo-repository";
 
 const todo = await TodoRepository.find(catalystSessionOf(res), req.params.todoId);
 ```
@@ -112,13 +112,13 @@ A bucket, cache or job handle is called directly, naming the session and the sco
 await invoiceBucket.runIn(catalystSessionOf(res), CatalystScope.User).getObject(invoiceKey);
 ```
 
-Handles are declared once in `packages/node-utils/src/catalyst/resources.ts`, never in a
+Handles are declared once in `packages/catalyst-node/src/resources.ts`, never in a
 route. See `.claude/rules/general/vendor-boundaries.md`.
 
 If a handle cannot do what the route needs, **add the method to the wrapper** rather than
 reaching for the SDK here. A single-use method is still the right shape.
 
-The wrappers throw `CatalystError` (`@repo/node-utils/errors/catalyst-error`), which carries
+The wrappers throw `CatalystError` (`@repo/catalyst-node/catalyst-error`), which carries
 an `ErrorCode`; catch it at the route only to map onto an `HttpError`, otherwise let it
 reach `errorHandler` as a 500. `.claude/rules/general/catalyst-sdk.md` is the full rule.
 

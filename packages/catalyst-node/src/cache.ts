@@ -1,6 +1,6 @@
 import { Cache as CacheClient } from "@zcatalyst/cache";
-import { CatalystScope } from "@/enums/catalyst-scope";
-import type { CatalystSession } from "@/catalyst/catalyst-session";
+import { CatalystScope } from "@/catalyst-scope";
+import type { CatalystSession } from "@/catalyst-session";
 
 /** The SDK exports only its top-level clients, so segment/bucket/table types are
  *  derived from the methods that produce them rather than imported. */

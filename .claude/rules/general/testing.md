@@ -100,13 +100,13 @@ No test reaches Catalyst. What gets faked depends on what is under test:
 
 | Under test | Fake | Example |
 |---|---|---|
-| A wrapper in `node-utils/src/catalyst/` | the `@zcatalyst/*` package it calls | `zcql.test.ts` mocks `@zcatalyst/datastore` |
-| A route in `apps/api` | our wrapper (`@repo/node-utils/catalyst/...`), and `zcAuth.init` | `app.test.ts` mocks `UserManagement` |
+| A wrapper in `packages/catalyst-node` | the `@zcatalyst/*` package it calls | `zcql.test.ts` mocks `@zcatalyst/datastore` |
+| A route in `apps/api` | our wrapper (`@repo/catalyst-node/...`), and `zcAuth.init` | `app.test.ts` mocks `UserManagement` |
 | Middleware in `@repo/http-server` | `zcAuth.init` | `middleware.test.ts` |
 | `CatalystSession` itself | `zcAuth.init` | `catalyst-session.test.ts` |
 
 `zcAuth.init` is faked for every test in `apps/api`, `@repo/http-server` and
-`@repo/node-utils`, each by its own
+`@repo/catalyst-node`, each by its own
 `test/setup.ts` (named in `setupFiles` in its `vitest.config`), because no test
 request carries the headers `catalyst serve` injects. The setup spreads the real
 `@zcatalyst/auth` module and swaps only `zcAuth`, so its other exports stay real. Control the
@@ -137,7 +137,7 @@ vi.mock("@zcatalyst/datastore", () => ({
 - `vi.mock` names the SDK as a string, so the ESLint ban on importing `@zcatalyst/*` outside
   `catalyst/` still holds in tests.
 
-A wrapper takes the request's `CatalystSession`, so a `node-utils` unit test passes it one
+A wrapper takes the request's `CatalystSession`, so a `catalyst-node` unit test passes it one
 built from no headers at all - `CatalystSession.fromHeaders({})` - and the faked `zcAuth.init`
 hands back a stand-in app for whatever scope it asks for. See `queryAsUser` in
 `zcql.test.ts`.

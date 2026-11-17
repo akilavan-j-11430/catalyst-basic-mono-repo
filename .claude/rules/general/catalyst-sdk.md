@@ -1,6 +1,6 @@
 # Catalyst SDK access
 
-Every Catalyst SDK call goes through `packages/node-utils/src/catalyst/`. No
+Every Catalyst SDK call goes through `packages/catalyst-node/src/`. No
 `@zcatalyst/*` package may be imported anywhere else, and ESLint enforces it.
 
 One file per component - `bucket.ts`, `table.ts`, `zcql.ts`, `cache.ts`, `job.ts` - plus
@@ -10,7 +10,7 @@ top of the file, from the app the caller's session hands it, and reaches for an 
 else:
 
 ```ts
-// packages/node-utils/src/catalyst/bucket.ts
+// packages/catalyst-node/src/bucket.ts
 import { Stratus } from "@zcatalyst/stratus";
 import type { CatalystScope } from "@/enums/catalyst-scope";
 import type { CatalystSession } from "@/catalyst/catalyst-session";
@@ -30,7 +30,7 @@ module scope, in `resources.ts` - one `export const` per Catalyst resource this 
 and the only place a wrapper is ever constructed:
 
 ```ts
-// packages/node-utils/src/catalyst/resources.ts
+// packages/catalyst-node/src/resources.ts
 import { Bucket } from "@/catalyst/bucket";
 import { Cache } from "@/catalyst/cache";
 import { Job } from "@/catalyst/job";
@@ -56,7 +56,7 @@ table handle is imported only by that table's repository (`vendor-boundaries.md`
 bucket, cache or job handle may be imported wherever it is needed:
 
 ```ts
-// packages/node-utils/src/repositories/todo-repository.ts
+// packages/catalyst-node/src/repositories/todo-repository.ts
 import { CatalystScope } from "@/enums/catalyst-scope";
 import { todoTable } from "@/catalyst/resources";
 
@@ -296,7 +296,7 @@ each arrived because something needed it. Add the next one the same way, followi
 rules above, and call it from the route:
 
 ```ts
-// packages/node-utils/src/catalyst/bucket.ts - on ScopedBucket
+// packages/catalyst-node/src/bucket.ts - on ScopedBucket
 async copyObject(sourceKey: string, targetKey: string): Promise<void> {
   ...
 }

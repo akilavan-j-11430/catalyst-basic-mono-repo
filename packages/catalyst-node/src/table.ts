@@ -1,7 +1,7 @@
-import { CatalystError } from "@/errors/catalyst-error";
+import { CatalystError } from "@/catalyst-error";
 import { Datastore } from "@zcatalyst/datastore";
-import type { CatalystScope } from "@/enums/catalyst-scope";
-import type { CatalystSession } from "@/catalyst/catalyst-session";
+import type { CatalystScope } from "@/catalyst-scope";
+import type { CatalystSession } from "@/catalyst-session";
 
 type CatalystTable = ReturnType<Datastore["table"]>;
 type SdkRowInput = Parameters<CatalystTable["insertRow"]>[0];

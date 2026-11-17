@@ -1,8 +1,8 @@
 import { Router } from "express";
 import { z } from "zod";
 import { ApiPath } from "@repo/routing/api-path";
-import { CatalystScope } from "@repo/node-utils/enums/catalyst-scope";
-import { UserManagement } from "@repo/node-utils/catalyst/user-management";
+import { CatalystScope } from "@repo/catalyst-node/catalyst-scope";
+import { UserManagement } from "@repo/catalyst-node/user-management";
 import type { NewUser } from "@repo/types/user";
 import { catalystSessionOf, initCatalystScopes } from "@repo/http-server/middleware";
 import { RequestInput } from "@repo/http-server/request-input";

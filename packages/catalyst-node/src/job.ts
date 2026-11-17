@@ -1,7 +1,7 @@
-import { CatalystError } from "@/errors/catalyst-error";
+import { CatalystError } from "@/catalyst-error";
 import { JobScheduling } from "@zcatalyst/job-scheduling";
-import { CatalystScope } from "@/enums/catalyst-scope";
-import type { CatalystSession } from "@/catalyst/catalyst-session";
+import { CatalystScope } from "@/catalyst-scope";
+import type { CatalystSession } from "@/catalyst-session";
 import { randomUUID } from "node:crypto";
 
 /** Catalyst rejects an alias longer than this. */

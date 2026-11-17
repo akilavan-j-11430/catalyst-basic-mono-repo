@@ -1,7 +1,7 @@
 import type { Request, Response } from "express";
 import { describe, expect, it, vi, type Mock } from "vitest";
-import { CatalystSession } from "@repo/node-utils/catalyst/catalyst-session";
-import { CatalystScope } from "@repo/node-utils/enums/catalyst-scope";
+import { CatalystSession } from "@repo/catalyst-node/catalyst-session";
+import { CatalystScope } from "@repo/catalyst-node/catalyst-scope";
 import { catalystAuth } from "@repo/testing/catalyst-auth";
 import { HttpError } from "@/http-error";
 import { catalystSessionOf, initCatalystScopes } from "@/middleware";

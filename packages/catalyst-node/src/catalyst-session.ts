@@ -1,6 +1,6 @@
 import { zcAuth } from "@zcatalyst/auth";
-import type { CatalystScope } from "@/enums/catalyst-scope";
-import { CatalystError } from "@/errors/catalyst-error";
+import type { CatalystScope } from "@/catalyst-scope";
+import { CatalystError } from "@/catalyst-error";
 
 export type CatalystApp = Awaited<ReturnType<typeof zcAuth.init>>;
 

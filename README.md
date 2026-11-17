@@ -216,6 +216,9 @@ curl http://localhost:3001/api/v1/nope
 |   |-- routing/            @repo/routing            route path segments
 |   |-- types/              @repo/types              shared API response shapes
 |   |-- node-utils/         @repo/node-utils         execution context, logger, errors
+|   |-- catalyst-node/      @repo/catalyst-node      Catalyst wrappers and CatalystSession
+|   |-- http-client/        @repo/http-client        HttpClient, for Node and the browser
+|   |-- http-server/        @repo/http-server        shared Express middleware and responses
 |   |-- case-conversion/    @repo/case-conversion    vendor keys -> camelCase
 |   |-- testing/            @repo/testing            shared Vitest config
 |   |-- typescript-config/  @repo/typescript-config  base tsconfig
@@ -230,12 +233,14 @@ curl http://localhost:3001/api/v1/nope
 | Workspace | Job |
 |---|---|
 | `apps/proxy` | Local development only. Routes `/api` to the API and everything else to the web app, including WebSocket upgrades for HMR. Enforces Catalyst login. Never deployed. |
-| `apps/api` | Express API. Establishes a per-request execution context holding the Catalyst app, times requests, and maps typed errors to HTTP statuses. |
+| `apps/api` | Express API. Establishes a per-request execution context, builds the request's Catalyst session, times requests, and maps typed errors to HTTP statuses. |
 | `apps/web` | Next.js frontend. Calls the API with relative `/api/...` paths. |
 | `@repo/routing` | `ApiPath` segments, combined with `+` - the API mounts them and the web app calls them, so no path is a string literal in either. |
 | `@repo/types` | `RecordResponse`, `PagedRecordResponse`, `ErrorResponse` - imported by both the API and the web app so the contract is written once. |
-| `@repo/node-utils` | `ExecutionContext` over `AsyncLocalStorage`, a `logger` that stamps execution IDs, `RuntimeError`, `env`, `HttpClient`, and the Catalyst wrappers plus the resource handles built from them. |
-| `@repo/case-conversion` | `CamelCase.convertKeys` - renames a vendor's snake_case or kebab-case keys at any depth, for `node-utils`. Framework-free, so the web app may use it too. |
+| `@repo/node-utils` | `ExecutionContext` over `AsyncLocalStorage`, a `logger` that stamps execution IDs, `RuntimeError`, `env`. |
+| `@repo/catalyst-node` | `CatalystSession` and the Catalyst wrappers plus the resource handles built from them - the only package that imports `@zcatalyst/*`. Each entry point builds a session from its request's headers and passes it to every call. |
+| `@repo/http-client` | `HttpClient` - every call to a service outside this repo. Reads nothing ambient, so it runs in Node and in the browser. |
+| `@repo/case-conversion` | `CamelCase.convertKeys` - renames a vendor's snake_case or kebab-case keys at any depth, for `catalyst-node`. Framework-free, so the web app may use it too. |
 | `@repo/testing` | `VitestProjects.forWorkspace`, the Vitest settings every tested workspace starts from. Dev-only - see `.claude/rules/general/testing.md`. |
 | `@repo/typescript-config` | `base.json`. Strict mode, `noUncheckedIndexedAccess`, ES2022. Every other tsconfig extends it. |
 | `@repo/eslint-config` | Shared flat ESLint config. Each workspace spreads it into its own `eslint.config.mjs` and adds its exemptions - `allowTestsIn([...])` when it has tests. |
@@ -402,7 +407,7 @@ Short version; `CLAUDE.md` has the full list.
 - **Logging.** Use `logger` from `@repo/node-utils`, not `console`. It attaches the
   execution ID and per-request ordering.
 - **Catalyst SDK.** `zcAuth.init(req)` happens once per request in middleware. Handlers
-  import a resource handle from `@repo/node-utils/catalyst/resources` and never
+  import a resource handle from `@repo/catalyst-node/resources` and never
   initialize their own app.
 - **Ports** come from `X_ZOHO_CATALYST_LISTEN_PORT` with a local fallback. Never
   hardcode.

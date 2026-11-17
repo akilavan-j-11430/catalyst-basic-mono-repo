@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { catalystAuth } from "@repo/testing/catalyst-auth";
-import { CatalystSession } from "@/catalyst/catalyst-session";
-import { CatalystScope } from "@/enums/catalyst-scope";
-import { ErrorCode } from "@/enums/error-codes";
-import { CatalystError } from "@/errors/catalyst-error";
+import { CatalystSession } from "@/catalyst-session";
+import { CatalystScope } from "@/catalyst-scope";
+import { ErrorCode } from "@/error-codes";
+import { CatalystError } from "@/catalyst-error";
 
 const requestHeaders = { "x-zc-projectid": "1", "x-zc-user-cred-token": "secret-token" };
 

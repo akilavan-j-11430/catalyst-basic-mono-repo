@@ -1,9 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
-import { CatalystSession } from "@/catalyst/catalyst-session";
-import { Zcql, type ZcqlRow } from "@/catalyst/zcql";
-import { CatalystScope } from "@/enums/catalyst-scope";
-import { ErrorCode } from "@/enums/error-codes";
-import { CatalystError } from "@/errors/catalyst-error";
+import { CatalystSession } from "@/catalyst-session";
+import { Zcql, type ZcqlRow } from "@/zcql";
+import { CatalystScope } from "@/catalyst-scope";
+import { ErrorCode } from "@/error-codes";
+import { CatalystError } from "@/catalyst-error";
 
 // The SDK is replaced before zcql.ts loads it, so no call leaves the process. vi.hoisted
 // makes the spy exist by then, since vi.mock is hoisted above the imports.

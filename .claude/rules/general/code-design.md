@@ -45,7 +45,7 @@ says what the shape should be.
 
 ## No callback parameters in server code
 
-In `apps/api` and `packages/node-utils`, a method does its work in its own body. Do not
+In `apps/api`, `packages/node-utils` and `packages/catalyst-node`, a method does its work in its own body. Do not
 write a helper that takes a callback (`cb`, `fn`, `call: () => Promise<T>`) just to wrap
 `try/catch`, logging or a cast around it - write the `try/catch` inline in each method, as
 `bucket.ts` does. A helper takes values and returns values.

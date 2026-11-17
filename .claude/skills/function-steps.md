@@ -28,9 +28,10 @@ steps. What goes inside the function is in that kind's rule under
      environment variables against the resource in the Console, so this repo does not
      maintain them.
 2. **The workspace** is set up like `apps/api`: CommonJS, the same `tsconfig.json` /
-   `tsconfig.build.json` pair, and `@types/node`. Its dependencies are `@repo/node-utils`
-   and the `@zcatalyst/*` packages its wrappers need. In `eslint.config.mjs`, list each
-   file that builds the Catalyst app itself in `allowCatalystSdk([...])`.
+   `tsconfig.build.json` pair, and `@types/node`. Its dependencies are `@repo/node-utils`,
+   `@repo/catalyst-node` and the `@zcatalyst/*` packages its wrappers need. The function
+   builds a `CatalystSession` rather than the Catalyst app, so it needs no
+   `allowCatalystSdk([...])`.
 3. **`scripts/bundle.mjs`** is a copy of `apps/api`'s, with these changes:
    - `outDir` is `functions/<name>`.
    - It copies `catalyst-config.json` instead of `app-config.json`.

@@ -8,7 +8,7 @@ layer is skipped when it would only pass a call through.
 |---|---|---|
 | **Route** - `apps/api/src/routes/` | Turns HTTP into one call and back: validate the input's shape, call one operation, build the response, choose the status | holds a business rule, or calls a table, `Zcql` or the SDK |
 | **Service** - `src/services/<domain>-service.ts` | One business operation - admit a patient, approve an invoice: the rule, and the coordination across repositories and handles | knows `req`, `res`, a status code or the response envelope |
-| **Repository / wrapper** - `node-utils` | Data access only - ZCQL, column names, SDK calls (`vendor-boundaries.md`) | decides anything about the business |
+| **Repository / wrapper** - `catalyst-node` | Data access only - ZCQL, column names, SDK calls (`vendor-boundaries.md`) | decides anything about the business |
 
 ## The route
 
@@ -55,5 +55,5 @@ an app.
 ## The repository
 
 Unchanged from `vendor-boundaries.md`: one class per aggregate in
-`packages/node-utils/src/repositories/`, the only code naming a table's columns. A service
+`packages/catalyst-node/src/repositories/`, the only code naming a table's columns. A service
 calls it; a route calls it directly only while there is no service in between.

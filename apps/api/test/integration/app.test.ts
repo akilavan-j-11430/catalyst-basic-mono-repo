@@ -1,7 +1,7 @@
 import request from "supertest";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { CatalystSession } from "@repo/node-utils/catalyst/catalyst-session";
-import { CatalystScope } from "@repo/node-utils/enums/catalyst-scope";
+import { CatalystSession } from "@repo/catalyst-node/catalyst-session";
+import { CatalystScope } from "@repo/catalyst-node/catalyst-scope";
 import { ApiPath } from "@repo/routing/api-path";
 import { catalystAuth } from "@repo/testing/catalyst-auth";
 import type { CurrentUser, RegisteredUser } from "@repo/types/user";
@@ -14,7 +14,7 @@ const { registerUser, readCurrentUser } = vi.hoisted(() => ({
   readCurrentUser: vi.fn(),
 }));
 
-vi.mock("@repo/node-utils/catalyst/user-management", () => ({
+vi.mock("@repo/catalyst-node/user-management", () => ({
   UserManagement: { register: registerUser, currentUser: readCurrentUser },
 }));
 

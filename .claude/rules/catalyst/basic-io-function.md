@@ -25,17 +25,17 @@ Catalyst, and `dev-server.ts` calls it locally. The dev server cannot import fro
 TypeScript to import.
 
 If the work takes more than a few lines, put it in a repository or a wrapper method in
-node-utils, as a route would. The handler stays short and just calls it.
+`@repo/catalyst-node`, as a route would. The handler stays short and just calls it.
 
 ## The handler
 
 ```ts
 // src/handler.ts
 import { randomUUID } from "node:crypto";
-import { CatalystSession } from "@repo/node-utils/catalyst/catalyst-session";
+import { CatalystSession } from "@repo/catalyst-node/catalyst-session";
 import { ExecutionContext, runWithContext } from "@repo/node-utils/framework/async-context";
 import { logger } from "@repo/node-utils/framework/logger";
-import { TodoRepository } from "@repo/node-utils/repositories/todo-repository";
+import { TodoRepository } from "@repo/catalyst-node/repositories/todo-repository";
 
 /** What Catalyst passes a Basic I/O function - `types/basicio.d.ts` from `functions:add`. */
 export interface BasicIo {

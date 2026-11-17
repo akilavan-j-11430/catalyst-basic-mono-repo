@@ -36,6 +36,8 @@ Where new work goes:
 - Express plumbing every HTTP app shares (middleware, `HttpError`, response builders) ->
   `packages/http-server`, the one package allowed `express`. Every app that serves HTTP
   imports it from there and never copies it.
+- Catalyst SDK calls -> `packages/catalyst-node`, the one package allowed `@zcatalyst/*`.
+  Each entry point builds a `CatalystSession` and passes it to every call.
 - Server-side helpers -> `packages/node-utils`. It imports `node:async_hooks`, so
   it is `apps/api` only - never reach it from `apps/web`.
 - Never `apps/proxy`. It is local-only plumbing and ships nothing; a feature added
@@ -79,6 +81,7 @@ catalyst serve      <- entry point, port assigned by the CLI (3000, 3001, 3002, 
 | `packages/routing` | `@repo/routing` | - |
 | `packages/case-conversion` | `@repo/case-conversion` | - |
 | `packages/node-utils` | `@repo/node-utils` | - |
+| `packages/catalyst-node` | `@repo/catalyst-node` | - |
 | `packages/http-client` | `@repo/http-client` | - |
 | `packages/http-server` | `@repo/http-server` | - |
 | `packages/typescript-config` | `@repo/typescript-config` | - |
@@ -156,7 +159,8 @@ That drift has already bitten once. TypeScript 6 dropped the automatic injection
 root `package.json` stopped reaching the workspaces - `node:stream`, `process` and `console`
 all went unresolved in `packages/node-utils` under 6.0.3 while 5.9.3 stayed clean. Hence two
 standing rules: every workspace that compiles Node code **declares `@types/node` itself** and
-sets `"types": ["node"]` in its tsconfig (`packages/node-utils`, `apps/api`, `apps/proxy`,
+sets `"types": ["node"]` in its tsconfig (`packages/node-utils`, `packages/catalyst-node`,
+`apps/api`, `apps/proxy`,
 `packages/testing`, and `packages/case-conversion` and `packages/http-client` for their tests
 and Vitest config - not
 `base.json`, which `packages/types` shares and which must stay framework-free). Note that
@@ -206,7 +210,7 @@ frontmatter when it applies to only part of the tree.
 - Shared packages expose subpaths, not a barrel: `@repo/types/api`, `@repo/routing/api-path`,
   `@repo/case-conversion/camel-case`,
   `@repo/node-utils/framework/logger`, `@repo/node-utils/framework/async-context`,
-  `@repo/node-utils/catalyst/resources`, `@repo/node-utils/utils/env`,
+  `@repo/catalyst-node/resources`, `@repo/node-utils/utils/env`,
   `@repo/http-client/http-client`,
   `@repo/http-server/middleware`, `@repo/http-server/http-error`, `@repo/http-server/response`,
   `@repo/http-server/request-input`,
@@ -251,7 +255,7 @@ In `apps/web`:
 In `apps/api`:
 
 - Reach Catalyst through a resource handle imported from
-  `@repo/node-utils/catalyst/resources`, where every table, bucket, cache segment
+  `@repo/catalyst-node/resources`, where every table, bucket, cache segment
   and job is declared once with the wrapper's `create` factory. Never construct a wrapper
   in a handler and never initialize Catalyst yourself. A handler passes the request's
   `CatalystSession` - `catalystSessionOf(res)`, built by `initCatalystScopes` - to every
@@ -287,9 +291,9 @@ naming the scopes it uses - `router.use` it instead when every route on the rout
 The route stays thin - validate, call one operation, respond - and a business rule goes in
 a service only once there is one to hold. See `.claude/rules/general/api-layers.md`.
 
-**A table** - declare its handle in `packages/node-utils/src/catalyst/resources.ts`, its
+**A table** - declare its handle in `packages/catalyst-node/src/resources.ts`, its
 domain type in `packages/types`, and a repository in
-`packages/node-utils/src/repositories/<name>-repository.ts` that is the only importer of the
+`packages/catalyst-node/src/repositories/<name>-repository.ts` that is the only importer of the
 handle and maps rows to the domain type. Routes call the repository. See
 `.claude/rules/general/vendor-boundaries.md`.
 

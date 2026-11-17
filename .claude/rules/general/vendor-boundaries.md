@@ -12,8 +12,8 @@ a migration has to rewrite:
 
 | Vendor | Seam | Holds |
 |---|---|---|
-| Catalyst SDKs (server) | `packages/node-utils/src/catalyst/` | every `@zcatalyst/*` call - see `catalyst-sdk.md` |
-| Catalyst Data Store tables | `packages/node-utils/src/repositories/` | ZCQL, column names, `ROWID`, Catalyst's data quirks |
+| Catalyst SDKs (server) | `packages/catalyst-node/src/` | every `@zcatalyst/*` call - see `catalyst-sdk.md` |
+| Catalyst Data Store tables | `packages/catalyst-node/src/repositories/` | ZCQL, column names, `ROWID`, Catalyst's data quirks |
 | External HTTP services | `HttpClient` and its `HttpTransport` | transport, headers, encoding - see `outbound-http.md` |
 | Catalyst web SDK | `apps/web/src/catalyst/` | sign-in, session, the signed-in user |
 | AppSail runtime | `apps/api/src/index.ts`, `apps/api/scripts/bundle.mjs`, `app-config.json` | listen port, deployed bundle |
@@ -39,11 +39,11 @@ name, no vendor error class, no vendor casing.
 
 A Data Store table is the deepest lock-in here - ZCQL, column names and `ROWID` are all
 Catalyst's - so a route never touches a table handle or `Zcql`. It calls a repository
-(Repository pattern) in `packages/node-utils/src/repositories/`, one class per aggregate,
+(Repository pattern) in `packages/catalyst-node/src/repositories/`, one class per aggregate,
 which is the only code that imports that table's handle and names its columns:
 
 ```ts
-// packages/node-utils/src/repositories/todo-repository.ts
+// packages/catalyst-node/src/repositories/todo-repository.ts
 /** Repository: every Data Store read and write of todos, and the only code naming their columns. */
 export class TodoRepository {
   static async find(session: CatalystSession, todoId: string): Promise<Todo | undefined> {
@@ -61,7 +61,7 @@ const todo = await TodoRepository.find(catalystSessionOf(res), req.params.todoId
 ```
 
 Moving to Postgres then rewrites `todo-repository.ts` against the same methods and leaves
-every route alone. It lives in `node-utils`, beside the handles, so a second AppSail or a
+every route alone. It lives in `catalyst-node`, beside the handles, so a second AppSail or a
 function reuses it rather than writing its own queries.
 
 Bucket, cache and job handles need no extra layer: their wrapper methods - `getObject(key)`,

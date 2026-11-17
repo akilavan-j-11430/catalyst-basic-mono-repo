@@ -1,9 +1,9 @@
 import { UserManagement as UserManagementClient } from "@zcatalyst/auth";
 import { CamelCase } from "@repo/case-conversion/camel-case";
 import type { CurrentUser, NewUser, RegisteredUser } from "@repo/types/user";
-import { CatalystScope } from "@/enums/catalyst-scope";
-import { CatalystError } from "@/errors/catalyst-error";
-import type { CatalystSession } from "@/catalyst/catalyst-session";
+import { CatalystScope } from "@/catalyst-scope";
+import { CatalystError } from "@/catalyst-error";
+import type { CatalystSession } from "@/catalyst-session";
 
 type RegisteredUserDetails = Awaited<
   ReturnType<UserManagementClient["registerUser"]>

@@ -10,8 +10,8 @@ import {
   ExecutionContext,
   runWithContext,
 } from "@repo/node-utils/framework/async-context";
-import { CatalystScope } from "@repo/node-utils/enums/catalyst-scope";
-import { CatalystSession } from "@repo/node-utils/catalyst/catalyst-session";
+import { CatalystScope } from "@repo/catalyst-node/catalyst-scope";
+import { CatalystSession } from "@repo/catalyst-node/catalyst-session";
 import { logger } from "@repo/node-utils/framework/logger";
 import { randomUUID } from "crypto";
 import { HttpError } from "@/http-error";

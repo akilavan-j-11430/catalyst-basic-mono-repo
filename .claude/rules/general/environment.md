@@ -58,7 +58,7 @@ A package under `packages/` has no keys of its own and no `src/env.ts`. It takes
 needs as a parameter, so the app that owns the variable is the one that reads it:
 
 ```ts
-// packages/node-utils/src/catalyst/user-management.ts
+// packages/catalyst-node/src/user-management.ts
 static async register(
   session: CatalystSession,
   registration: { user: NewUser; redirectUrl: string },

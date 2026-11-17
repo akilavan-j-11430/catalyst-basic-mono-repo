@@ -42,9 +42,9 @@ instead of finishing as a silent success.
 
 ```ts
 // src/job-dispatcher.ts
-import type { CatalystSession } from "@repo/node-utils/catalyst/catalyst-session";
-import type { JobParams } from "@repo/node-utils/catalyst/job";
-import { reminderJob } from "@repo/node-utils/catalyst/resources";
+import type { CatalystSession } from "@repo/catalyst-node/catalyst-session";
+import type { JobParams } from "@repo/catalyst-node/job";
+import { reminderJob } from "@repo/catalyst-node/resources";
 import { RuntimeError } from "@repo/node-utils/errors/runtime-error";
 import { logger } from "@repo/node-utils/framework/logger";
 import { ReminderJob } from "@/jobs/reminder";
@@ -82,8 +82,8 @@ export class JobDispatcher {
 
 ```ts
 // src/jobs/reminder.ts
-import type { CatalystSession } from "@repo/node-utils/catalyst/catalyst-session";
-import type { JobParams } from "@repo/node-utils/catalyst/job";
+import type { CatalystSession } from "@repo/catalyst-node/catalyst-session";
+import type { JobParams } from "@repo/catalyst-node/job";
 import { RuntimeError } from "@repo/node-utils/errors/runtime-error";
 
 /** Sends the reminder for one todo. */
@@ -93,7 +93,7 @@ export class ReminderJob {
     if (!todoId) {
       throw new RuntimeError("Reminder job needs a todoId.");
     }
-    // repositories and handles from node-utils, passed the session, as a route calls them
+    // repositories and handles from catalyst-node, passed the session, as a route calls them
   }
 }
 ```
@@ -115,8 +115,8 @@ export class ReminderJob {
 ```ts
 // src/index.ts
 import { randomUUID } from "node:crypto";
-import { CatalystSession } from "@repo/node-utils/catalyst/catalyst-session";
-import type { JobParams } from "@repo/node-utils/catalyst/job";
+import { CatalystSession } from "@repo/catalyst-node/catalyst-session";
+import type { JobParams } from "@repo/catalyst-node/job";
 import { ExecutionContext, runWithContext } from "@repo/node-utils/framework/async-context";
 import { logger } from "@repo/node-utils/framework/logger";
 import { JobDispatcher } from "@/job-dispatcher";
@@ -168,7 +168,7 @@ from the body, then calls the same `JobDispatcher.run` as the deployed function:
 import express from "express";
 import { randomUUID } from "node:crypto";
 import { JobExecutorPath } from "@repo/routing/job-executor-path";
-import { CatalystScope } from "@repo/node-utils/enums/catalyst-scope";
+import { CatalystScope } from "@repo/catalyst-node/catalyst-scope";
 import {
   catalystSessionOf,
   errorHandler,

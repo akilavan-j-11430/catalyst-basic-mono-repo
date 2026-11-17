@@ -1,9 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
 import type { CurrentUser } from "@repo/types/user";
-import { CatalystSession } from "@/catalyst/catalyst-session";
-import { UserManagement } from "@/catalyst/user-management";
-import { ErrorCode } from "@/enums/error-codes";
-import { CatalystError } from "@/errors/catalyst-error";
+import { CatalystSession } from "@/catalyst-session";
+import { UserManagement } from "@/user-management";
+import { ErrorCode } from "@/error-codes";
+import { CatalystError } from "@/catalyst-error";
 
 // The SDK is replaced before user-management.ts loads it, so no call leaves the process.
 const { getCurrentUser } = vi.hoisted(() => ({ getCurrentUser: vi.fn() }));

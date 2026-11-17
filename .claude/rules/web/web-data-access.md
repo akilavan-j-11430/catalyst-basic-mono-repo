@@ -25,7 +25,7 @@ a move off `fetch`. The files beside it are vocabulary and change when the produ
 component imports a domain file and nothing below it; that the call travels over HTTP at
 all is not its business.
 
-It mirrors `packages/node-utils/src/catalyst/` on the server side, for the same
+It mirrors `packages/catalyst-node/src/` on the server side, for the same
 reason: one directory should answer what this app asks of the API, and a call made from a
 component is invisible there.
 

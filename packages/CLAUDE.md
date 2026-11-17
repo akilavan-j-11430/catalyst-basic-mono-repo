@@ -1,14 +1,15 @@
 # packages/
 
-Shared code for the monorepo. All nine are private and consumed as `"workspace:*"`.
+Shared code for the monorepo. All ten are private and consumed as `"workspace:*"`.
 
 | Package | Holds |
 |---|---|
 | `@repo/routing` | API path segments (`ApiPath`) shared by `apps/api` and `apps/web` |
-| `@repo/case-conversion` | `CamelCase` - renames a vendor's snake_case/kebab-case keys, for `node-utils`; framework-free, so `apps/web` may use it too |
+| `@repo/case-conversion` | `CamelCase` - renames a vendor's snake_case/kebab-case keys, for `catalyst-node`; framework-free, so `apps/web` may use it too |
 | `@repo/types` | API response shapes shared by `apps/api` and `apps/web` |
 | `@repo/http-client` | `HttpClient` - every call to a service outside this repo. Framework-free and browser-safe: it reads nothing ambient, and the caller passes in what a call carries |
-| `@repo/node-utils` | `ExecutionContext`, `logger`, `env`, `RuntimeError`, and the Catalyst wrappers (`table`, `bucket`, `cache`, `job`, `zcql`, `user-management`) plus the resource handles built from them |
+| `@repo/catalyst-node` | `CatalystSession` and the Catalyst wrappers (`table`, `bucket`, `cache`, `job`, `zcql`, `user-management`) plus the resource handles built from them - every Catalyst SDK call, on the server |
+| `@repo/node-utils` | `ExecutionContext`, `logger`, `env`, `RuntimeError` |
 | `@repo/http-server` | The Express plumbing every app that serves HTTP shares - `initExecutionContext`, `initCatalystScopes`, `errorHandler`, `HttpError`, the response builders, and `RequestInput` for zod-checked request input. The one package that may import `express` |
 | `@repo/typescript-config` | `base.json` that every tsconfig extends |
 | `@repo/eslint-config` | flat ESLint config: the import boundaries and the camelCase naming rule |
@@ -16,7 +17,7 @@ Shared code for the monorepo. All nine are private and consumed as `"workspace:*
 
 ## Import paths
 
-`@repo/types`, `@repo/routing`, `@repo/case-conversion`, `@repo/http-client` and `@repo/node-utils` expose **subpaths**, not a barrel. The `exports`
+`@repo/types`, `@repo/routing`, `@repo/case-conversion`, `@repo/http-client`, `@repo/catalyst-node` and `@repo/node-utils` expose **subpaths**, not a barrel. The `exports`
 block maps `./*` onto `./dist/*.js` + `./dist/*.d.ts`, so the import path mirrors the
 path under `src/`:
 
@@ -24,7 +25,7 @@ path under `src/`:
 import type { RecordResponse } from "@repo/types/api";              // src/api.ts
 import { logger } from "@repo/node-utils/framework/logger";         // src/framework/logger.ts
 import { currentContext } from "@repo/node-utils/framework/async-context";
-import { todoTable } from "@repo/node-utils/catalyst/resources"; // src/catalyst/resources.ts
+import { todoTable } from "@repo/catalyst-node/resources";         // src/resources.ts
 import { defineEnv } from "@repo/node-utils/utils/env";               // src/utils/env.ts
 ```
 
@@ -52,9 +53,9 @@ Consumers must be built after these. Turborepo handles that via `dependsOn: ["^b
   No `express`, no `react`, no Next.js imports. The one exception is
   `@repo/http-server`, which holds the Express plumbing every HTTP app shares - see
   `.claude/skills/deployable-steps.md`.
-- **`node-utils/src/catalyst/` is the only directory that may import a Catalyst
+- **`packages/catalyst-node` is the only package that may import a Catalyst
   SDK.** ESLint enforces it. See `.claude/rules/general/catalyst-sdk.md`.
-- **Catalyst resources are declared once, in `catalyst/resources.ts`** - one
+- **Catalyst resources are declared once, in `catalyst-node/src/resources.ts`** - one
   `export const` per table, bucket, cache segment and job, built with the wrapper's
   `create` factory. Apps import the handle; they never construct a wrapper themselves.
   It sits here rather than in an app so two AppSails cannot name the same table twice.

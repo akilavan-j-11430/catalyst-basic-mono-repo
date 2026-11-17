@@ -50,7 +50,7 @@ apps/<name>/
 
 ```ts
 // src/signal-dispatcher.ts
-import type { CatalystSession } from "@repo/node-utils/catalyst/catalyst-session";
+import type { CatalystSession } from "@repo/catalyst-node/catalyst-session";
 import { RuntimeError } from "@repo/node-utils/errors/runtime-error";
 import { logger } from "@repo/node-utils/framework/logger";
 import { CacheItemCreatedSignal } from "@/signals/cache-item-created";

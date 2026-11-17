@@ -16,7 +16,7 @@ writes back one string. What goes inside it is described in
    then follow them with `--type bio`.
 3. **Write the function**, following `basic-io-function.md`:
    - `src/handler.ts` holds the handler. It validates the arguments first, does the work
-     through node-utils, calls `write` once, and calls `context.close()` on every path.
+     through `@repo/catalyst-node`, calls `write` once, and calls `context.close()` on every path.
    - `src/index.ts` is `module.exports = handler`.
    - `src/dev-server.ts` calls the same handler from an Express route.
 4. **Set up the dev server:**

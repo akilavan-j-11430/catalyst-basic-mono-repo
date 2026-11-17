@@ -1,7 +1,7 @@
-import { CatalystError } from "@/errors/catalyst-error";
+import { CatalystError } from "@/catalyst-error";
 import { Stratus } from "@zcatalyst/stratus";
-import type { CatalystScope } from "@/enums/catalyst-scope";
-import type { CatalystSession } from "@/catalyst/catalyst-session";
+import type { CatalystScope } from "@/catalyst-scope";
+import type { CatalystSession } from "@/catalyst-session";
 import { Readable } from "node:stream";
 
 type CatalystBucket = ReturnType<Stratus["bucket"]>;
