@@ -20,6 +20,7 @@
     "@repo/catalyst-node": "workspace:*",
     "@repo/env": "workspace:*",
     "@repo/http-server": "workspace:*",
+    "@repo/input-validation": "workspace:*",
     "@repo/logger": "workspace:*",
     "@repo/routing": "workspace:*",
     "@repo/types": "workspace:*",

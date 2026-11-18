@@ -221,6 +221,7 @@ curl http://localhost:3001/api/v1/nope
 |   |-- env/                @repo/env                defineEnv, each app's declared variables
 |   |-- http-client/        @repo/http-client        HttpClient, for Node and the browser
 |   |-- http-server/        @repo/http-server        shared Express middleware and responses
+|   |-- input-validation/   @repo/input-validation   zod-checked input, InvalidInputError
 |   |-- case-conversion/    @repo/case-conversion    vendor keys -> camelCase
 |   |-- testing/            @repo/testing            shared Vitest config
 |   |-- typescript-config/  @repo/typescript-config  base tsconfig

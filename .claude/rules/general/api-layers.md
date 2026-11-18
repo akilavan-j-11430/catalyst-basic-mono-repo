@@ -21,8 +21,8 @@ meRouter.get(ApiPath.Me, initCatalystScopes([CatalystScope.User]), async (_req, 
 ```
 
 - **Validation is the route's job**, and only of shape - a required field, an email, a
-  number in range. The route declares a zod schema and calls `RequestInput.parse`
-  (`@repo/http-server/request-input`), never a hand-written check per field - see
+  number in range. The route declares a zod schema and calls `InputValidation.parse`
+  (`@repo/input-validation/input-validation`), never a hand-written check per field - see
   "Validating input" in `apps/api/CLAUDE.md`.
 - A rule about the business - "a discharged patient cannot be admitted again" - is not
   validation. It belongs to the service, which throws, and the route lets it reach

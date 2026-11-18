@@ -87,6 +87,7 @@ catalyst serve      <- entry point, port assigned by the CLI (3000, 3001, 3002, 
 | `packages/env` | `@repo/env` | - |
 | `packages/http-client` | `@repo/http-client` | - |
 | `packages/http-server` | `@repo/http-server` | - |
+| `packages/input-validation` | `@repo/input-validation` | - |
 | `packages/typescript-config` | `@repo/typescript-config` | - |
 | `packages/eslint-config` | `@repo/eslint-config` | - |
 | `packages/testing` | `@repo/testing` | - |
@@ -216,7 +217,7 @@ frontmatter when it applies to only part of the tree.
   `@repo/catalyst-node/resources`, `@repo/env/define-env`,
   `@repo/http-client/http-client`,
   `@repo/http-server/middleware`, `@repo/http-server/http-error`, `@repo/http-server/response`,
-  `@repo/http-server/request-input`,
+  `@repo/input-validation/input-validation`,
   `@repo/testing/vitest-projects`.
 - File names are kebab-case: `http-error.ts`, `async-context.ts`.
 - Identifiers and JSON keys are camelCase: `emailId`, `nextPageToken`. The exception is
@@ -266,9 +267,10 @@ In `apps/api`:
 - Throw `HttpError.BadRequest | Unauthorized | NotFound | Conflict`
   (`@repo/http-server/http-error`) instead of setting a status by hand. `errorHandler`
   maps them; anything else becomes a 500.
-- Check a request's body, query or params with a zod schema through `RequestInput.parse`
-  (`@repo/http-server/request-input`), never a hand-written check per field. It answers 400
-  naming the field, so each schema message says what is wrong: `"is required."`.
+- Check a request's body, query or params with a zod schema through `InputValidation.parse`
+  (`@repo/input-validation/input-validation`), never a hand-written check per field. It
+  throws `InvalidInputError` naming the field, which `errorHandler` answers with a 400, so
+  each schema message says what is wrong: `"is required."`.
 - Build every response with `toRecordResponse`, `toPagedResponse`, or
   `toErrorResponse` (`@repo/http-server/response`) so payloads share one envelope.
 - Log through `Logger.for("<source>")` (`@repo/logger/logger`), not `console`. Each line is

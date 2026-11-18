@@ -12,6 +12,7 @@ import {
 } from "@repo/async-context/async-context";
 import { CatalystScope } from "@repo/catalyst-node/catalyst-scope";
 import { CatalystSession } from "@repo/catalyst-node/catalyst-session";
+import { InvalidInputError } from "@repo/input-validation/invalid-input-error";
 import { Logger } from "@repo/logger/logger";
 import { randomUUID } from "crypto";
 import { HttpError } from "@/http-error";
@@ -94,10 +95,15 @@ function catalystSessionIn(res: Response): CatalystSession | undefined {
   return session instanceof CatalystSession ? session : undefined;
 }
 
-/** Terminal error handler - maps HttpError to its status, anything else to 500. */
+/** Terminal error handler - maps HttpError to its status, InvalidInputError to 400, anything
+ *  else to 500. */
 export const errorHandler: ErrorRequestHandler = (error, _req, res, _next) => {
   if (error instanceof HttpError) {
     res.status(error.status).json(toErrorResponse(error.message));
+    return;
+  }
+  if (error instanceof InvalidInputError) {
+    res.status(400).json(toErrorResponse(error.message));
     return;
   }
   logger.error(error);

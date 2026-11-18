@@ -66,11 +66,10 @@ needs to be told where it is:
 second AppSail, an Advanced I/O function, the dev server of a job or Signal function:
 
 - `@repo/http-server/middleware` - `initExecutionContext`, `initCatalystScopes`,
-  `recordRequestTiming`, `errorHandler`
+  `recordRequestTiming`, `errorHandler`, which answers `InvalidInputError` from
+  `@repo/input-validation` with a 400
 - `@repo/http-server/http-error` - `HttpError`
 - `@repo/http-server/response` - the response builders
-- `@repo/http-server/request-input` - `RequestInput.parse(schema, input)`, which checks a
-  body, query or params against a zod schema and answers 400 naming the field
 
 Import it; never copy it. It is the one package allowed to import `express`
 (`packages/CLAUDE.md`). esbuild inlines it like every `@repo/*` package, but `express`

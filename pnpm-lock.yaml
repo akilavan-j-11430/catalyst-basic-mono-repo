@@ -57,6 +57,9 @@ importers:
       '@repo/http-server':
         specifier: workspace:*
         version: link:../../packages/http-server
+      '@repo/input-validation':
+        specifier: workspace:*
+        version: link:../../packages/input-validation
       '@repo/logger':
         specifier: workspace:*
         version: link:../../packages/logger
@@ -380,6 +383,9 @@ importers:
       '@repo/catalyst-node':
         specifier: workspace:*
         version: link:../catalyst-node
+      '@repo/input-validation':
+        specifier: workspace:*
+        version: link:../input-validation
       '@repo/logger':
         specifier: workspace:*
         version: link:../logger
@@ -392,9 +398,6 @@ importers:
       express:
         specifier: ^5.2.1
         version: 5.3.0
-      zod:
-        specifier: ^4.6.7
-        version: 4.6.7
     devDependencies:
       '@repo/eslint-config':
         specifier: workspace:*
@@ -408,6 +411,34 @@ importers:
       '@types/express':
         specifier: ^4.17.25
         version: 4.17.25
+      '@types/node':
+        specifier: ^24.13.6
+        version: 24.13.6
+      concurrently:
+        specifier: ^10.0.5
+        version: 10.0.5
+      eslint:
+        specifier: ^9.39.5
+        version: 9.39.5(jiti@2.7.0)
+      vitest:
+        specifier: ^5.0.5
+        version: 5.0.5(@types/node@24.13.6)(vite@8.3.5(@types/node@24.13.6)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15))
+
+  packages/input-validation:
+    dependencies:
+      zod:
+        specifier: ^4.6.7
+        version: 4.6.7
+    devDependencies:
+      '@repo/eslint-config':
+        specifier: workspace:*
+        version: link:../eslint-config
+      '@repo/testing':
+        specifier: workspace:*
+        version: link:../testing
+      '@repo/typescript-config':
+        specifier: workspace:*
+        version: link:../typescript-config
       '@types/node':
         specifier: ^24.13.6
         version: 24.13.6

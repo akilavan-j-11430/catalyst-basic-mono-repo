@@ -152,9 +152,10 @@ boundary without it.
 ## Validating input
 
 A route declares what it accepts as a zod schema and checks it with
-`RequestInput.parse(schema, req.body)` (`@repo/http-server/request-input`) - `req.query` and
-`req.params` the same way. It returns the typed value or throws a 400 naming the first
-problem, so no route writes a check per field. `routes/auth.ts` is the example:
+`InputValidation.parse(schema, req.body)` (`@repo/input-validation/input-validation`) -
+`req.query` and `req.params` the same way. It returns the typed value or throws
+`InvalidInputError` naming the first problem, which `errorHandler` answers with a 400, so no
+route writes a check per field. `routes/auth.ts` is the example:
 
 ```ts
 const newUserSchema = z.object(
@@ -165,7 +166,7 @@ const newUserSchema = z.object(
   { error: "Expected a JSON object." },
 );
 
-const user: NewUser = RequestInput.parse(newUserSchema, req.body);
+const user: NewUser = InputValidation.parse(newUserSchema, req.body);
 ```
 
 The field's path is put in front of the message, so write each message as what is wrong

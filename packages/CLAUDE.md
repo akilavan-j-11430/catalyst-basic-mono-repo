@@ -1,6 +1,6 @@
 # packages/
 
-Shared code for the monorepo. All twelve are private and consumed as `"workspace:*"`.
+Shared code for the monorepo. All thirteen are private and consumed as `"workspace:*"`.
 
 | Package | Holds |
 |---|---|
@@ -12,7 +12,8 @@ Shared code for the monorepo. All twelve are private and consumed as `"workspace
 | `@repo/env` | `defineEnv` - reads one app's declared environment variables; throws `MissingEnvVariableError` for an unset one |
 | `@repo/async-context` | `ExecutionContext`, `currentContext`, `runWithContext` and `AsyncContextError` - the execution id and extras of the request in flight. Node only |
 | `@repo/logger` | `Logger` on pino - `Logger.for(source)`, one block per line stamped with the request's execution id and order. Node only, since it reads `@repo/async-context` |
-| `@repo/http-server` | The Express plumbing every app that serves HTTP shares - `initExecutionContext`, `initCatalystScopes`, `errorHandler`, `HttpError`, the response builders, and `RequestInput` for zod-checked request input. The one package that may import `express` |
+| `@repo/http-server` | The Express plumbing every app that serves HTTP shares - `initExecutionContext`, `initCatalystScopes`, `errorHandler`, `HttpError`, and the response builders; `errorHandler` answers `InvalidInputError` with a 400. The one package that may import `express` |
+| `@repo/input-validation` | `InputValidation.parse(schema, input)` - checks input from outside the app against a zod schema and throws `InvalidInputError` naming the field. Knows nothing about HTTP; framework-free, so the browser may use it too |
 | `@repo/typescript-config` | `base.json` that every tsconfig extends |
 | `@repo/eslint-config` | flat ESLint config: the import boundaries and the camelCase naming rule |
 | `@repo/testing` | `VitestProjects` - the shared Vitest settings; later, any test fake a second workspace needs. Dev-only, never imported from `src/` |

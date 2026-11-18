@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
-import { HttpError } from "@/http-error";
-import { RequestInput } from "@/request-input";
+import { InputValidation } from "@/input-validation";
+import { InvalidInputError } from "@/invalid-input-error";
 
 const signUp = z.object(
   {
@@ -11,11 +11,11 @@ const signUp = z.object(
   { error: "Expected a JSON object." },
 );
 
-function rejectionOf(input: unknown): HttpError {
+function rejectionOf(input: unknown): InvalidInputError {
   try {
-    RequestInput.parse(signUp, input);
+    InputValidation.parse(signUp, input);
   } catch (error) {
-    if (error instanceof HttpError) {
+    if (error instanceof InvalidInputError) {
       return error;
     }
     throw error;
@@ -23,9 +23,9 @@ function rejectionOf(input: unknown): HttpError {
   throw new Error("Expected the input to be rejected.");
 }
 
-describe("RequestInput.parse", () => {
+describe("InputValidation.parse", () => {
   it("returns the parsed value, with the schema's transforms applied", () => {
-    const parsed = RequestInput.parse(signUp, {
+    const parsed = InputValidation.parse(signUp, {
       emailId: "  asha@example.com ",
       address: { city: "Chennai" },
     });
@@ -33,20 +33,27 @@ describe("RequestInput.parse", () => {
     expect(parsed).toEqual({ emailId: "asha@example.com", address: { city: "Chennai" } });
   });
 
-  it("answers 400 naming the field and what is wrong with it", () => {
+  it("names the field and what is wrong with it", () => {
     const rejection = rejectionOf({ emailId: "not-an-email", address: { city: "Chennai" } });
 
-    expect(rejection.status).toBe(400);
-    expect(rejection.message).toBe("emailId is not a valid email address.");
+    expect(rejection).toMatchObject({
+      field: "emailId",
+      problem: "is not a valid email address.",
+      message: "emailId is not a valid email address.",
+    });
   });
 
   it("names a nested field by its full path", () => {
-    expect(rejectionOf({ emailId: "asha@example.com", address: {} }).message).toBe(
-      "address.city is required.",
-    );
+    expect(rejectionOf({ emailId: "asha@example.com", address: {} })).toMatchObject({
+      field: "address.city",
+      message: "address.city is required.",
+    });
   });
 
   it("uses the schema's own message when the whole input is the problem", () => {
-    expect(rejectionOf("a string").message).toBe("Expected a JSON object.");
+    expect(rejectionOf("a string")).toMatchObject({
+      field: "",
+      message: "Expected a JSON object.",
+    });
   });
 });

@@ -1,11 +1,11 @@
 import { Router } from "express";
 import { z } from "zod";
 import { ApiPath } from "@repo/routing/api-path";
+import { InputValidation } from "@repo/input-validation/input-validation";
 import { CatalystScope } from "@repo/catalyst-node/catalyst-scope";
 import { UserManagement } from "@repo/catalyst-node/user-management";
 import type { NewUser } from "@repo/types/user";
 import { catalystSessionOf, initCatalystScopes } from "@repo/http-server/middleware";
-import { RequestInput } from "@repo/http-server/request-input";
 import { toRecordResponse } from "@repo/http-server/response";
 import { env } from "@/env";
 
@@ -28,7 +28,7 @@ authRouter.post(
   ApiPath.Register,
   initCatalystScopes([CatalystScope.Admin]),
   async (req, res) => {
-    const user: NewUser = RequestInput.parse(newUserSchema, req.body);
+    const user: NewUser = InputValidation.parse(newUserSchema, req.body);
     const registered = await UserManagement.register(catalystSessionOf(res), {
       user,
       redirectUrl: env.get("AUTH_REDIRECT_URL"),
