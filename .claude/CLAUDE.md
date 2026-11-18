@@ -200,6 +200,7 @@ Topic rules live one-per-file in `.claude/rules/` and load automatically, in two
 - `typography.md` - every font.
 - `component-design.md` - how a component is split, styled and laid out, and how it shows a
   wait.
+- `consent.md` - every button that changes data asks first, in the shared popup.
 
 `.claude/rules/catalyst/` holds one rule per kind of Catalyst function - what goes inside
 it, how it is run locally, and its limits. Creating one is a skill (below):

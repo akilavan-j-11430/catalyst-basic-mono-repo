@@ -40,8 +40,10 @@ export function InviteUserDialog() {
   because it names a domain action.
 - It exposes only what its parent needs to react to - an `onInvited` callback, or nothing.
   How it opens, closes and returns focus stays inside.
-- shadcn's `Dialog`, `Sheet` and `Popover` are not vendored yet. The first one arrives
-  through `shadcn add`, which brings a new runtime dependency, so confirm it first.
+- shadcn's `Dialog`, `AlertDialog`, `Sheet` and `Popover` are not vendored yet. Each
+  arrives through `shadcn add` with its first use; they import from the `radix-ui` package
+  already installed, so none brings a new runtime dependency. A confirmation before a
+  change is always the shared `ConfirmChange` - see `consent.md`.
 
 ## Styling lives in shared components
 
