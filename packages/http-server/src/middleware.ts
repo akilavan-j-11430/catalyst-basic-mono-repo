@@ -9,7 +9,7 @@ import {
   currentContext,
   ExecutionContext,
   runWithContext,
-} from "@repo/node-utils/framework/async-context";
+} from "@repo/async-context/async-context";
 import { CatalystScope } from "@repo/catalyst-node/catalyst-scope";
 import { CatalystSession } from "@repo/catalyst-node/catalyst-session";
 import { logger } from "@repo/node-utils/framework/logger";

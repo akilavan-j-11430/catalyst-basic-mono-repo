@@ -1,5 +1,5 @@
 import { AsyncLocalStorage } from "node:async_hooks";
-import { RuntimeError } from "@/errors/runtime-error";
+import { AsyncContextError } from "@/async-context-error";
 
 /** Per-request values carried on the execution context. */
 export interface ExecutionInfo {
@@ -49,13 +49,12 @@ const executionStore = new AsyncLocalStorage<ExecutionContext>();
 export function currentContext(): ExecutionContext {
   const context = executionStore.getStore();
   if (!context) {
-    throw new RuntimeError(
+    throw new AsyncContextError(
       "no execution context found in async store",
     );
   }
   return context;
 }
-
 export function runWithContext<T>(context: ExecutionContext, handler: () => T): T {
   return executionStore.run(context, handler);
 }
