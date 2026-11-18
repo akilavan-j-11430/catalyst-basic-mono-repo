@@ -1,5 +1,6 @@
 {
   "$schema": "https://turbo.build/schema.json",
+  "concurrency": "20",
   "globalPassThroughEnv": [
     "APP_ACCESS_KEY",
     "CATALYST_SUB_PROCESS",
