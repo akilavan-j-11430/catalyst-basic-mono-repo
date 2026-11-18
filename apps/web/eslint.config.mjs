@@ -4,7 +4,7 @@ import nextTs from "eslint-config-next/typescript";
 import { camelCaseNamingRule, testFileBan, testToolingBan } from "@repo/eslint-config";
 
 const FETCH_MESSAGE =
-  "Call the API through src/services/ - see .claude/rules/web/web-data-access.md.";
+  "Call the API through src/services/ - see .claude/rules/nextjs/web-data-access.md.";
 
 const eslintConfig = defineConfig([
   ...nextVitals,
@@ -12,7 +12,7 @@ const eslintConfig = defineConfig([
   // `src/services/api/client.ts` is the only place that speaks HTTP, the way
   // `catalyst/` is the only place that reaches Catalyst. Prose drifts; this
   // does not.
-  // See `.claude/rules/web/web-data-access.md`.
+  // See `.claude/rules/nextjs/web-data-access.md`.
   {
     files: ["src/**/*.{ts,tsx}"],
     ignores: ["src/services/api/client.ts"],

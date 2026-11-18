@@ -104,7 +104,7 @@ between them:
   unset and calls stay relative, through the proxy - see `.claude/rules/general/environment.md`.
 - `api` (`apps/web/src/services/api/client.ts`) sends `Authorization: Bearer <token>` from
   `AuthClient.authHeaders()`, which uses the web SDK's `generateAuthToken()`. `publicApi`
-  sends none, for signed-out routes - see `.claude/rules/web/web-data-access.md`.
+  sends none, for signed-out routes - see `.claude/rules/nextjs/web-data-access.md`.
 - CORS comes from Catalyst's Authorized Domains for the Slate domain, never from
   middleware in `apps/api`, which would duplicate the header.
 
@@ -191,7 +191,7 @@ Topic rules live one-per-file in `.claude/rules/` and load automatically, in two
 - `api-layers.md` - what a route, a service and a repository each do, and when a service
   is worth adding.
 
-`.claude/rules/web/` holds the rules that apply only to `apps/web`, each scoped with
+`.claude/rules/nextjs/` holds the rules that apply only to `apps/web`, each scoped with
 `paths:` frontmatter:
 - `web-data-access.md` - every call the browser makes to our own API, and every form that
   collects one.
@@ -252,9 +252,9 @@ In `apps/web`:
 - Server state is react-query, form state is react-hook-form. Both are installed; neither
   gets re-implemented with `useState`.
 - Failures are reported by the query client as a toast, so a call site handles success only.
-- The full rule is `.claude/rules/web/web-data-access.md`.
+- The full rule is `.claude/rules/nextjs/web-data-access.md`.
 - Fonts come from the tokens in `globals.css` and nowhere else. Never set a family on a
-  component - see `.claude/rules/web/typography.md`.
+  component - see `.claude/rules/nextjs/typography.md`.
 
 In `apps/api`:
 

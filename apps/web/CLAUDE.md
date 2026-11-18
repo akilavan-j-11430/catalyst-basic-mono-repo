@@ -32,7 +32,7 @@ Components import a domain file and never reach below it.
 const { mutate } = useMutation({ mutationFn: (user: NewUser) => AuthService.registerUser(user) });
 ```
 
-`.claude/rules/web/web-data-access.md` is the full rule and loads automatically here - how to
+`.claude/rules/nextjs/web-data-access.md` is the full rule and loads automatically here - how to
 add a call, how query keys are shaped, and what a call site is and is not responsible for.
 
 Shapes both sides use live in `@repo/types` (`@repo/types/api` for the envelope,
@@ -62,7 +62,7 @@ on every request.
 
 Three libraries, each with one job. `@tanstack/react-query` owns server state,
 `react-hook-form` owns form state, `sonner` renders the toasts - and
-`.claude/rules/web/web-data-access.md` covers the first two in full.
+`.claude/rules/nextjs/web-data-access.md` covers the first two in full.
 
 What belongs here is the toast, because it is styling rather than data flow.
 `components/ui/sonner.tsx` is the vendored Toaster, at sonner's own top-center position and
