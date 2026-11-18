@@ -45,12 +45,12 @@ instead of finishing as a silent success.
 import type { CatalystSession } from "@repo/catalyst-node/catalyst-session";
 import type { JobParams } from "@repo/catalyst-node/job";
 import { reminderJob } from "@repo/catalyst-node/resources";
-import { RuntimeError } from "@repo/node-utils/errors/runtime-error";
-import { logger } from "@repo/node-utils/framework/logger";
+import { Logger } from "@repo/logger/logger";
 import { ReminderJob } from "@/jobs/reminder";
 
 /** Strategy: runs the job a submission names. */
 export class JobDispatcher {
+  private static readonly logger = Logger.for("job-dispatcher");
   private static readonly jobs: Record<
     string,
     (session: CatalystSession, params: JobParams) => Promise<void>
@@ -61,13 +61,13 @@ export class JobDispatcher {
   static async run(session: CatalystSession, params: JobParams): Promise<void> {
     const { jobName, jobId } = params;
     if (!jobName) {
-      throw new RuntimeError("Job params carry no jobName.");
+      throw new Error("Job params carry no jobName.");
     }
     const job = JobDispatcher.jobs[jobName];
     if (!job) {
-      throw new RuntimeError(`No job is registered for jobName "${jobName}".`);
+      throw new Error(`No job is registered for jobName "${jobName}".`);
     }
-    logger.info(`Running job ${jobName} (${jobId ?? "no jobId"})`);
+    JobDispatcher.logger.info(`Running job ${jobName} (${jobId ?? "no jobId"})`);
     await job(session, params);
   }
 }
@@ -84,14 +84,13 @@ export class JobDispatcher {
 // src/jobs/reminder.ts
 import type { CatalystSession } from "@repo/catalyst-node/catalyst-session";
 import type { JobParams } from "@repo/catalyst-node/job";
-import { RuntimeError } from "@repo/node-utils/errors/runtime-error";
 
 /** Sends the reminder for one todo. */
 export class ReminderJob {
   static async run(session: CatalystSession, params: JobParams): Promise<void> {
     const { todoId } = params;
     if (!todoId) {
-      throw new RuntimeError("Reminder job needs a todoId.");
+      throw new Error("Reminder job needs a todoId.");
     }
     // repositories and handles from catalyst-node, passed the session, as a route calls them
   }
@@ -117,9 +116,11 @@ export class ReminderJob {
 import { randomUUID } from "node:crypto";
 import { CatalystSession } from "@repo/catalyst-node/catalyst-session";
 import type { JobParams } from "@repo/catalyst-node/job";
-import { ExecutionContext, runWithContext } from "@repo/node-utils/framework/async-context";
-import { logger } from "@repo/node-utils/framework/logger";
+import { ExecutionContext, runWithContext } from "@repo/async-context/async-context";
+import { Logger } from "@repo/logger/logger";
 import { JobDispatcher } from "@/job-dispatcher";
+
+const logger = Logger.for("job-executor");
 
 /** What Catalyst passes a Job function - `types/job.d.ts` from `functions:add` lists it all. */
 interface JobRequest {

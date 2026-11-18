@@ -38,8 +38,9 @@ Where new work goes:
   imports it from there and never copies it.
 - Catalyst SDK calls -> `packages/catalyst-node`, the one package allowed `@zcatalyst/*`.
   Each entry point builds a `CatalystSession` and passes it to every call.
-- Server-side helpers -> `packages/node-utils`. It imports `node:async_hooks`, so
-  it is `apps/api` only - never reach it from `apps/web`.
+- Logging -> `packages/logger` (`Logger.for("<source>")`); the request's execution
+  context -> `packages/async-context`. Both rest on `node:async_hooks`, so they are server
+  only - never reach them from `apps/web`.
 - Never `apps/proxy`. It is local-only plumbing and ships nothing; a feature added
   there works in dev and vanishes in the cloud.
 
@@ -80,7 +81,8 @@ catalyst serve      <- entry point, port assigned by the CLI (3000, 3001, 3002, 
 | `packages/types` | `@repo/types` | - |
 | `packages/routing` | `@repo/routing` | - |
 | `packages/case-conversion` | `@repo/case-conversion` | - |
-| `packages/node-utils` | `@repo/node-utils` | - |
+| `packages/async-context` | `@repo/async-context` | - |
+| `packages/logger` | `@repo/logger` | - |
 | `packages/catalyst-node` | `@repo/catalyst-node` | - |
 | `packages/env` | `@repo/env` | - |
 | `packages/http-client` | `@repo/http-client` | - |
@@ -158,10 +160,10 @@ compilers and disagree about code that builds and deploys fine. `.vscode/setting
 That drift has already bitten once. TypeScript 6 dropped the automatic injection of every
 `@types` package found by walking `typeRoots` upward, so a `@types/node` declared only in the
 root `package.json` stopped reaching the workspaces - `node:stream`, `process` and `console`
-all went unresolved in `packages/node-utils` under 6.0.3 while 5.9.3 stayed clean. Hence two
+all went unresolved in a Node-only package under 6.0.3 while 5.9.3 stayed clean. Hence two
 standing rules: every workspace that compiles Node code **declares `@types/node` itself** and
-sets `"types": ["node"]` in its tsconfig (`packages/node-utils`, `packages/catalyst-node`,
-`packages/env`, `apps/api`, `apps/proxy`,
+sets `"types": ["node"]` in its tsconfig (`packages/async-context`, `packages/logger`,
+`packages/catalyst-node`, `packages/env`, `apps/api`, `apps/proxy`,
 `packages/testing`, and `packages/case-conversion` and `packages/http-client` for their tests
 and Vitest config - not
 `base.json`, which `packages/types` shares and which must stay framework-free). Note that
@@ -210,7 +212,7 @@ frontmatter when it applies to only part of the tree.
 - `@/*` resolves to `./src/*` in every app and every built package. Use it instead of `../../`.
 - Shared packages expose subpaths, not a barrel: `@repo/types/api`, `@repo/routing/api-path`,
   `@repo/case-conversion/camel-case`,
-  `@repo/node-utils/framework/logger`, `@repo/node-utils/framework/async-context`,
+  `@repo/logger/logger`, `@repo/async-context/async-context`,
   `@repo/catalyst-node/resources`, `@repo/env/define-env`,
   `@repo/http-client/http-client`,
   `@repo/http-server/middleware`, `@repo/http-server/http-error`, `@repo/http-server/response`,
@@ -269,7 +271,9 @@ In `apps/api`:
   naming the field, so each schema message says what is wrong: `"is required."`.
 - Build every response with `toRecordResponse`, `toPagedResponse`, or
   `toErrorResponse` (`@repo/http-server/response`) so payloads share one envelope.
-- Log through `logger` from `@repo/node-utils/framework/logger`, not `console`.
+- Log through `Logger.for("<source>")` (`@repo/logger/logger`), not `console`. Each line is
+  a block naming its source and, inside a request, the execution id and the line's order.
+  `index.ts` configures it once - see `apps/api/CLAUDE.md`.
 - Call external services through `HttpClient` (`@repo/http-client/http-client`), never
   `fetch` or another client directly. A client that should carry the request's execution
   id as `app-execution-id` passes it through its `headers` resolver. See
@@ -326,7 +330,7 @@ all kinds share are in `.claude/skills/deployable-steps.md` and
 tests. A package `apps/web` consumes is
 framework-free and sets `"types": []` - copy `packages/routing` - or `@types/node` from the
 repo root lets Node APIs compile in its `src/`. A server-only package declares `@types/node`
-and `"types": ["node"]` instead - copy `packages/node-utils`. `@repo/testing` is the one
+and `"types": ["node"]` instead - copy `packages/async-context`. `@repo/testing` is the one
 exception to all of this - see `.claude/rules/general/testing.md`.
 
 **Tests** - see `.claude/rules/general/testing.md`. Run `pnpm verify` before calling any change done.

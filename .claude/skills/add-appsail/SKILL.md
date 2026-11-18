@@ -9,7 +9,7 @@ description: Add a new Catalyst AppSail to this repo, shaped like apps/api - wor
    name, why it is not a function or an `apps/api` router, and whether the browser calls
    it.
 2. **Read `.claude/skills/deployable-steps.md`.** The second AppSail also moves
-   `catalyst-logger.ts` into `node-utils`.
+   `AppSailLogOutput` (`catalyst-logger.ts`) into `@repo/logger`.
 3. **Copy the shape of `apps/api` into `apps/<name>`.** Import the plumbing from
    `@repo/http-server` rather than copying it. Then:
    - `package.json`: the app's name, and the same `build`, `bundle`, `dev`, `typecheck`,

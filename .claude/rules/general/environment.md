@@ -75,9 +75,9 @@ It is the same rule as `.claude/rules/general/catalyst-sdk.md` - a wrapper takes
 values - and it is what makes the failure land in the route, which is what the variable
 configures.
 
-`logger` is the same shape from the other side: it holds the timezone in a module-level
-static and exposes `setLogTimeZone`, which the app calls once at startup with its own
-`env.optional("TZ")`. The package formats; the app configures.
+`Logger` is the same shape from the other side: it holds the timezone in a static and
+takes it through `Logger.configure({ timeZone })`, which the app calls once at startup with
+its own `env.optional("TZ")`. The package formats; the app configures.
 
 ## Adding a variable
 

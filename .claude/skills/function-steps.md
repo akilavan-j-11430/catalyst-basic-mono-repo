@@ -28,8 +28,10 @@ steps. What goes inside the function is in that kind's rule under
      environment variables against the resource in the Console, so this repo does not
      maintain them.
 2. **The workspace** is set up like `apps/api`: CommonJS, the same `tsconfig.json` /
-   `tsconfig.build.json` pair, and `@types/node`. Its dependencies are `@repo/node-utils`,
-   `@repo/catalyst-node` and the `@zcatalyst/*` packages its wrappers need. The function
+   `tsconfig.build.json` pair, and `@types/node`. Its dependencies are `@repo/async-context`,
+   `@repo/logger`, `@repo/catalyst-node`, the `@zcatalyst/*` packages its wrappers need,
+   and `pino` - the logger's runtime dependency, which the bundle installs rather than
+   inlines. The function
    builds a `CatalystSession` rather than the Catalyst app, so it needs no
    `allowCatalystSdk([...])`.
 3. **`scripts/bundle.mjs`** is a copy of `apps/api`'s, with these changes:

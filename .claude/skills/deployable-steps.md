@@ -77,8 +77,9 @@ Import it; never copy it. It is the one package allowed to import `express`
 stays external, so every app that runs it in the cloud lists `express` in its own
 `dependencies`.
 
-`apps/api/src/framework/catalyst-logger.ts` is specific to AppSail, not to Express. The
-second AppSail moves it into `node-utils`' `framework/`.
+`AppSailLogOutput` (`apps/api/src/framework/catalyst-logger.ts`) is specific to AppSail,
+not to Express. The second AppSail moves it into `@repo/logger`, beside `Logger`. Every app
+that logs lists `pino` in its own `dependencies`, as it does `express`.
 
 ## Before calling it done
 

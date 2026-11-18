@@ -9,14 +9,14 @@ Port: `X_ZOHO_CATALYST_LISTEN_PORT`, else `PORT`, else **8000**.
 
 ```
 src/
-|-- index.ts              startup: log timezone, listen on the port
+|-- index.ts              startup: configure the logger, listen on the port
 |-- app.ts                the Express app - middleware order, route mounting
 |-- env.ts                every environment variable this app reads
 |-- routes/api-router.ts  the only place a router mounts
 |-- routes/ping.ts        reference route - copy this shape
 |-- routes/auth.ts        POST /auth/register - registers a Catalyst app user
 |-- routes/me.ts          GET /me - the app user the request is signed in as
-`-- framework/catalyst-logger.ts   console -> Catalyst log pipe, imported for side effect
+`-- framework/catalyst-logger.ts   AppSailLogOutput - log blocks -> AppSail's log collector
 test/
 |-- setup.ts              fakes zcAuth.init for every test, with @repo/testing/catalyst-auth
 `-- integration/          the app from app.ts, driven through Supertest
@@ -32,9 +32,11 @@ The Express plumbing - `initExecutionContext`, `initCatalystScopes`, `errorHandl
 `HttpError` and the response builders - lives in `@repo/http-server`, shared with every
 other app that serves HTTP. It is imported from there, never copied.
 
-`catalyst-logger` is imported first in `index.ts` purely for its side effect: it
-replaces the `console` methods so logs are framed for Catalyst's collector. It exports
-nothing you should call.
+`index.ts` configures the logger before anything logs:
+`Logger.configure({ timeZone: env.optional("TZ"), output: AppSailLogOutput.fromPlatform() })`.
+`AppSailLogOutput` (`framework/catalyst-logger.ts`) frames each block for the log collector
+AppSail hands the app as `X_ZOHO_SPARKLET_LOG_FD`; outside AppSail there is none, and the
+logger writes to stdout.
 
 ## Middleware order
 
@@ -218,8 +220,20 @@ catch (error) {
 
 ## Logging
 
-Use `logger` from `@repo/node-utils/framework/logger`, not `console`. It stamps the
-execution ID and a per-request order number from the async context.
+Use `Logger.for("<source>")` from `@repo/logger/logger`, not `console` - one per file, at
+module scope, named for the part of the app that logs:
+
+```ts
+const logger = Logger.for("billing");
+
+logger.info("Invoice sent", { invoiceId }, status);
+```
+
+Each call writes one block. Every value goes on its own line under `Content:` - objects as
+JSON, an Error with its stack. Inside a request the block also carries the execution id
+and the line's order within that request, read from the async context; outside one, both
+lines are left out. `Logger.configure` runs once in `index.ts` and throws after the first
+line, so never call it anywhere else.
 
 ## Build
 

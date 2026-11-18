@@ -51,8 +51,7 @@ apps/<name>/
 ```ts
 // src/signal-dispatcher.ts
 import type { CatalystSession } from "@repo/catalyst-node/catalyst-session";
-import { RuntimeError } from "@repo/node-utils/errors/runtime-error";
-import { logger } from "@repo/node-utils/framework/logger";
+import { Logger } from "@repo/logger/logger";
 import { CacheItemCreatedSignal } from "@/signals/cache-item-created";
 
 /** One event of a delivery, after camelCase conversion. */
@@ -63,6 +62,7 @@ export interface SignalEvent {
 
 /** Strategy: runs the handler an event's name selects. */
 export class SignalDispatcher {
+  private static readonly logger = Logger.for("signal-dispatcher");
   private static readonly handlers: Record<
     string,
     (session: CatalystSession, data: Record<string, unknown>) => Promise<void>
@@ -73,13 +73,13 @@ export class SignalDispatcher {
   static async run(session: CatalystSession, signalEvent: SignalEvent): Promise<void> {
     const { apiName, data } = signalEvent;
     if (!apiName) {
-      throw new RuntimeError("Signal event carries no api_name.");
+      throw new Error("Signal event carries no api_name.");
     }
     const handle = SignalDispatcher.handlers[apiName];
     if (!handle) {
-      throw new RuntimeError(`No handler is registered for event "${apiName}".`);
+      throw new Error(`No handler is registered for event "${apiName}".`);
     }
-    logger.info(`Handling event ${apiName}`);
+    SignalDispatcher.logger.info(`Handling event ${apiName}`);
     await handle(session, data);
   }
 }

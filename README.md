@@ -215,7 +215,8 @@ curl http://localhost:3001/api/v1/nope
 |-- packages/
 |   |-- routing/            @repo/routing            route path segments
 |   |-- types/              @repo/types              shared API response shapes
-|   |-- node-utils/         @repo/node-utils         execution context, logger, errors
+|   |-- async-context/      @repo/async-context      the execution context of the request in flight
+|   |-- logger/             @repo/logger             Logger, one block per line
 |   |-- catalyst-node/      @repo/catalyst-node      Catalyst wrappers and CatalystSession
 |   |-- env/                @repo/env                defineEnv, each app's declared variables
 |   |-- http-client/        @repo/http-client        HttpClient, for Node and the browser
@@ -238,7 +239,8 @@ curl http://localhost:3001/api/v1/nope
 | `apps/web` | Next.js frontend. Calls the API with relative `/api/...` paths. |
 | `@repo/routing` | `ApiPath` segments, combined with `+` - the API mounts them and the web app calls them, so no path is a string literal in either. |
 | `@repo/types` | `RecordResponse`, `PagedRecordResponse`, `ErrorResponse` - imported by both the API and the web app so the contract is written once. |
-| `@repo/node-utils` | `ExecutionContext` over `AsyncLocalStorage`, a `logger` that stamps execution IDs, `RuntimeError`. |
+| `@repo/async-context` | `ExecutionContext` over `AsyncLocalStorage` - the execution id and extras of the request in flight. |
+| `@repo/logger` | `Logger.for(source)` on pino - each line a block naming its source and, inside a request, the execution id and order. |
 | `@repo/env` | `defineEnv` - each app declares the variables it reads, so a typo is a compile error and an unset one throws `MissingEnvVariableError`. |
 | `@repo/catalyst-node` | `CatalystSession` and the Catalyst wrappers plus the resource handles built from them - the only package that imports `@zcatalyst/*`. Each entry point builds a session from its request's headers and passes it to every call. |
 | `@repo/http-client` | `HttpClient` - every call to a service outside this repo. Reads nothing ambient, so it runs in Node and in the browser. |
@@ -290,7 +292,7 @@ Each AppSail app has a `scripts/bundle.mjs`. Running `pnpm bundle` executes it, 
 4. **Copies `app-config.json`** next to it.
 5. **Runs `npm install`** inside `appsails/<name>/` to fetch the real runtime deps.
 
-Step 3 is the interesting one. Workspace packages like `@repo/node-utils` do not exist
+Step 3 is the interesting one. Workspace packages like `@repo/logger` do not exist
 on npm, so they cannot be installed at deploy time - instead esbuild **inlines their
 code directly into `index.js`**. Third-party deps such as `express` stay external and
 get installed normally.
@@ -339,7 +341,7 @@ what the deployed app needs in **Console -> AppSail -> api -> Configuration ->
 Environment Variables** before the first deploy that needs it, and remember that the
 Development and Production environments are configured separately. `AUTH_REDIRECT_URL`
 is required by `POST /api/v1/auth/register`; without it that route fails with a
-`RuntimeError` naming the variable.
+`MissingEnvVariableError` naming the variable.
 
 **Environments.** Catalyst projects have a Development and a Production environment,
 with separate data and separate IDs. `catalyst init` sets your active one and records
@@ -396,7 +398,7 @@ Short version; `CLAUDE.md` has the full list.
 - **Path alias.** `@/*` resolves to `./src/*` in every app and every built package. Use it rather than
   climbing with `../../`.
 - **Subpath imports.** Shared packages have no barrel file. Import the exact module:
-  `@repo/types/api`, `@repo/node-utils/framework/logger`.
+  `@repo/types/api`, `@repo/logger/logger`.
 - **File names** are kebab-case: `http-error.ts`, `async-context.ts`.
 - **Naming.** Identifiers and JSON keys are camelCase: `emailId`, `nextPageToken`. A
   vendor's own wire shape (`email_id`, `ROWID`) keeps its spelling and is converted at
@@ -406,8 +408,8 @@ Short version; `CLAUDE.md` has the full list.
   becomes a generic 500.
 - **Responses.** Build every payload with `toRecordResponse`, `toPagedResponse`, or
   `toErrorResponse` so clients always get the same `status` / `data` envelope.
-- **Logging.** Use `logger` from `@repo/node-utils`, not `console`. It attaches the
-  execution ID and per-request ordering.
+- **Logging.** Use `Logger.for("<source>")` from `@repo/logger`, not `console`. It attaches
+  the source and, inside a request, the execution ID and per-request ordering.
 - **Catalyst SDK.** `zcAuth.init(req)` happens once per request in middleware. Handlers
   import a resource handle from `@repo/catalyst-node/resources` and never
   initialize their own app.

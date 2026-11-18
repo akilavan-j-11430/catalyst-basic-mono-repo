@@ -15,11 +15,11 @@ One instance per external service, built once at module scope:
 
 ```ts
 import { HttpClient } from "@repo/http-client/http-client";
-import { logger } from "@repo/node-utils/framework/logger";
+import { Logger } from "@repo/logger/logger";
 
 const billing = new HttpClient({
   baseUrl: "https://billing.example.com/v2",
-  logger,
+  logger: Logger.for("billing"),
   headers: async () => ({ authorization: `Bearer ${await billingToken()}` }),
 });
 
@@ -39,7 +39,7 @@ const invoice = toInvoice(await body.json());
   and headers are never logged, so keep secrets out of the URL.
 - The client reads nothing ambient, so it runs in Node and in the browser alike. Whatever a
   call should carry - a token, an execution id - comes in through `headers`, and where its
-  line goes comes in through `logger`: the server's `logger`, or `console` in the browser.
+  line goes comes in through `logger`: a `Logger` on the server, or `console` in the browser.
   The client never writes to `console` itself.
 
 ## Request correlation
@@ -53,7 +53,7 @@ every call:
 ```ts
 const billing = new HttpClient({
   baseUrl: "https://billing.example.com/v2",
-  logger,
+  logger: Logger.for("billing"),
   headers: () => ({ [HttpHeader.AppExecutionId]: currentContext().manager.executionId }),
 });
 ```
@@ -190,6 +190,6 @@ deployed manifest from that file alone.
 ## Not covered by this rule
 
 `apps/web` calls this repo's own API through the proxy. That is not an external request,
-and `apps/web` cannot import `node-utils` anyway - it has its own client in
+so `apps/web` has its own client in
 `src/services/api/client.ts`, built to this same standard and returning the same
 `HttpResponse` from `@repo/types/http`. `.claude/rules/web/web-data-access.md` is its rule.

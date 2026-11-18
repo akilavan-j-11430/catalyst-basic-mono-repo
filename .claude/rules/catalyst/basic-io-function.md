@@ -33,9 +33,11 @@ If the work takes more than a few lines, put it in a repository or a wrapper met
 // src/handler.ts
 import { randomUUID } from "node:crypto";
 import { CatalystSession } from "@repo/catalyst-node/catalyst-session";
-import { ExecutionContext, runWithContext } from "@repo/node-utils/framework/async-context";
-import { logger } from "@repo/node-utils/framework/logger";
+import { ExecutionContext, runWithContext } from "@repo/async-context/async-context";
+import { Logger } from "@repo/logger/logger";
 import { TodoRepository } from "@repo/catalyst-node/repositories/todo-repository";
+
+const logger = Logger.for("todo-lookup");
 
 /** What Catalyst passes a Basic I/O function - `types/basicio.d.ts` from `functions:add`. */
 export interface BasicIo {

@@ -114,7 +114,7 @@ export function allowVendorNames(files) {
  * clients and the test tooling stay banned.
  *
  * Each workspace applies this itself because ESLint resolves `files` against the config
- * that declares them - a repo-root glob like `packages/node-utils/**` never matches the
+ * that declares them - a repo-root glob like `packages/catalyst-node/**` never matches the
  * `src/...` paths a workspace-local run actually sees.
  */
 export function allowCatalystSdk(files) {
