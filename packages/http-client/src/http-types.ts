@@ -55,9 +55,16 @@ export type HttpTransport = (
   request: TransportRequest,
 ) => Promise<TransportResponse>;
 
+/** Where the client writes one line per call - on the server a `Logger`, in the browser
+ *  `console`. Without one, the client logs nothing. */
+export interface HttpCallLogger {
+  info(message: string): void;
+}
+
 export interface HttpClientOptions {
   /** Absolute base every path is resolved against. Its own path is preserved. */
   baseUrl: string;
+  logger?: HttpCallLogger;
   /** Authorization and anything else every call to this service carries. */
   headers?: HeaderResolver;
   timeoutMs?: number;

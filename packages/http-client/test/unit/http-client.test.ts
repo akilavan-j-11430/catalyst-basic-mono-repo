@@ -1,23 +1,26 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import { ContentType } from "@/content-type";
 import { HttpHeader } from "@/http-header";
 import { HttpClient } from "@/http-client";
 import type { TransportRequest } from "@/http-types";
 
-/** A client whose transport records what it was asked to send and answers 200. */
+/** A client whose transport records what it was asked to send and answers 200, and whose
+ *  logger records each call line. */
 function recordingClient(
   headers?: () => Record<string, string>,
-): { billing: HttpClient; sentRequests: TransportRequest[] } {
+): { billing: HttpClient; sentRequests: TransportRequest[]; callLines: string[] } {
   const sentRequests: TransportRequest[] = [];
+  const callLines: string[] = [];
   const billing = new HttpClient({
     baseUrl: "https://billing.example.com/v2",
+    logger: { info: (message) => callLines.push(message) },
     headers,
     transport: async (request) => {
       sentRequests.push(request);
       return { status: 200, headers: {}, body: new Uint8Array() };
     },
   });
-  return { billing, sentRequests };
+  return { billing, sentRequests, callLines };
 }
 
 describe("HttpClient request encoding", () => {
@@ -73,9 +76,22 @@ describe("HttpClient declared content type", () => {
   });
 });
 
+describe("HttpClient call line", () => {
+  it("logs one line per call to the logger it was given", async () => {
+    const { billing, callLines } = recordingClient();
+
+    await billing.get("/invoices/1");
+
+    expect(callLines).toEqual([
+      expect.stringMatching(
+        /^GET https:\/\/billing\.example\.com\/v2\/invoices\/1 -> 200 in \d+ ms$/,
+      ),
+    ]);
+  });
+});
+
 describe("HttpClient execution id", () => {
-  it("sends the execution id the caller's headers supply, and logs it with the call", async () => {
-    const callLine = vi.spyOn(console, "info").mockImplementation(() => undefined);
+  it("sends the execution id the caller's headers supply", async () => {
     const { billing, sentRequests } = recordingClient(() => ({
       [HttpHeader.AppExecutionId]: "execution-1",
     }));
@@ -83,15 +99,9 @@ describe("HttpClient execution id", () => {
     await billing.get("/invoices/1");
 
     expect(sentRequests[0]?.headers[HttpHeader.AppExecutionId]).toBe("execution-1");
-    expect(callLine).toHaveBeenCalledExactlyOnceWith(
-      expect.stringMatching(
-        /^GET https:\/\/billing\.example\.com\/v2\/invoices\/1 -> 200 in \d+ ms \(app-execution-id: execution-1\)$/,
-      ),
-    );
   });
 
   it("adds none of its own", async () => {
-    vi.spyOn(console, "info").mockImplementation(() => undefined);
     const { billing, sentRequests } = recordingClient();
 
     await billing.get("/invoices/1");

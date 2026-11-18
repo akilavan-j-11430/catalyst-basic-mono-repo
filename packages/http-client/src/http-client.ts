@@ -6,6 +6,7 @@ import { fetchTransport } from "@/fetch-transport";
 import { toHttpResponse } from "@/response";
 import type {
   HeaderResolver,
+  HttpCallLogger,
   HttpClientOptions,
   HttpResponse,
   HttpTransport,
@@ -105,11 +106,13 @@ function encodeBody(body: unknown, declared?: string): EncodedBody {
 
 /**
  * One instance per external service. Every outbound request in this repo goes through here.
- * It runs in Node and in the browser alike, so it reads nothing ambient: an execution id or a
- * token reaches the wire through the `headers` resolver the caller passes in.
+ * It runs in Node and in the browser alike, so it reads nothing ambient. The caller passes in
+ * the `headers` resolver that puts a token or an execution id on the wire, and the `logger`
+ * each call's line goes to.
  */
 export class HttpClient {
   private readonly baseUrl: string;
+  private readonly logger: HttpCallLogger | undefined;
   private readonly resolveHeaders: HeaderResolver;
   private readonly timeoutMs: number;
   private readonly transport: HttpTransport;
@@ -121,6 +124,7 @@ export class HttpClient {
       );
     }
     this.baseUrl = options.baseUrl.replace(/\/+$/, "");
+    this.logger = options.logger;
     this.resolveHeaders = options.headers ?? (() => ({}));
     this.timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
     this.transport = options.transport ?? fetchTransport;
@@ -189,9 +193,7 @@ export class HttpClient {
       const cause = error instanceof Error ? error.message : String(error);
       throw HttpRequestError.Unreachable(method, url, cause);
     }
-    console.info(
-      `${method} ${url} -> ${transported.status} in ${Date.now() - startedAt} ms${HttpClient.describeExecution(headers)}`,
-    );
+    this.logger?.info(`${method} ${url} -> ${transported.status} in ${Date.now() - startedAt} ms`);
 
     if (transported.status < 200 || transported.status >= 300) {
       throw HttpRequestError.Upstream({
@@ -203,12 +205,6 @@ export class HttpClient {
       });
     }
     return toHttpResponse(method, url, transported);
-  }
-
-  /** The execution id the caller sent, so this line matches the upstream's log for the call. */
-  private static describeExecution(headers: Record<string, string>): string {
-    const executionId = headers[HttpHeader.AppExecutionId];
-    return executionId === undefined ? "" : ` (${HttpHeader.AppExecutionId}: ${executionId})`;
   }
 
   private resolveUrl(path: string, query?: Record<string, QueryValue>): string {

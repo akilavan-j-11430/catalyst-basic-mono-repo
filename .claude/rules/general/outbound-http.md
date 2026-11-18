@@ -15,9 +15,11 @@ One instance per external service, built once at module scope:
 
 ```ts
 import { HttpClient } from "@repo/http-client/http-client";
+import { logger } from "@repo/node-utils/framework/logger";
 
 const billing = new HttpClient({
   baseUrl: "https://billing.example.com/v2",
+  logger,
   headers: async () => ({ authorization: `Bearer ${await billingToken()}` }),
 });
 
@@ -32,10 +34,13 @@ const invoice = toInvoice(await body.json());
   The client has no `parse` hook on purpose; a plain function call does the same job.
 - `timeoutMs` on the client is the default; pass it per call for a slow export or a big
   upload rather than loosening it for everything.
-- Each call logs `METHOD url -> status in N ms`, plus the `app-execution-id` it sent. Bodies
-  and other headers are never logged, so keep secrets out of the URL.
+- Each call logs `METHOD url -> status in N ms` to the `logger` the client was given, which
+  stamps the execution id on the server. A client built without one logs nothing. Bodies
+  and headers are never logged, so keep secrets out of the URL.
 - The client reads nothing ambient, so it runs in Node and in the browser alike. Whatever a
-  call should carry - a token, an execution id - comes in through `headers`.
+  call should carry - a token, an execution id - comes in through `headers`, and where its
+  line goes comes in through `logger`: the server's `logger`, or `console` in the browser.
+  The client never writes to `console` itself.
 
 ## Request correlation
 
@@ -48,6 +53,7 @@ every call:
 ```ts
 const billing = new HttpClient({
   baseUrl: "https://billing.example.com/v2",
+  logger,
   headers: () => ({ [HttpHeader.AppExecutionId]: currentContext().manager.executionId }),
 });
 ```
