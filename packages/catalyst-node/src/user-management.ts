@@ -3,7 +3,7 @@ import { CamelCase } from "@repo/case-conversion/camel-case";
 import type { CurrentUser, NewUser, RegisteredUser } from "@repo/types/user";
 import { CatalystScope } from "@/catalyst-scope";
 import { CatalystError } from "@/catalyst-error";
-import type { CatalystSession } from "@/catalyst-session";
+import { CatalystSession } from "@/catalyst-session";
 
 type RegisteredUserDetails = Awaited<
   ReturnType<UserManagementClient["registerUser"]>
@@ -11,11 +11,8 @@ type RegisteredUserDetails = Awaited<
 
 /** Fresh per call. The app is per-request and carries the caller's credentials,
  *  so a service must never be hoisted to module scope. */
-async function userManagement(
-  session: CatalystSession,
-  scope: CatalystScope,
-): Promise<UserManagementClient> {
-  return new UserManagementClient(await session.app(scope));
+function userManagement(scope: CatalystScope): UserManagementClient {
+  return new UserManagementClient(CatalystSession.app(scope));
 }
 
 /** Picks only the fields we expose, so the rest of Catalyst's user record never leaks. */
@@ -28,14 +25,14 @@ function toRegisteredUser(details: RegisteredUserDetails): RegisteredUser {
 export class UserManagement {
   /** Registers an app user. Catalyst emails them a link to confirm and set a
    *  password, and sends them to `redirectUrl` from it. */
-  static async register(
-    session: CatalystSession,
-    registration: { user: NewUser; redirectUrl: string },
-  ): Promise<RegisteredUser> {
+  static async register(registration: {
+    user: NewUser;
+    redirectUrl: string;
+  }): Promise<RegisteredUser> {
     const { user, redirectUrl } = registration;
     // Admin, because registering a user is not a browser SDK method and its caller has
     // no account yet.
-    const users = await userManagement(session, CatalystScope.Admin);
+    const users = userManagement(CatalystScope.Admin);
     try {
       const registered = await users.registerUser(
         {
@@ -59,8 +56,8 @@ export class UserManagement {
 
   /** The app user the request is signed in as. User scope, because only the caller's own
    *  credentials say who they are - an Admin app has no user behind it. */
-  static async currentUser(session: CatalystSession): Promise<CurrentUser> {
-    const users = await userManagement(session, CatalystScope.User);
+  static async currentUser(): Promise<CurrentUser> {
+    const users = userManagement(CatalystScope.User);
     try {
       const catalystUser = await users.getCurrentUser();
       const { userId, emailId, firstName, lastName } = CamelCase.convertKeys(catalystUser);

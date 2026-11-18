@@ -1,7 +1,7 @@
 import { CatalystError } from "@/catalyst-error";
 import { JobScheduling } from "@zcatalyst/job-scheduling";
 import { CatalystScope } from "@/catalyst-scope";
-import type { CatalystSession } from "@/catalyst-session";
+import { CatalystSession } from "@/catalyst-session";
 import { randomUUID } from "node:crypto";
 
 /** Catalyst rejects an alias longer than this. */
@@ -39,8 +39,8 @@ interface OneTimeCronRequest {
 
 /** Fresh per call. The app is per-request and carries the caller's credentials,
  *  so a service must never be hoisted to module scope. */
-async function jobScheduling(session: CatalystSession): Promise<JobScheduling> {
-  return new JobScheduling(await session.app(CatalystScope.User));
+function jobScheduling(): JobScheduling {
+  return new JobScheduling(CatalystSession.app(CatalystScope.User));
 }
 
 /** Catalyst carries job params as strings. A job that takes none is `Job<void>`. */
@@ -74,12 +74,19 @@ interface JobConfig {
   jobTargetFunctionName: string;
 }
 
-/** A job bound to a request. Reached only through `Job.runIn`. */
-class ScopedJob<T extends JobParams | void> {
-  constructor(
-    private readonly config: JobConfig,
-    private readonly session: CatalystSession,
-  ) {}
+/** A Catalyst job. Holds its config only, and submits for the request in flight with its User
+ *  credentials. */
+export class Job<T extends JobParams | void = void> {
+  private constructor(readonly config: JobConfig) {}
+
+  static create<T extends JobParams | void = void>(config: JobConfig): Job<T> {
+    if (config.aliasName.length > MAX_ALIAS_LENGTH) {
+      throw CatalystError.InvalidResource(
+        `Job alias name must be at most ${MAX_ALIAS_LENGTH} characters, got "${config.aliasName}".`,
+      );
+    }
+    return new Job<T>(config);
+  }
 
   /** Queues the job for immediate execution. */
   async submitJob(...[input]: SubmitJobArgs<T>): Promise<void> {
@@ -91,7 +98,7 @@ class ScopedJob<T extends JobParams | void> {
       target_name: this.config.jobTargetFunctionName,
       params: { ...params, jobId, jobName: this.config.jobName },
     };
-    const scheduling = await jobScheduling(this.session);
+    const scheduling = jobScheduling();
     await scheduling.JOB.submitJob(job as unknown as SdkJobMeta);
   }
 
@@ -118,28 +125,7 @@ class ScopedJob<T extends JobParams | void> {
         params: { ...params, jobName: this.config.jobName },
       },
     };
-    const scheduling = await jobScheduling(this.session);
+    const scheduling = jobScheduling();
     await scheduling.CRON.createCron(cron as unknown as SdkCronDetails);
-  }
-}
-
-export type { ScopedJob };
-
-/** A Catalyst job. Holds its config only; every submission goes through `runIn`. */
-export class Job<T extends JobParams | void = void> {
-  private constructor(readonly config: JobConfig) {}
-
-  /** The job's submissions, acting with the session's User credentials. */
-  runIn(session: CatalystSession): ScopedJob<T> {
-    return new ScopedJob<T>(this.config, session);
-  }
-
-  static create<T extends JobParams | void = void>(config: JobConfig): Job<T> {
-    if (config.aliasName.length > MAX_ALIAS_LENGTH) {
-      throw CatalystError.InvalidResource(
-        `Job alias name must be at most ${MAX_ALIAS_LENGTH} characters, got "${config.aliasName}".`,
-      );
-    }
-    return new Job<T>(config);
   }
 }

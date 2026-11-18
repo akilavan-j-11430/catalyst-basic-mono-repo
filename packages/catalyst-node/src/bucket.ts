@@ -1,7 +1,7 @@
 import { CatalystError } from "@/catalyst-error";
 import { Stratus } from "@zcatalyst/stratus";
 import type { CatalystScope } from "@/catalyst-scope";
-import type { CatalystSession } from "@/catalyst-session";
+import { CatalystSession } from "@/catalyst-session";
 import { Readable } from "node:stream";
 
 type CatalystBucket = ReturnType<Stratus["bucket"]>;
@@ -12,8 +12,8 @@ type ObjectFormat = "stream" | "text" | "json";
 
 /** Fresh per call. The app is per-request and carries the caller's credentials,
  *  so a service must never be hoisted to module scope. */
-async function stratus(session: CatalystSession, scope: CatalystScope): Promise<Stratus> {
-  return new Stratus(await session.app(scope));
+function stratus(scope: CatalystScope): Stratus {
+  return new Stratus(CatalystSession.app(scope));
 }
 
 /** `listPagedObjects` returns either a plain detail record or an object handle. */
@@ -29,16 +29,16 @@ async function readStream(stream: Readable): Promise<string> {
   return Buffer.concat(chunks).toString("utf8");
 }
 
-/** A Stratus bucket bound to a request and a scope. Reached only through `Bucket.runIn`. */
+/** A Stratus bucket bound to a scope, acting for the request in flight. Reached only
+ *  through `Bucket.runIn`. */
 class ScopedBucket {
   constructor(
     private readonly name: string,
-    private readonly session: CatalystSession,
     private readonly scope: CatalystScope,
   ) {}
 
-  private async bucket(): Promise<CatalystBucket> {
-    return (await stratus(this.session, this.scope)).bucket(this.name);
+  private bucket(): CatalystBucket {
+    return stratus(this.scope).bucket(this.name);
   }
 
   async listObject(options: {
@@ -46,7 +46,7 @@ class ScopedBucket {
     prefix?: string;
     nextToken?: string;
   }): Promise<{ items: string[]; nextToken?: string }> {
-    const bucket = await this.bucket();
+    const bucket = this.bucket();
     const objects = await bucket.listPagedObjects({
       prefix: options.prefix,
       maxKeys: options.maxKeys?.toString(),
@@ -74,7 +74,7 @@ class ScopedBucket {
     if (options?.ttl !== undefined) {
       uploadOptions.ttl = options.ttl.toString();
     }
-    const bucket = await this.bucket();
+    const bucket = this.bucket();
     await bucket.putObject(key, data, uploadOptions);
   }
 
@@ -82,7 +82,7 @@ class ScopedBucket {
     key: string,
     expiryInSeconds: number,
   ): Promise<string> {
-    const bucket = await this.bucket();
+    const bucket = this.bucket();
     const result = await bucket.generatePreSignedUrl(key, "GET", {
       expiryIn: expiryInSeconds.toString(),
     });
@@ -95,7 +95,7 @@ class ScopedBucket {
   }
 
   private async openObject(key: string): Promise<Readable> {
-    const bucket = await this.bucket();
+    const bucket = this.bucket();
     try {
       return await bucket.getObject(key);
     } catch (cause) {
@@ -137,12 +137,12 @@ class ScopedBucket {
 
 
   async deleteObject(key: string): Promise<void> {
-    const bucket = await this.bucket();
+    const bucket = this.bucket();
     await bucket.deleteObject(key);
   }
 
   async deletePath(path: string): Promise<void> {
-    const bucket = await this.bucket();
+    const bucket = this.bucket();
     await bucket.deletePath(path);
   }
 }
@@ -153,9 +153,9 @@ export type { ScopedBucket };
 export class Bucket {
   private constructor(private readonly name: string) {}
 
-  /** The bucket's operations, acting with the session's credentials for the scope. */
-  runIn(session: CatalystSession, scope: CatalystScope): ScopedBucket {
-    return new ScopedBucket(this.name, session, scope);
+  /** The bucket's operations, acting with the current request's credentials for the scope. */
+  runIn(scope: CatalystScope): ScopedBucket {
+    return new ScopedBucket(this.name, scope);
   }
 
   buildKey(...parts: string[]): string {

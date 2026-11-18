@@ -264,6 +264,9 @@ importers:
 
   packages/catalyst-node:
     dependencies:
+      '@repo/async-context':
+        specifier: workspace:*
+        version: link:../async-context
       '@repo/case-conversion':
         specifier: workspace:*
         version: link:../case-conversion

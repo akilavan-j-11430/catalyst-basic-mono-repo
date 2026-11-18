@@ -1,4 +1,6 @@
 import { describe, expect, it } from "vitest";
+import { AsyncContextError } from "@repo/async-context/async-context-error";
+import { ExecutionContext, runWithContext } from "@repo/async-context/async-context";
 import { catalystAuth } from "@repo/testing/catalyst-auth";
 import { CatalystSession } from "@/catalyst-session";
 import { CatalystScope } from "@/catalyst-scope";
@@ -7,27 +9,23 @@ import { CatalystError } from "@/catalyst-error";
 
 const requestHeaders = { "x-zc-projectid": "1", "x-zc-user-cred-token": "secret-token" };
 
-describe("CatalystSession.app", () => {
-  it("builds each scope's app from the request headers once, then reuses it", async () => {
-    const session = CatalystSession.fromHeaders(requestHeaders);
+/** Runs `call` inside a fresh execution context, as an entry point does. */
+function inContext<T>(call: () => Promise<T>): Promise<T> {
+  return runWithContext(new ExecutionContext({ executionId: "test-execution", extras: {} }), call);
+}
 
-    const first = await session.app(CatalystScope.User);
-    const second = await session.app(CatalystScope.User);
+describe("CatalystSession.setApp", () => {
+  it("builds the scope's app from the request headers and sets it on the context", async () => {
+    const app = await inContext(async () => {
+      await CatalystSession.setApp(requestHeaders, CatalystScope.User);
+      return CatalystSession.app(CatalystScope.User);
+    });
 
-    expect(second).toBe(first);
+    expect(app).toBeDefined();
     expect(catalystAuth.init).toHaveBeenCalledExactlyOnceWith(
       { headers: requestHeaders },
       { scope: CatalystScope.User },
     );
-  });
-
-  it("builds a second scope separately", async () => {
-    const session = CatalystSession.fromHeaders(requestHeaders);
-
-    await session.app(CatalystScope.User);
-    await session.app(CatalystScope.Admin);
-
-    expect(catalystAuth.init).toHaveBeenCalledTimes(2);
   });
 
   it("rejects with SCOPE_UNAVAILABLE carrying the SDK's code and message, never its headers", async () => {
@@ -39,12 +37,35 @@ describe("CatalystSession.app", () => {
       }),
     );
 
-    const building = CatalystSession.fromHeaders(requestHeaders).app(CatalystScope.User);
+    const setting = inContext(() => CatalystSession.setApp(requestHeaders, CatalystScope.User));
 
-    const failure: unknown = await building.catch((error: unknown) => error);
+    const failure: unknown = await setting.catch((error: unknown) => error);
     expect(failure).toBeInstanceOf(CatalystError);
     expect(failure).toMatchObject({ code: ErrorCode.SCOPE_UNAVAILABLE, cause: undefined });
     expect(String(failure)).toContain("app/AUTH_ERROR - User not authenticated");
     expect(String(failure)).not.toContain("secret-token");
+  });
+});
+
+describe("CatalystSession.app", () => {
+  it("throws SCOPE_UNAVAILABLE for a scope the entry point did not set", async () => {
+    const reading = inContext(async () => {
+      await CatalystSession.setApp(requestHeaders, CatalystScope.Admin);
+      return CatalystSession.app(CatalystScope.User);
+    });
+
+    await expect(reading).rejects.toMatchObject({ code: ErrorCode.SCOPE_UNAVAILABLE });
+  });
+
+  it("is not shared between execution contexts", async () => {
+    await inContext(() => CatalystSession.setApp(requestHeaders, CatalystScope.User));
+
+    const reading = inContext(async () => CatalystSession.app(CatalystScope.User));
+
+    await expect(reading).rejects.toMatchObject({ code: ErrorCode.SCOPE_UNAVAILABLE });
+  });
+
+  it("throws outside an execution context", () => {
+    expect(() => CatalystSession.app(CatalystScope.User)).toThrow(AsyncContextError);
   });
 });

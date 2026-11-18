@@ -49,22 +49,18 @@ export const initExecutionContext: RequestHandler = (_req, _res, next) => {
   runWithContext(context, next);
 };
 
-/** Where `initCatalystScopes` leaves the request's session for the handlers after it. */
-const CATALYST_SESSION_KEY = "catalystSession";
-
 /**
- * Builds the request's Catalyst session and checks each listed scope can be built, so a route
- * that needs a signed-in caller answers 401 before its handler runs. Catalyst reads both the
- * project details and the caller's credentials off the headers, so nothing needs to be
- * configured in the environment.
+ * Sets the request's Catalyst app for each listed scope on its execution context, where every
+ * wrapper reads it, so a route that needs a signed-in caller answers 401 before its handler
+ * runs. Catalyst reads both the project details and the caller's credentials off the headers,
+ * so nothing needs to be configured in the environment.
  */
 export function initCatalystScopes(scopes: CatalystScope[]): RequestHandler {
-  return async (req, res, next) => {
-    const session = catalystSessionIn(res) ?? CatalystSession.fromHeaders(req.headers);
+  return async (req, _res, next) => {
     await Promise.all(
       scopes.map(async (scope) => {
         try {
-          await session.app(scope);
+          await CatalystSession.setApp(req.headers, scope);
         } catch (error) {
           // A CatalystError carrying only the SDK's code and message - never the headers.
           logger.info(String(error));
@@ -75,24 +71,8 @@ export function initCatalystScopes(scopes: CatalystScope[]): RequestHandler {
         }
       }),
     );
-    res.locals[CATALYST_SESSION_KEY] = session;
     next();
   };
-}
-
-/** The request's Catalyst session, for a handler to pass to the wrappers it calls. Throws
- *  when the route never mounted `initCatalystScopes`. */
-export function catalystSessionOf(res: Response): CatalystSession {
-  const session = catalystSessionIn(res);
-  if (session === undefined) {
-    throw new Error("No Catalyst session - mount initCatalystScopes([...]) ahead of this handler.");
-  }
-  return session;
-}
-
-function catalystSessionIn(res: Response): CatalystSession | undefined {
-  const session: unknown = res.locals[CATALYST_SESSION_KEY];
-  return session instanceof CatalystSession ? session : undefined;
 }
 
 /** Terminal error handler - maps HttpError to its status, InvalidInputError to 400, anything

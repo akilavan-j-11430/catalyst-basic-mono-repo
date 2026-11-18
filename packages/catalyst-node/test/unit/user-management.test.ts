@@ -1,9 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
 import type { CurrentUser } from "@repo/types/user";
-import { CatalystSession } from "@/catalyst-session";
 import { UserManagement } from "@/user-management";
 import { ErrorCode } from "@/error-codes";
 import { CatalystError } from "@/catalyst-error";
+import { inRequest } from "../in-request";
 
 // The SDK is replaced before user-management.ts loads it, so no call leaves the process.
 const { getCurrentUser } = vi.hoisted(() => ({ getCurrentUser: vi.fn() }));
@@ -19,9 +19,9 @@ vi.mock("@zcatalyst/auth", async () => {
   };
 });
 
-/** Reads the user the way a route would, with the request's session. */
+/** Reads the user the way a route would, inside the request's execution context. */
 function readAsUser(): Promise<CurrentUser> {
-  return UserManagement.currentUser(CatalystSession.fromHeaders({}));
+  return inRequest(() => UserManagement.currentUser());
 }
 
 describe("UserManagement.currentUser", () => {

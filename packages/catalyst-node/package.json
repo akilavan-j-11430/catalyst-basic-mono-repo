@@ -28,6 +28,7 @@
     "vitest": "^5.0.5"
   },
   "dependencies": {
+    "@repo/async-context": "workspace:*",
     "@repo/case-conversion": "workspace:*",
     "@repo/types": "workspace:*",
     "@zcatalyst/auth": "^1.0.0",

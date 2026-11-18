@@ -1,33 +1,35 @@
 import type { Request, Response } from "express";
 import { describe, expect, it, vi, type Mock } from "vitest";
-import { CatalystSession } from "@repo/catalyst-node/catalyst-session";
+import { ExecutionContext, runWithContext } from "@repo/async-context/async-context";
 import { CatalystScope } from "@repo/catalyst-node/catalyst-scope";
 import { Logger } from "@repo/logger/logger";
 import { catalystAuth } from "@repo/testing/catalyst-auth";
 import { HttpError } from "@/http-error";
-import { catalystSessionOf, initCatalystScopes } from "@/middleware";
+import { initCatalystScopes } from "@/middleware";
 
 const loggedBlocks: string[] = [];
 Logger.configure({ output: { write: (_level, block) => loggedBlocks.push(block) } });
 
 interface ScopeGuardRun {
-  res: Response;
   next: Mock<() => void>;
   finished: Promise<void>;
 }
 
-/** Runs `initCatalystScopes` the way Express would, on a request carrying the given headers. */
+/** Runs `initCatalystScopes` the way Express would: inside the execution context
+ *  `initExecutionContext` leaves, on a request carrying the given headers. */
 function runScopeGuard(scopes: CatalystScope[]): ScopeGuardRun {
-  const res = { locals: {} } as Response;
+  const context = new ExecutionContext({ executionId: "test-execution", extras: {} });
   const next = vi.fn<() => void>();
   const req = { headers: { "x-zc-projectid": "1" } } as unknown as Request;
-  const finished = initCatalystScopes(scopes)(req, res, next);
-  return { res, next, finished: Promise.resolve(finished) };
+  const finished = runWithContext(context, () =>
+    initCatalystScopes(scopes)(req, {} as Response, next),
+  );
+  return { next, finished: Promise.resolve(finished) };
 }
 
 describe("initCatalystScopes", () => {
-  it("builds each listed scope from the request headers, leaves the session for the handler, then continues", async () => {
-    const { res, next, finished } = runScopeGuard([CatalystScope.User]);
+  it("sets each listed scope's app from the request headers, then continues", async () => {
+    const { next, finished } = runScopeGuard([CatalystScope.User]);
 
     await finished;
 
@@ -35,7 +37,6 @@ describe("initCatalystScopes", () => {
       { headers: { "x-zc-projectid": "1" } },
       { scope: CatalystScope.User },
     );
-    expect(catalystSessionOf(res)).toBeInstanceOf(CatalystSession);
     expect(next).toHaveBeenCalledOnce();
   });
 
@@ -70,12 +71,6 @@ describe("initCatalystScopes", () => {
     expect(String(thrown)).toContain("app/AUTH_ERROR - User not authenticated");
     expect(loggedBlocks).not.toHaveLength(0);
     expect(loggedBlocks.join("\n")).not.toContain("secret-token");
-  });
-});
-
-describe("catalystSessionOf", () => {
-  it("throws when the route never mounted initCatalystScopes", () => {
-    expect(() => catalystSessionOf({ locals: {} } as Response)).toThrow(/initCatalystScopes/);
   });
 });
 
