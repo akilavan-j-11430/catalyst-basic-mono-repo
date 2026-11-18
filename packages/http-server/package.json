@@ -31,7 +31,7 @@
   "dependencies": {
     "@repo/async-context": "workspace:*",
     "@repo/catalyst-node": "workspace:*",
-    "@repo/node-utils": "workspace:*",
+    "@repo/logger": "workspace:*",
     "@repo/types": "workspace:*",
     "@zcatalyst/auth": "^1.0.0",
     "express": "^5.2.1",

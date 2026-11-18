@@ -55,6 +55,11 @@ export function currentContext(): ExecutionContext {
   }
   return context;
 }
+
+/** The in-flight request's context, or `undefined` outside a request. */
+export function findCurrentContext(): ExecutionContext | undefined {
+  return executionStore.getStore();
+}
 export function runWithContext<T>(context: ExecutionContext, handler: () => T): T {
   return executionStore.run(context, handler);
 }

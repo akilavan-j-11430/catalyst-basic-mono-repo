@@ -1,18 +1,16 @@
 {
-  "name": "@repo/node-utils",
+  "name": "@repo/logger",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "Logger - one block per line, stamped with the execution id of the request in flight. Node only.",
   "type": "module",
   "private": true,
-  "keywords": [],
-  "author": "",
   "license": "ISC",
   "scripts": {
     "dev": "tsc --build tsconfig.build.json && concurrently -n tsc,alias \"tsc --build tsconfig.build.json --watch --preserveWatchOutput\" \"tsc-alias -p tsconfig.build.json --watch\"",
     "build": "tsc --build tsconfig.build.json && tsc-alias -p tsconfig.build.json",
     "typecheck": "tsc --noEmit",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test:unit": "vitest run --project unit"
   },
   "exports": {
     "./*": {
@@ -20,14 +18,17 @@
       "default": "./dist/*.js"
     }
   },
+  "dependencies": {
+    "@repo/async-context": "workspace:*",
+    "pino": "^10.4.0"
+  },
   "devDependencies": {
     "@repo/eslint-config": "workspace:*",
+    "@repo/testing": "workspace:*",
     "@repo/typescript-config": "workspace:*",
     "@types/node": "^24.13.6",
     "concurrently": "^10.0.5",
-    "eslint": "^9.39.5"
-  },
-  "dependencies": {
-    "@repo/async-context": "workspace:*"
+    "eslint": "^9.39.5",
+    "vitest": "^5.0.5"
   }
 }

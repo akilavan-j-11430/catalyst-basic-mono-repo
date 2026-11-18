@@ -1,93 +1,42 @@
+import { writeSync } from "node:fs";
+import type { LogLevel, LogOutput } from "@repo/logger/logger";
 
-
- 
-import fs from 'fs';
-import util from 'util';
-
-const LOG_FD: number = process.env.X_ZOHO_SPARKLET_LOG_FD
-    ? parseInt(process.env.X_ZOHO_SPARKLET_LOG_FD)
-    : process.stdout.fd;
-
-const SPARKP_ENCODING = 2;
-
-enum SPARKP_PATH {
-    LOG = 0,
-    ADD_LOG_APPEND,
+/** The record AppSail's log collector reads from each packet. */
+interface AppSailLogRecord {
+  _zl_timestamp: number;
+  level: LogLevel;
+  message: string;
 }
-
-const SEND_SPARKP_LOG = (PATH: SPARKP_PATH, MESSAGE: string): void => {
-    /**
-     *  SparkP packet format
-     *
-     *  +-------------------+---------------+-------------------------+-------------------------------+
-     *  | Encoding (1 byte) | Path (1 byte) | Content-Length (4 byte) | Message (Content-Length byte) |
-     *  +-------------------+---------------+-------------------------+-------------------------------+
-     *
-     *  Expected values:
-     *
-     *  Encoding = 2
-     *  Path = `SPARKP_PATH`
-     */
-    const LOG: Buffer = Buffer.from(MESSAGE, 'utf8');
-
-    const frameMsb: Buffer = Buffer.alloc(6);
-    frameMsb.writeUInt8(SPARKP_ENCODING, 0);
-    frameMsb.writeUInt8(PATH, 1);
-    frameMsb.writeUInt32BE(LOG.length, 2);
-
-    fs.writeSync(LOG_FD, frameMsb);
-    fs.writeSync(LOG_FD, LOG);
-};
-
-type LOG_APPENDS = Record<string, string | number>;
-
-const ADD_LOG_APPENDS = (logAppends: LOG_APPENDS): void => {
-    SEND_SPARKP_LOG(SPARKP_PATH.ADD_LOG_APPEND, JSON.stringify(logAppends));
-};
 
 /**
- * Add log pair
+ * Adapter: writes each rendered block to the log collector AppSail hands the app as a file
+ * descriptor, framed as a SparkP packet:
  *
- * @param {string} logKey log key
- * @param {string | number} logValue log message.
+ *  +-------------------+---------------+-------------------------+-------------------------------+
+ *  | Encoding (1 byte) | Path (1 byte) | Content-Length (4 byte) | Message (Content-Length byte) |
+ *  +-------------------+---------------+-------------------------+-------------------------------+
  */
-/* eslint-disable @typescript-eslint/no-unused-vars */
-function addLogEntry(logKey: string, logValue: string | number): void {
-    const logAppend: LOG_APPENDS = {};
-    logAppend[logKey] = logValue;
-    ADD_LOG_APPENDS(logAppend);
+export class AppSailLogOutput implements LogOutput {
+  private static readonly ENCODING = 2;
+  private static readonly LOG_PATH = 0;
+
+  private constructor(private readonly logFd: number) {}
+
+  /** The collector AppSail injects, or `undefined` outside AppSail - the logger then writes
+   *  to stdout. */
+  static fromPlatform(): AppSailLogOutput | undefined {
+    const logFd = process.env["X_ZOHO_SPARKLET_LOG_FD"];
+    return logFd === undefined ? undefined : new AppSailLogOutput(Number(logFd));
+  }
+
+  write(level: LogLevel, block: string): void {
+    const record: AppSailLogRecord = { _zl_timestamp: Date.now(), level, message: block };
+    const message = Buffer.from(JSON.stringify(record), "utf8");
+    const header = Buffer.alloc(6);
+    header.writeUInt8(AppSailLogOutput.ENCODING, 0);
+    header.writeUInt8(AppSailLogOutput.LOG_PATH, 1);
+    header.writeUInt32BE(message.length, 2);
+    writeSync(this.logFd, header);
+    writeSync(this.logFd, message);
+  }
 }
-
-type LOG_DATA = {
-    _zl_timestamp: number;
-    level: string;
-    message: string;
-};
-
-const customLogger = (level: string) => {
-    /* eslint-disable @typescript-eslint/no-explicit-any */
-    return (message: any, ...args: any[]) => {
-        message = util.format(message, ...args);
-
-        if (process.env.X_ZOHO_SPARKLET_LOG_FD) {
-            const LOG: LOG_DATA = {
-                _zl_timestamp: Date.now(),
-                level: level,
-                message: message,
-            };
-
-            SEND_SPARKP_LOG(SPARKP_PATH.LOG, JSON.stringify(LOG));
-        } else {
-            message = `${Date.now()}\t${level}\t${message}\n`;
-            message = Buffer.from(message, 'utf-8');
-
-            process.stdout.write(message);
-        }
-    };
-};
-
-console.debug = customLogger("debug");
-console.error = customLogger("error");
-console.info = customLogger("info");
-console.log = customLogger("info");
-console.warn = customLogger("warn");

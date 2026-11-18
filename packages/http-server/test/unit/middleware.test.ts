@@ -2,9 +2,13 @@ import type { Request, Response } from "express";
 import { describe, expect, it, vi, type Mock } from "vitest";
 import { CatalystSession } from "@repo/catalyst-node/catalyst-session";
 import { CatalystScope } from "@repo/catalyst-node/catalyst-scope";
+import { Logger } from "@repo/logger/logger";
 import { catalystAuth } from "@repo/testing/catalyst-auth";
 import { HttpError } from "@/http-error";
 import { catalystSessionOf, initCatalystScopes } from "@/middleware";
+
+const loggedBlocks: string[] = [];
+Logger.configure({ output: { write: (_level, block) => loggedBlocks.push(block) } });
 
 interface ScopeGuardRun {
   res: Response;
@@ -56,7 +60,7 @@ describe("initCatalystScopes", () => {
   });
 
   it("never logs or rethrows the request headers the SDK error carries", async () => {
-    const logLine = vi.spyOn(console, "log").mockImplementation(() => undefined);
+    loggedBlocks.length = 0;
     catalystAuth.init.mockRejectedValue(sdkInitError("x-zc-admin-cred-token", "secret-token"));
 
     const { finished } = runScopeGuard([CatalystScope.Admin]);
@@ -64,7 +68,8 @@ describe("initCatalystScopes", () => {
     const thrown: unknown = await finished.catch((error: unknown) => error);
     expect(String(thrown)).not.toContain("secret-token");
     expect(String(thrown)).toContain("app/AUTH_ERROR - User not authenticated");
-    expect(logLine.mock.calls.flat().join("\n")).not.toContain("secret-token");
+    expect(loggedBlocks).not.toHaveLength(0);
+    expect(loggedBlocks.join("\n")).not.toContain("secret-token");
   });
 });
 

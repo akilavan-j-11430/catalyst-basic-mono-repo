@@ -12,10 +12,12 @@ import {
 } from "@repo/async-context/async-context";
 import { CatalystScope } from "@repo/catalyst-node/catalyst-scope";
 import { CatalystSession } from "@repo/catalyst-node/catalyst-session";
-import { logger } from "@repo/node-utils/framework/logger";
+import { Logger } from "@repo/logger/logger";
 import { randomUUID } from "crypto";
 import { HttpError } from "@/http-error";
 import { toErrorResponse } from "@/response";
+
+const logger = Logger.for("middleware");
 
 /** Records the timing of request execution from start to finish. */
 export function recordRequestTiming(
@@ -98,6 +100,6 @@ export const errorHandler: ErrorRequestHandler = (error, _req, res, _next) => {
     res.status(error.status).json(toErrorResponse(error.message));
     return;
   }
-  console.error(`[server]`, error);
+  logger.error(error);
   res.status(500).json(toErrorResponse("Something went wrong."));
 };
