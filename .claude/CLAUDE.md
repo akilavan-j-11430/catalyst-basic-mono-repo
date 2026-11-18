@@ -193,8 +193,10 @@ Topic rules live one-per-file in `.claude/rules/` and load automatically, in two
 
 `.claude/rules/nextjs/` holds the rules that apply only to `apps/web`, each scoped with
 `paths:` frontmatter:
-- `web-data-access.md` - every call the browser makes to our own API, and every form that
-  collects one.
+- `code-placement.md` - where server-side work in Next.js starts - a Server Component, a
+  Server Action, a `route.ts` - and when it moves into an area or a package.
+- `web-data-access.md` - every call the browser makes to `apps/api` today, and every form
+  that collects one.
 - `typography.md` - every font.
 - `component-design.md` - how a component is split, styled and laid out, and how it shows a
   wait.

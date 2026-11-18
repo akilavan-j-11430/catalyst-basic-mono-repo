@@ -5,6 +5,10 @@ paths:
 
 # Reaching the API from the browser
 
+This covers the browser calling `apps/api` the way the app does today. Work written the
+Next.js way - a read in a Server Component, a write in a Server Action - follows
+`code-placement.md` instead, and this rule is retired once the API has moved into Next.js.
+
 `apps/api` is reached through the service layer, and nowhere else. No `fetch` in a
 component, no path that is not built from `ApiPath`, no `useState` pair standing in for a
 request.
