@@ -16,8 +16,8 @@ minutes.
   browser calls the API with a Catalyst token rather than a session cookie.
 - **Shared TypeScript packages** for response types, runtime utilities, and a common
   tsconfig - wired up with pnpm workspaces.
-- A **Turborepo pipeline** so builds are cached and ordered correctly, plus one-command
-  bundle and deploy.
+- A **Turborepo pipeline** so packages build in dependency order, plus one-command bundle
+  and deploy.
 
 It is deliberately small. There is no database layer, no auth UI, and no example CRUD
 resource - just the plumbing that every Catalyst solution ends up needing, done once
