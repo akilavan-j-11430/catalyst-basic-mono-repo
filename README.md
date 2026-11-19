@@ -8,12 +8,14 @@ minutes.
 **What you get out of the box**
 
 - A **Next.js 16** frontend (React 19, Tailwind 4) deployed as a Catalyst Slate app.
-- An **Express 5** API on the modular `@zcatalyst/*` SDKs, deployed as a Catalyst AppSail, with
-  per-request execution context, structured logging, and a consistent response shape.
+- **Server-side data in the web app**: pages read Catalyst in their Server Components and
+  forms write through Server Actions, on the modular `@zcatalyst/*` SDKs, with a
+  per-request execution context and structured logging.
+- An **Express 5** API, deployed as a Catalyst AppSail, with the same execution context and
+  logging and a consistent response shape. The web app no longer calls it; it is kept until a
+  Slate deploy proves the web app's server receives the Catalyst headers.
 - A **reverse proxy** AppSail, for local development only, that gives the stack a single
   origin and enforces Catalyst login at the edge.
-- **Cross-origin auth for the cloud**, where Slate and AppSail run on separate domains: the
-  browser calls the API with a Catalyst token rather than a session cookie.
 - **Shared TypeScript packages** for response types, runtime utilities, and a common
   tsconfig - wired up with pnpm workspaces.
 - A **Turborepo pipeline** so packages build in dependency order, plus one-command bundle
@@ -57,21 +59,17 @@ true` enforces login once, at the edge. It is listed in `catalyst.json` so `cata
 serve` can run it, and `pnpm deploy` ships only `appsail:api` and `slate:web`. **Do not
 add it to the deploy list.**
 
-**The cloud has two origins.** Slate serves the web app from `*.onslate.com` and AppSail
-serves the API from `*.catalystappsail.com`, and the session cookie does not travel
-between them. So the deployed web app:
+**The web app reads and writes on its own server.** A page reads Catalyst in its Server
+Component and a form writes through a Server Action, both on Next's server, with the
+Catalyst app built from the `x-zc-*` headers on the request. The browser calls no backend of
+ours, so there is no API URL, token or CORS to set up for it.
 
-- calls the API at an absolute URL, `NEXT_PUBLIC_API_URL`, set in the Slate Console;
-- sends `Authorization: Bearer <token>` on every call that needs a signed-in user, where
-  the token comes from the web SDK's `generateAuthToken()`.
-
-Locally `NEXT_PUBLIC_API_URL` is unset, so the same calls stay relative (`/api/...`) and go
-through the proxy. A service picks its client by route: `api` sends the token, and
-`publicApi` sends none, for signed-out routes such as sign-up.
-
-In the cloud nothing sits in front of the API, so each route enforces its own login: a
-route that mounts `initCatalystScopes([CatalystScope.User])` answers 401 to a caller with
-no valid token.
+Slate serves the web app from `*.onslate.com`. Locally `catalyst serve` adds those headers;
+in the cloud that rests on Slate passing them to Next's server, which a Slate deploy has
+still to prove. Until it does, the API - AppSail at `*.catalystappsail.com` - and the
+proxy's `/api` route stay, unused by the web app. There nothing sits in front of the API,
+so each route enforces its own login: a route that mounts
+`initCatalystScopes([CatalystScope.User])` answers 401 to a caller with no valid token.
 
 **Two things to internalise before you start.** First, the entry port is assigned by
 the Catalyst CLI - it takes the first free port from 3000 upward, so in practice it is
@@ -125,6 +123,7 @@ this repo deploys (two AppSails and one Slate app) and is the same for everybody
 ```bash
 cp .env.example .env
 cp apps/api/.env.example apps/api/.env
+cp apps/web/.env.example apps/web/.env
 ```
 
 The root `.env` is shared by every app. App-specific values go in `apps/<app>/.env`,
@@ -144,13 +143,15 @@ Platform values, read by the Catalyst CLI and SDK rather than by this repo's cod
 These are declared in `turbo.json` under `globalPassThroughEnv`, so Turborepo forwards
 them to every task without treating them as cache keys.
 
-Values this repo's own code reads. Each is a key on the owning app's template - for
-`apps/api` that is `src/env.ts` - so the app decides what it is configured with:
+Values this repo's own code reads. Each is a key on the owning app's template - its
+`src/env.ts` - so the app decides what it is configured with:
 
 | Variable | Owner | Purpose |
 |---|---|---|
 | `AUTH_REDIRECT_URL` | `apps/api` | Where Catalyst sends a new user from the confirmation email. Locally the origin `catalyst serve` prints, usually `http://localhost:3001/`. |
 | `TZ` | `apps/api` | Timezone for log timestamps. Defaults to `Asia/Kolkata`. |
+| `AUTH_REDIRECT_URL` | `apps/web` | The same, for sign-up through the web app's Server Action. |
+| `TZ` | `apps/web` | Timezone for the web server's log timestamps. Optional. |
 
 These never go in `app-config.json` or any other Catalyst file - that file is committed,
 and `.env` is not. `.claude/rules/general/environment.md` is the full rule.
@@ -322,19 +323,13 @@ Which is `turbo run bundle && catalyst deploy --only appsail:api,slate:web`:
    in - as the `web` Slate app, which Slate then builds.
 
 **The proxy is not in that list, and must not be.** It is a local-development
-component only. In the cloud the web app reaches the API directly, cross-origin.
+component only. In the cloud the web app reads and writes on its own server and calls no
+API.
 
-**Two settings make the cross-origin call work**, once per environment:
-
-1. **Authorized Domains.** Console -> Authentication -> Whitelisting -> Authorized
-   Domains: add the Slate app's domain with CORS enabled. Catalyst then adds the CORS
-   headers to the API's responses itself. Do not add CORS middleware to `apps/api`: a second
-   `Access-Control-Allow-Origin` header makes the browser reject the response.
-2. **`NEXT_PUBLIC_API_URL`.** Console -> Slate -> web -> Environment Variables: the `api`
-   AppSail's URL, as the Console shows it. Next inlines it at build time, so it must be
-   set before Slate builds, and a change needs a rebuild. `apps/web/.env.example`
-   documents it. A local `apps/web/.env` never reaches Slate, because the bundle leaves
-   it out.
+**The web app's keys** - `AUTH_REDIRECT_URL`, `TZ` - are set in **Console -> Slate -> web
+-> Environment Variables**, once per environment. The server reads them at request time.
+`apps/web/.env.example` documents them, and a local `apps/web/.env` never reaches Slate,
+because the bundle leaves it out.
 
 **Environment variables are not carried by the deploy.** `app-config.json` declares no
 `env_variables`, on purpose - it is committed, so a value there is a value in git. Set
@@ -375,9 +370,7 @@ they are private and never published.
 3. Its entry in `catalyst.json` (`name` and `source`).
 4. The `--only appsail:<name>` flags in the root `deploy` script.
 
-The proxy is local only, so dropping it changes only local development. Local
-development would then have the same two origins as the cloud, and need the same CORS
-and token setup.
+The proxy is local only, so dropping it changes only local development.
 
 **Add a shared package.** Create `packages/<name>` with `"private": true`,
 `"type": "module"`, the same subpath `exports` block as the existing packages, a
@@ -489,12 +482,13 @@ Alongside them, `.claude/rules/` holds one file per topic, loaded automatically:
 |---|---|
 | `catalyst-sdk.md` | every Catalyst SDK call, and the wrappers they go through |
 | `outbound-http.md` | every call to a service outside this repo |
-| `web-data-access.md` | every call the browser makes to our own API, and every form |
+| `code-placement.md` | where a page's read, a Server Action and a route handler start in `apps/web` |
+| `forms.md` | every form, and how it calls its Server Action |
 | `environment.md` | every environment variable - who declares it and where values live |
 | `typography.md` | fonts: one family, named in one file |
 
 A rule that applies to only part of the tree says so in `paths:` frontmatter, the way
-`web-data-access.md` and `typography.md` scope themselves to `apps/web/**`.
+`code-placement.md`, `forms.md` and `typography.md` scope themselves to `apps/web/**`.
 
 Keep all of it accurate when you change the structure - a stale one is worse than none.
 Put a new convention in `.claude/rules/` rather than growing a `CLAUDE.md`.

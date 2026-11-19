@@ -11,78 +11,94 @@ and when it moves. Code starts as small as it can and moves only when a real cal
 for it, the same rule as "a file earns its existence from a second caller" in the root
 `CLAUDE.md`.
 
-Until the API moves into Next.js, the browser's calls to `apps/api` still follow
-`web-data-access.md`. This rule is for every page, form and endpoint written the Next.js
-way.
+The browser never calls `apps/api` any more: a page reads in its Server Component and a
+form writes through a Server Action, and this rule is for every one of them. `apps/api` is
+kept, unused by this app, until a Slate deploy proves the point below.
 
-## Not built yet
+## Built, and not yet
 
-These arrive with the first Server Action, so the examples below name them before they
-exist:
+Built: `src/execution-context.ts` (`withCatalystPage`, `withCatalystFn`, below), the
+`server-only` package, and the server packages as dependencies of `apps/web` - which
+`scripts/bundle.mjs` vendors along with their own third-party dependencies (`CLAUDE.md`,
+"Deployment").
 
-- `src/execution-context.ts` - `withExecutionContext` and `renderExecution`, below.
-- `CatalystRequest.session()` - the request's Catalyst session, built from Next's request
-  headers.
-- The `server-only` package and the ESLint rule that keeps server files out of the browser.
-- `@repo/async-context` as a dependency of `apps/web`, which needs `scripts/bundle.mjs` to
-  vendor a package that has dependencies of its own.
+Not built yet: an ESLint rule that stops a client component importing a server file or a
+Node-only package. Until it exists, `import "server-only"` at the top of every server file is
+the guard - a client component that reaches one fails `next build`.
 
-Still unproven, and checked by the deploy spike before any of it is built: whether Slate's
-Next.js server receives the `x-zc-*` credential headers, a signed-in user's included.
+Still unproven, and checked by a Slate deploy before `apps/api` is deleted: whether Slate's
+Next.js server receives the `x-zc-*` credential headers, a signed-in user's included. Locally
+`catalyst serve` sends them.
 
 ## Where it starts
 
 | You need | It starts in |
 |---|---|
-| a page that shows data | the Server Component that shows it, reading during render - no API call, no loading state for it |
-| a form that changes data | a Server Action - a `"use server"` file beside its page: `app/(auth)/sign-up/register-user.ts` |
-| an endpoint something outside the app calls - a mobile app, a webhook, a Catalyst function | `app/api/.../route.ts`, its handler written in the `GET` / `POST` export |
-| data | always `@repo/catalyst-node` - a repository or a handle, passed the request's session. Never ZCQL or an SDK call in `apps/web` |
+| a page that shows data | the page's Server Component, wrapped in `withCatalystPage`, reading during render - no API call, no client loading state for it |
+| a form that changes data | a Server Action - a `"use server"` file beside its page, wrapped in `withCatalystFn`: `app/(auth)/sign-up/register-user.ts` |
+| an endpoint something outside the app calls - a mobile app, a webhook, a Catalyst function | `app/api/.../route.ts`, its handler written in the `GET` / `POST` export and wrapped in `withCatalystFn` |
+| data | always `@repo/catalyst-node` - a repository or a handle, which reads the request's app from the execution context. Never ZCQL or an SDK call in `apps/web` |
 
 A Server Action and a route handler are both plain async functions - no wrapper of our own
-besides `withExecutionContext`. Use an action for a write from our own pages, and a route
+besides `withCatalystFn`. Use an action for a write from our own pages, and a route
 handler only for a caller outside the app, a parallel or polled read, or a streamed file.
 
 ## The execution context
 
-Each entry point starts one execution context, so its log lines share one Execution ID.
-Next.js has two kinds of entry point, and each needs its own mechanism - checked in
-`next dev` on Next 16.3:
+Each entry point starts one execution context, so its log lines share one Execution ID and
+the Catalyst wrappers find the request's apps on it. Next.js has no middleware chain to do
+that, so `src/execution-context.ts` wraps each entry point instead:
 
-| Entry point | Mechanism | Why |
+| Entry point | Wrapper | A User scope with no signed-in user |
 |---|---|---|
-| a Server Action, a route handler | `withExecutionContext(handler)` - runs the handler inside `runWithContext` | one async function, so the context holds across every `await` |
-| a page render - the layout, the page and every component in it | `renderExecution()` - one context per render, from React's `cache()` | React renders child components outside any `run`, so a context started in a page or layout never reaches them; `cache()` is shared by the whole render |
+| a page | `withCatalystPage(scopes, page)` | redirects to `/sign-in` |
+| a Server Action, a route handler | `withCatalystFn(scopes, call)` | throws "Sign in to continue." |
 
-`@repo/logger` is configured once, in `instrumentation.ts`, to look in both - the async
-context first, then the render's. An action's lines and the page re-render that follows it
-in the same POST get two ids.
+Both start the context, set the app for each listed scope from Next's request headers with
+`CatalystSession.setApp`, then run the function inside it. Every `@repo/catalyst-node`
+wrapper reads its app with `CatalystSession.app(scope)`, so nothing passes a session along.
+
+**Only the page's own body runs inside the context.** React renders the components a page
+returns later, outside it, so a component below the page cannot read Catalyst. The page
+reads, and passes what it read down as props.
+
+```tsx
+// app/(app)/page.tsx
+export default withCatalystPage([CatalystScope.User], async function HomePage() {
+  const user = await UserManagement.currentUser();
+  return <SignedInAccount user={user} />;
+});
+```
 
 ```ts
 // app/(auth)/sign-up/register-user.ts
 "use server";
 
-export const registerUser = withExecutionContext(async (input: unknown): Promise<RegisterResult> => {
-  try {
-    const user = InputValidation.parse(newUserSchema, input);
-    const registered = await UserManagement.register(await CatalystRequest.session(), {
-      user,
-      redirectUrl: env.get("AUTH_REDIRECT_URL"),
-    });
-    return { ok: true, registered };
-  } catch (error) {
-    if (error instanceof InvalidInputError) {
-      return { ok: false, field: error.field, problem: error.problem };
+export const registerUser = withCatalystFn(
+  [CatalystScope.Admin],
+  async (input: unknown): Promise<RegisterResult> => {
+    try {
+      const user: NewUser = InputValidation.parse(newUserSchema, input);
+      const registered = await UserManagement.register({
+        user,
+        redirectUrl: env.get("AUTH_REDIRECT_URL"),
+      });
+      return { ok: true, registered };
+    } catch (error) {
+      if (error instanceof InvalidInputError) {
+        return { ok: false, field: error.field, problem: error.problem };
+      }
+      throw error;
     }
-    throw error;
-  }
-});
+  },
+);
 ```
 
-```ts
-// app/(app)/layout.tsx - a read, during render; renderExecution needs no call here
-const user = await UserManagement.currentUser(await CatalystRequest.session());
-```
+`app/(app)/layout.tsx` still turns a signed-out visitor away with the cheap
+`RequestSession.isSignedIn` check, but a layout does not re-run on a client-side navigation,
+so each page names its own scopes as well.
+
+`@repo/logger` is configured once, in `instrumentation.ts`, in the Node.js runtime only.
 
 ## When it moves
 
@@ -123,10 +139,12 @@ form.
   `{ ok: false, field, problem }`. It returns its errors rather than throwing them: Next
   shows the browser only a digest of a thrown error. Any other error is thrown, and Next
   logs it and shows the error page.
-- **It gets its session only from a call that rejects an anonymous caller,** so a forgotten
-  check means no data access rather than open access.
-- The form runs the same schema through react-hook-form's `zodResolver`, so the browser and
-  the server check the same rules.
+- **It names the scopes it reads in `withCatalystFn`.** A wrapper finds only the apps its
+  entry point set, so a forgotten scope means no data access rather than open access. Admin
+  proves nothing about the caller: `registerUser` takes it because a person signing up has no
+  account yet.
+- The form keeps its own client-side rules (`forms.md`). They are for the person typing; the
+  action's schema is the one that decides.
 
 ## A route handler
 
@@ -148,8 +166,7 @@ These do not wait for a second caller, because breaking one is a security proble
 tidiness one:
 
 - **Server and browser code never mix.** Every file that runs only on the server imports
-  `server-only`, and ESLint stops a client component from importing a server file or a
-  Node-only package.
+  `server-only`, so a client component that reaches one fails the build.
 - **No credential leaves the server.** Never log, return or pass to a client component a
   request header or a failed Catalyst init error - both carry the `x-zc-*` credential
   tokens.

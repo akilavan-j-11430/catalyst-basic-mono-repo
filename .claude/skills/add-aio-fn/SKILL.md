@@ -12,7 +12,7 @@ never listens. What goes inside it is described in
 1. **Agree it with the user.** It is a new deployable, so settle these first:
    - its name
    - why it is not a router in `apps/api`
-   - whether the browser calls it
+   - whether the web app calls it
 2. **Read `.claude/skills/deployable-steps.md` and `.claude/skills/function-steps.md`**,
    then follow them with `--type aio`. Import the middleware, `HttpError` and response
    builders from `@repo/http-server`.
@@ -25,9 +25,8 @@ never listens. What goes inside it is described in
    - `express` is a runtime `dependency`.
 4. **Add its paths** in `packages/routing/src/<name>-path.ts`. Then add a proxy route for
    its prefix, and a `dev` script that runs `tsx watch` on `src/dev-server.ts`.
-5. **If the browser calls it**, follow "When the browser calls it" in
-   `deployable-steps.md`. That covers the build-time URL key, the client pair and
-   Authorized Domains.
+5. **If the web app calls it**, follow "When the web app calls it" in
+   `deployable-steps.md`. That covers its URL key and how the call is authenticated.
 6. **Guard each route** that needs a signed-in caller with
    `initCatalystScopes([CatalystScope.User])`. Its Security Rule starts at `optional`, so
    the URL is public.

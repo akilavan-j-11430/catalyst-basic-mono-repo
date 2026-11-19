@@ -189,7 +189,7 @@ deployed manifest from that file alone.
 
 ## Not covered by this rule
 
-`apps/web` calls this repo's own API through the proxy. That is not an external request,
-so `apps/web` has its own client in
-`src/services/api/client.ts`, built to this same standard and returning the same
-`HttpResponse` from `@repo/types/http`. `.claude/rules/nextjs/web-data-access.md` is its rule.
+Calls inside this repo. The browser does not call our own API at all: `apps/web` reads in
+its pages and writes through Server Actions, on its own server, and has no API client
+(`.claude/rules/nextjs/code-placement.md`). An outside service that `apps/web` needs is
+reached from that server code through `HttpClient`, like anywhere else.

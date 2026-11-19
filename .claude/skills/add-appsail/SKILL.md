@@ -1,12 +1,12 @@
 ---
 name: add-appsail
-description: Add a new Catalyst AppSail to this repo, shaped like apps/api - workspace, app-config.json, bundle, catalyst.json and deploy entries, proxy route, and the browser wiring when the web app calls it. Use when a process must outlive 15 minutes, hold WebSockets or keep state between requests, or when asked to create an AppSail.
+description: Add a new Catalyst AppSail to this repo, shaped like apps/api - workspace, app-config.json, bundle, catalyst.json and deploy entries, proxy route, and the web app wiring when it calls it. Use when a process must outlive 15 minutes, hold WebSockets or keep state between requests, or when asked to create an AppSail.
 ---
 
 # Add an AppSail
 
 1. **Agree it with the user.** It is a new deployable, so settle three things first: its
-   name, why it is not a function or an `apps/api` router, and whether the browser calls
+   name, why it is not a function or an `apps/api` router, and whether the web app calls
    it.
 2. **Read `.claude/skills/deployable-steps.md`.** The second AppSail also moves
    `AppSailLogOutput` (`catalyst-logger.ts`) into `@repo/logger`.
@@ -32,7 +32,7 @@ description: Add a new Catalyst AppSail to this repo, shaped like apps/api - wor
    - Root `package.json`: add `appsail:<name>` to the `deploy` script's `--only` list.
    - Add its paths in `packages/routing/src/<name>-path.ts`, and a proxy route for its
      prefix, as `deployable-steps.md` describes.
-5. **If the browser calls it**, follow "When the browser calls it" in
+5. **If the web app calls it**, follow "When the web app calls it" in
    `deployable-steps.md`.
 6. **In the Console**, set its environment variables under
    **AppSail -> <name> -> Configuration** before the first deploy that needs them.

@@ -94,12 +94,14 @@ Then set it in the Catalyst Console before the next deploy that needs it.
 
 ## The platform-injected reads
 
-Catalyst injects these itself and they are read at module scope, before any app template
-exists. They stay as they are:
+The platform injects these itself - Catalyst, or Next for `NEXT_RUNTIME` - and they are
+read before any app template is in play. They stay as they are:
 
 - `apps/api/src/index.ts` - `X_ZOHO_CATALYST_LISTEN_PORT`, `PORT`
 - `apps/api/src/framework/catalyst-logger.ts` - `X_ZOHO_SPARKLET_LOG_FD`
 - `apps/proxy/src/index.ts` - `X_ZOHO_CATALYST_LISTEN_PORT`
+- `apps/web/src/instrumentation.ts` - `NEXT_RUNTIME`, so the logger is configured only in
+  the Node.js runtime
 
 They are not configuration this repo owns, so they do not belong on a template. `apps/proxy`
 has no `src/env.ts` for exactly that reason.
@@ -107,26 +109,20 @@ has no `src/env.ts` for exactly that reason.
 Nothing Catalyst-related belongs in the environment at all. Project details and the
 caller's credentials ride on request headers, because `zcAuth.init(req)` is per request.
 
-## `apps/web` reads one key per backend it calls
+## `apps/web` reads its keys on the server
 
-`apps/web` reads one variable for each backend the browser calls - an AppSail or an
-Advanced I/O function. Today that is only `NEXT_PUBLIC_API_URL`, for `api`, and anything
-else the browser needs comes from a backend. It is the one value the browser needs before
-it can reach that backend at all: in the cloud Slate and each backend are separate origins,
-so a deployed build is told where each one lives.
+`apps/web` has its own template, `src/env.ts`, built with `defineEnv` like any other app's:
+`AUTH_REDIRECT_URL` and `TZ`. It imports `server-only`, so only a page, a Server Action or
+`instrumentation.ts` reads it - at request time, through `env`, never `process.env`. The
+four steps above apply unchanged, with `apps/web/turbo.json` passing the keys through for
+`dev`.
 
-- Read once, as a literal `process.env.NEXT_PUBLIC_<NAME>_URL`, in
-  `src/services/api/client.ts`, beside that backend's clients. Next inlines it at
-  `next build` and inlines nothing it cannot see written out, so there is no template or
-  `defineEnv` here - that reads `process.env` at runtime, which a browser bundle does not have.
-- Set in **Console -> Slate -> web -> Environment Variables**, and left unset locally, where
-  calls stay relative and go through `apps/proxy`. `apps/web/.env.example` documents it.
-- `scripts/bundle.mjs` never stages a `.env*` file, so a local value cannot ship.
-- No `turbo.json` entry: turbo's Next.js inference already puts `NEXT_PUBLIC_*` in the
-  `build` cache key.
-
-Add a key only for a new backend the browser calls - `.claude/skills/deployable-steps.md` has the steps. A
-value the browser needs once it can reach a backend is that backend's to serve.
+- **The browser reads none.** There is no `NEXT_PUBLIC_*` key today: pages read and actions
+  write on the server, so the browser needs no backend URL. A `NEXT_PUBLIC_*` value is
+  inlined into the browser bundle at `next build`, so it would be public, and changing it
+  would need a rebuild - add one only when the browser itself must know a value.
+- Set the deployed values in **Console -> Slate -> web -> Environment Variables**.
+  `scripts/bundle.mjs` never stages a `.env*` file, so a local value cannot ship.
 
 ## Not covered by this rule
 
@@ -143,5 +139,5 @@ the inherited task definition. `apps/api/turbo.json` is that file: its `dev` tas
 through every key on the `src/env.ts` template and nothing else. The platform-injected
 reads above are set only when Catalyst runs the app, never under turbo, so they have no
 place there.
-`apps/web` needs none for its one key (above), and `apps/proxy` has no turbo task that
-runs it, so neither has one.
+`apps/web/turbo.json` does the same for its template. `apps/proxy` has no turbo task that
+runs it, so it has none.

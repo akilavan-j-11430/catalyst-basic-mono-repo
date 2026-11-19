@@ -100,13 +100,15 @@ The person waiting always sees that something is happening, and what.
   own folder or the nearest parent, such as `app/(app)/loading.tsx` - which Next wraps
   around the page as a Suspense fallback. It renders the shared `Loader` with a label
   naming what is loading ("Loading invoices"), never a bare spinner or a blank area.
-- **Every client-side wait shows it immediately.** A query's `isPending` renders `Loader`
-  in place of the content, as `AuthGate` does. A mutation either swaps its form for
+- **A page's read is covered by its `loading.tsx`.** Pages read on the server, during
+  render, so the fallback above is the whole wait - no component fetches on its own.
+- **Every Server Action call shows its wait immediately.** The form calls the action inside
+  `useTransition`, and from the moment it is clicked `isPending` either swaps the form for
   `Loader`, as `SignUpForm` does, or disables its trigger and shows a pending label
-  ("Saving...") from the moment it is clicked. Either way, a click is never swallowed in
-  silence.
+  ("Saving..."). Either way, a click is never swallowed in silence.
 - **A loader holds the space of what replaces it.** `Loader` has a fixed height for this
   reason, so the page does not jump when the wait ends. A wait in a space of another size
   gets a prop on `Loader`, per the styling rule above, not a `className` at the call site.
-- A failure is a toast from the query client (`web-data-access.md`), so a wait always
-  ends in either the content or a message - never in a loader that spins forever.
+- A failed action ends in a toast the form raises, or a message on the field the server
+  rejected (`forms.md`), so a wait always ends in either the content or a message - never in
+  a loader that spins forever.

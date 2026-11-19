@@ -6,37 +6,35 @@ Next.js 16 / React 19 / Tailwind 4 frontend. Deployed as the Catalyst Slate app 
 
 Dev port: **4000** (`next dev -p 4000`).
 
-## Reaching the API
+## Where data comes from
+
+This app serves its own reads and writes on the server and never calls `apps/api`. A page
+reads in its Server Component, wrapped in `withCatalystPage`; a form writes through a Server
+Action, wrapped in `withCatalystFn` (`src/execution-context.ts`). Both set the request's
+Catalyst apps from Next's request headers, and the `@repo/catalyst-node` wrappers read them
+from there:
+
+```tsx
+export default withCatalystPage([CatalystScope.User], async function HomePage() {
+  const user = await UserManagement.currentUser();
+  ...
+});
+```
+
+`.claude/rules/nextjs/code-placement.md` is the full rule and loads automatically here - where
+a page, an action or a route handler starts, and when its code moves.
 
 Open the URL `catalyst serve` prints (first free port from 3000 up - often 3001), not
-`:4000`. `apps/proxy` is the single origin: it forwards `/api/*` to the API on `:8000`
-and everything else here. This app has **no rewrite or proxy config of its own**, so a
-request made straight to `:4000/api/...` gets a Next.js 404, and one made to `:8000` is
-cross-origin and missing the Catalyst headers the SDK needs.
+`:4000`. Catalyst reads the project details and the caller's credentials off the `x-zc-*`
+headers `catalyst serve` adds, so a request made straight to `:4000` has no Catalyst app to
+read with.
 
-In the cloud there is no proxy. Slate and AppSail are separate origins, so the deployed
-build calls AppSail at `NEXT_PUBLIC_API_URL`, and `api` sends a bearer token from
-`AuthClient.authHeaders()` in place of the session cookie.
+`apps/api` and the proxy's `/api` route are still there, but nothing here calls them. They
+stay until a Slate deploy proves Slate passes those same headers to Next's server.
 
-Call it through `src/services/`, never `fetch` in a component:
-
-```
-src/services/<domain>.ts       the calls themselves (auth.ts, ...)
-src/services/api/client.ts     transport - returns the whole response, like the server's HttpClient
-```
-
-`api/` changes when the transport does; the domain files change when the product does.
-Components import a domain file and never reach below it.
-
-```ts
-const { mutate } = useMutation({ mutationFn: (user: NewUser) => AuthService.registerUser(user) });
-```
-
-`.claude/rules/nextjs/web-data-access.md` is the full rule and loads automatically here - how to
-add a call, how query keys are shaped, and what a call site is and is not responsible for.
-
-Shapes both sides use live in `@repo/types` (`@repo/types/api` for the envelope,
-`@repo/types/user` for the user shapes) - defined once, never redeclared here.
+Shapes both sides use live in `@repo/types` (`@repo/types/user` for the user shapes) -
+defined once, never redeclared here. Server-only configuration is on `src/env.ts`
+(`AUTH_REDIRECT_URL`, `TZ`), read through `env`; the browser reads no environment variable.
 
 ## Who may see a page
 
@@ -50,19 +48,26 @@ The server decides, before any HTML is sent. Catalyst stamps every request to th
   presence check would let everyone in.
 - Never log or echo request headers from a layout or route handler. The same request carries
   Catalyst credentials in its other `x-zc-*` headers.
-- A layout re-runs on a full load, not on a soft navigation. So when a session ends while a
-  page is open, the api answers 401, and `QueryProvider` sends the visitor to `/sign-in`
-  with `router.replace` rather than showing a toast. The api client never handles a 401
-  itself.
+- A layout re-runs on a full load, not on a soft navigation, so the layout's check is not
+  what protects data. Each page and action names its scopes: `withCatalystPage` with User
+  scope sends a visitor with no signed-in user to `/sign-in`, and `withCatalystFn` with User
+  scope throws before the action runs.
 
-What the browser shows is display only. Data stays protected by the api checking the token
-on every request.
+What the browser shows is display only. Data stays protected by the User scope each page and
+action sets, since a wrapper can read only the apps its entry point set.
 
 ## Data fetching, forms and errors
 
-Three libraries, each with one job. `@tanstack/react-query` owns server state,
-`react-hook-form` owns form state, `sonner` renders the toasts - and
-`.claude/rules/nextjs/web-data-access.md` covers the first two in full.
+Pages read in Server Components and forms write through Server Actions, so there is no
+client data layer: no query library, no `fetch` - ESLint bans it everywhere in `src/`.
+`react-hook-form` owns form state and `sonner` renders the toasts.
+`.claude/rules/nextjs/forms.md` covers how a form validates, calls its action and reports
+the result.
+
+A Server Action returns a rejected field as `{ ok: false, field, problem }`, and the form
+puts it on that field with `setError`. Anything else that fails is a toast the form raises
+itself - Next shows the browser only a digest of a thrown error, so its message is never
+shown. Success messages stay with the form too.
 
 What belongs here is the toast, because it is styling rather than data flow.
 `components/ui/sonner.tsx` is the vendored Toaster, at sonner's own top-center position and
@@ -75,11 +80,6 @@ adds, and styles `[data-icon]` three attributes deep - so Tailwind classes lose 
 specificity whatever you do. Each rule there is one attribute wider than the one it
 replaces, which is why it wins on specificity rather than on the load order of sonner's
 runtime `<style>`. Read the note above that block before changing how a toast looks.
-
-`QueryProvider` (`src/components/shared/query-provider.tsx`) is what connects the two:
-mounted in the root layout, it wires `onError` on both caches to a toast, so no call site
-writes error handling. Success messages stay at the call site - every failure has the same
-shape and every success does not.
 
 ## Where components go
 
@@ -99,10 +99,12 @@ update, so nothing there should be hand-edited. Restyle through the tokens in
 a domain concept does not belong here - it gets a folder beside `auth/`.
 
 Non-component code stays out of `components/` **once it has a second caller or is a
-seam**: `src/catalyst/auth-client.ts` is the only file that talks to the Catalyst SDK,
-`src/services/` is the layer that talks to our own API. What one component alone uses -
-a form's resolver, a formatter - stays in that component until something else needs it.
-Routes stay thin and import from the rest.
+seam**: `src/catalyst/auth-client.ts` is the only browser code that talks to the Catalyst
+web SDK, and `src/execution-context.ts` is the only way a page or an action reaches
+Catalyst on the server. What one component alone uses - a form's resolver, a formatter -
+stays in that component until something else needs it. A Server Action sits beside the page
+that uses it (`app/(auth)/sign-up/register-user.ts`). Routes stay thin and import from the
+rest.
 
 ## Deployment
 

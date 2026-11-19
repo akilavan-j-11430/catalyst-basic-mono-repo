@@ -4,8 +4,8 @@ Reverse proxy that gives local development a single origin. Runs as the Catalyst
 AppSail named `proxy`, and is the only service the browser talks to directly.
 
 **This app is never deployed.** It exists for local development only. The cloud has no
-equivalent: Slate and AppSail are separate origins there, and the web app calls the API
-cross-origin with a bearer token (see the root `.claude/CLAUDE.md`). It is declared in
+equivalent: there the web app reads and writes on its own server and calls no API (see the
+root `.claude/CLAUDE.md`). It is declared in
 `catalyst.json` so `catalyst serve` can run it; `pnpm deploy` ships only `appsail:api`
 and `slate:web`. Do not add it to the deploy list.
 

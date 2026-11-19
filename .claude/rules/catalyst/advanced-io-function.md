@@ -80,12 +80,9 @@ not handle both shapes in the app's routes.
 - **Security Rules start at `optional`**, so the function URL is public. Each route guards
   itself, as in `api`: `initCatalystScopes([CatalystScope.User])` answers 401 to a caller
   without a valid token. Admin scope proves nothing about the caller.
-- **When the browser calls it**, it is a separate origin, like a second AppSail:
-  - `NEXT_PUBLIC_<NAME>_URL`, as in `environment.md`
-  - a client pair in `apps/web/src/services/api/client.ts`
-  - the Slate domain in Authorized Domains
-
-  Never set a CORS header in the app. Catalyst injects one, and a second copy makes the
+- **When the web app calls it**, it does so from its server code through `HttpClient`, as
+  for a second AppSail - "When the web app calls it" in `.claude/skills/deployable-steps.md`.
+- Never set a CORS header in the app. Catalyst injects one, and a second copy makes the
   browser reject both.
 
 ## Limits

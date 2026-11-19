@@ -43,22 +43,18 @@ it.
   `CLAUDE.md` workspace table, and a line in the README architecture when the local
   routing changes.
 
-## When the browser calls it
+## When the web app calls it
 
-An AppSail or an Advanced I/O function is its own origin in the cloud, so `apps/web`
-needs to be told where it is:
+The browser calls no backend of ours. `apps/web` reaches an AppSail or an Advanced I/O
+function from its server code - a page or a Server Action - through `HttpClient`
+(`outbound-http.md`), so there is no `NEXT_PUBLIC_*` key, client pair or CORS to add:
 
-- Add `NEXT_PUBLIC_<NAME>_URL` to `apps/web/.env.example`. Set it in **Console -> Slate
-  -> web -> Environment Variables**, and leave it unset locally (`environment.md`).
-- In `apps/web/src/services/api/client.ts`, build a base URL from that literal plus the
-  app's prefix. Add a pair of clients beside `api` / `publicApi`: `billingApi` with
-  `AuthClient.authHeaders()`, and `billingPublicApi` without. Locally the key is unset, so
-  calls stay relative and go through the proxy route.
-- The bearer token is the same one `api` receives. A route guarded with
-  `initCatalystScopes([CatalystScope.User])` answers 401 without it, exactly as in `api`.
-- CORS comes from Authorized Domains, which already lists the Slate domain for `api`.
-  Confirm that the first browser call to the new origin succeeds. Never add CORS
-  middleware: it duplicates the header, and the browser then rejects both.
+- Its base URL is a server-side key on `apps/web/src/env.ts` (`BILLING_URL`), added in the
+  four steps of `environment.md` and set in **Console -> Slate -> web -> Environment
+  Variables**.
+- No server-to-backend call exists yet, so the first one settles how it proves who the
+  caller is - a route guarded with `initCatalystScopes([CatalystScope.User])` answers 401
+  without it. Agree that with the user and write the decision into `apps/web/CLAUDE.md`.
 
 ## The shared Express plumbing: `@repo/http-server`
 

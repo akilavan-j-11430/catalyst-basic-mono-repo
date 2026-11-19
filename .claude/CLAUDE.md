@@ -24,15 +24,19 @@ below is the checklist for each kind.
 
 Where new work goes:
 
-- HTTP routes, validation, Catalyst SDK calls -> `apps/api` (AppSail).
-- Pages, components, styling -> `apps/web` (Slate).
+- Pages, components, styling, and the reads and writes behind them -> `apps/web` (Slate). A
+  page reads in its Server Component and a form writes through a Server Action, on the
+  server - see `.claude/rules/nextjs/code-placement.md`.
+- `apps/api` (AppSail) is kept, but the web app no longer calls it. It goes once a Slate
+  deploy proves Slate passes the `x-zc-*` credential headers to Next's server, so new web
+  work does not route through it.
 - Shapes both sides use -> `packages/types`, defined once and imported by both;
   never two definitions that can drift.
 - Route path segments -> `packages/routing`: `ApiPath` in `api-path.ts`, combined with
-  `+` - `ApiPath.Api + ApiPath.V1`. `apps/api` mounts them and `apps/web` calls them, so
-  a path is never a string literal in either app. Each AppSail's segments live in a file
-  named after the app - `api-path.ts` for `api`, `billing-path.ts` exporting `BillingPath`
-  for an `apps/billing`. Client paths belong here too, in their own file.
+  `+` - `ApiPath.Api + ApiPath.V1`. `apps/api` mounts them, so a path is never a string
+  literal there. Each AppSail's segments live in a file named after the app - `api-path.ts`
+  for `api`, `billing-path.ts` exporting `BillingPath` for an `apps/billing`. Client paths
+  belong here too, in their own file.
 - Express plumbing every HTTP app shares (middleware, `HttpError`, response builders) ->
   `packages/http-server`, the one package allowed `express`. Every app that serves HTTP
   imports it from there and never copies it.
@@ -41,7 +45,8 @@ Where new work goes:
   `CatalystSession.setApp`, and every wrapper reads them from there.
 - Logging -> `packages/logger` (`Logger.for("<source>")`); the request's execution
   context -> `packages/async-context`. Both rest on `node:async_hooks`, so they are server
-  only - never reach them from `apps/web`.
+  only - in `apps/web` only server code (a page, a Server Action, `instrumentation.ts`)
+  reaches them, never a client component.
 - Never `apps/proxy`. It is local-only plumbing and ships nothing; a feature added
   there works in dev and vanishes in the cloud.
 
@@ -97,17 +102,14 @@ catalyst serve      <- entry point, port assigned by the CLI (3000, 3001, 3002, 
 gate. It appears in `catalyst.json` so `catalyst serve` can run it, and `pnpm deploy`
 deliberately ships only `appsail:api` and `slate:web`. Do not add it to the deploy list.
 
-**The cloud is two origins, not one.** Slate serves `web` from `*.onslate.com` and
-AppSail serves `api` from `*.catalystappsail.com`, and the session cookie does not cross
-between them:
+**The web app serves its own reads and writes.** Slate serves `web` from `*.onslate.com`,
+and its pages and Server Actions call Catalyst from Next's server, with the app built from
+the `x-zc-*` headers on the request (`apps/web/src/execution-context.ts`). The browser
+calls no backend of ours, so there is no API URL, bearer token or CORS to set up for it.
 
-- The browser calls AppSail at `NEXT_PUBLIC_API_URL`, inlined at build time. Locally it is
-  unset and calls stay relative, through the proxy - see `.claude/rules/general/environment.md`.
-- `api` (`apps/web/src/services/api/client.ts`) sends `Authorization: Bearer <token>` from
-  `AuthClient.authHeaders()`, which uses the web SDK's `generateAuthToken()`. `publicApi`
-  sends none, for signed-out routes - see `.claude/rules/nextjs/web-data-access.md`.
-- CORS comes from Catalyst's Authorized Domains for the Slate domain, never from
-  middleware in `apps/api`, which would duplicate the header.
+That rests on Slate passing those headers to Next's server, which only a Slate deploy can
+prove. Until then `apps/api` - AppSail at `*.catalystappsail.com` - and the proxy's `/api`
+route are kept, unused by the web app.
 
 ## Three things that will waste your time
 
@@ -196,8 +198,8 @@ Topic rules live one-per-file in `.claude/rules/` and load automatically, in two
 `paths:` frontmatter:
 - `code-placement.md` - where server-side work in Next.js starts - a Server Component, a
   Server Action, a `route.ts` - and when it moves into an area or a package.
-- `web-data-access.md` - every call the browser makes to `apps/api` today, and every form
-  that collects one.
+- `forms.md` - every form: react-hook-form, its resolver, and how it calls a Server Action
+  and shows the result.
 - `typography.md` - every font.
 - `component-design.md` - how a component is split, styled and laid out, and how it shows a
   wait.
@@ -233,7 +235,7 @@ frontmatter when it applies to only part of the tree.
 - **A file earns its existence from a second caller or from a boundary, not from
   tidiness.** Something used in exactly one place lives where it is used; split it out
   when the second caller arrives, and let that caller tell you what the shape should be.
-  The exception is a seam - `catalyst/`, `services/api/client.ts` - which exists so
+  The exception is a seam - `catalyst/`, `src/execution-context.ts` - which exists so
   that everything passes through one place. A seam is
   right at one caller, because being the only route through is its whole job. Everything
   else - a validation rule, a formatter, a resolver - is not.
@@ -251,13 +253,14 @@ frontmatter when it applies to only part of the tree.
 
 In `apps/web`:
 
-- Reach `apps/api` through `src/services/` - one file per domain, built on
-  `src/services/api/client.ts` for transport, with every path built from `ApiPath`. No
-  `fetch` and no URL in a component.
-- Server state is react-query, form state is react-hook-form. Both are installed; neither
-  gets re-implemented with `useState`.
-- Failures are reported by the query client as a toast, so a call site handles success only.
-- The full rule is `.claude/rules/nextjs/web-data-access.md`.
+- A page reads in its Server Component, wrapped in `withCatalystPage`; a form writes through
+  a Server Action, wrapped in `withCatalystFn` (`src/execution-context.ts`). Both name the
+  Catalyst scopes they read. No `fetch` anywhere in `src/` - ESLint bans it. See
+  `.claude/rules/nextjs/code-placement.md`.
+- Form state is react-hook-form, never re-implemented with `useState`. An action returns a
+  rejected field as `{ ok: false, field, problem }`; the form puts it on the field and
+  toasts anything else itself - see `.claude/rules/nextjs/forms.md`.
+- Server-only configuration is read through `env` (`@/env`), never `process.env`.
 - Fonts come from the tokens in `globals.css` and nowhere else. Never set a family on a
   component - see `.claude/rules/nextjs/typography.md`.
 
@@ -334,7 +337,7 @@ all kinds share are in `.claude/skills/deployable-steps.md` and
 `tsconfig.build.json` extending it (`src` only, emits `dist/`),
 `"build": "tsc --build tsconfig.build.json && tsc-alias -p tsconfig.build.json"`, and an
 `eslint.config.mjs` spreading `@repo/eslint-config` - plus `allowTestsIn([...])` once it has
-tests. A package `apps/web` consumes is
+tests. A package the browser may import is
 framework-free and sets `"types": []` - copy `packages/routing` - or `@types/node` from the
 repo root lets Node APIs compile in its `src/`. A server-only package declares `@types/node`
 and `"types": ["node"]` instead - copy `packages/async-context`. `@repo/testing` is the one

@@ -4,7 +4,7 @@ Shared code for the monorepo. All thirteen are private and consumed as `"workspa
 
 | Package | Holds |
 |---|---|
-| `@repo/routing` | API path segments (`ApiPath`) shared by `apps/api` and `apps/web` |
+| `@repo/routing` | API path segments (`ApiPath`) that `apps/api` mounts. `apps/web` no longer calls the API, so it no longer imports this |
 | `@repo/case-conversion` | `CamelCase` - renames a vendor's snake_case/kebab-case keys, for `catalyst-node`; framework-free, so `apps/web` may use it too |
 | `@repo/types` | API response shapes shared by `apps/api` and `apps/web` |
 | `@repo/http-client` | `HttpClient` - every call to a service outside this repo. Framework-free and browser-safe: it reads nothing ambient, and the caller passes in what a call carries |
@@ -66,8 +66,9 @@ Consumers must be built after these. Turborepo handles that via `dependsOn: ["^b
   call site. `catalyst/` is meant to be the whole list of what this repo asks of
   Catalyst, so anything used from a route has to be visible there.
 - Node-only APIs (`node:async_hooks`, `fs`) belong in a server-only package -
-  `async-context`, `logger`, `catalyst-node` - and must never be
-  reached from `apps/web`.
+  `async-context`, `logger`, `catalyst-node`. In `apps/web` only server code - a page, a
+  Server Action, a file that imports `server-only` - may reach one, never a client
+  component.
 - `apps/api` bundles with esbuild and strips `@repo/*` from the deployed manifest, so
   package code is **inlined at bundle time**. Anything that needs to resolve at runtime
   - a file read relative to the package, a native module - will break in AppSail.
@@ -96,7 +97,7 @@ extending it with `noEmit: false` / `rootDir: ./src` / `outDir: ./dist` /
 it to consumers as `"workspace:*"`. `@repo/testing` is the exception: it exports its
 TypeScript sources and has no build - see `.claude/rules/general/testing.md`.
 
-A package `apps/web` consumes is framework-free, so it also sets `"types": []`: in
+A package the browser may import is framework-free, so it also sets `"types": []`: in
 `tsconfig.json`, or in `tsconfig.build.json` only once it has tests that need Node types.
 Without it TypeScript picks up `@types/node` from the repo root, and `process.env` in `src/`
 compiles. `packages/routing` is the template to copy.
