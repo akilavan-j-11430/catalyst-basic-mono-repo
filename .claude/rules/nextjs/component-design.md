@@ -42,8 +42,8 @@ export function InviteUserDialog() {
   How it opens, closes and returns focus stays inside.
 - shadcn's `Dialog`, `AlertDialog`, `Sheet` and `Popover` are not vendored yet. Each
   arrives through `shadcn add` with its first use; they import from the `radix-ui` package
-  already installed, so none brings a new runtime dependency. A confirmation before a
-  change is always the shared `ConfirmChange` - see `consent.md`.
+  already installed, so none brings a new runtime dependency. Whether a button that
+  changes data opens a confirmation is decided per button - see `consent.md`.
 
 ## Styling lives in shared components
 
