@@ -4,18 +4,16 @@ import nextTs from "eslint-config-next/typescript";
 import { camelCaseNamingRule, testFileBan, testToolingBan } from "@repo/eslint-config";
 
 const FETCH_MESSAGE =
-  "Call the API through src/services/ - see .claude/rules/nextjs/web-data-access.md.";
+  "Read in a Server Component or write in a Server Action - see .claude/rules/nextjs/code-placement.md.";
 
 const eslintConfig = defineConfig([
   ...nextVitals,
   ...nextTs,
-  // `src/services/api/client.ts` is the only place that speaks HTTP, the way
-  // `catalyst/` is the only place that reaches Catalyst. Prose drifts; this
-  // does not.
-  // See `.claude/rules/nextjs/web-data-access.md`.
+  // The browser never calls our own API: pages read on the server and forms write through
+  // Server Actions. An outside service is reached from the server through HttpClient.
+  // See `.claude/rules/nextjs/code-placement.md`.
   {
     files: ["src/**/*.{ts,tsx}"],
-    ignores: ["src/services/api/client.ts"],
     rules: {
       "no-restricted-globals": [
         "error",
