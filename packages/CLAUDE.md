@@ -7,7 +7,7 @@ Shared code for the monorepo. All eleven are private and consumed as `"workspace
 | `@repo/case-conversion` | `CamelCase` - renames a vendor's snake_case/kebab-case keys, for `catalyst-node`; framework-free, so `apps/web` may use it too |
 | `@repo/types` | Shapes two workspaces use - `user` for the user shapes, `http` for the HTTP response `HttpClient` returns |
 | `@repo/http-client` | `HttpClient` - every call to a service outside this repo. Framework-free and browser-safe: it reads nothing ambient, and the caller passes in what a call carries |
-| `@repo/catalyst-node` | `CatalystSession` and the Catalyst wrappers (`table`, `bucket`, `cache`, `job`, `zcql`, `user-management`) plus the resource handles built from them - every Catalyst SDK call, on the server |
+| `@repo/catalyst-node` | `CatalystSession` and the Catalyst wrappers (`table`, `bucket`, `cache`, `job`, `zcql`, `user-management`) - every Catalyst SDK call, on the server. It names no resource of this solution; the handles live in `@repo/repositories` |
 | `@repo/env` | `defineEnv` - reads one app's declared environment variables; throws `MissingEnvVariableError` for an unset one |
 | `@repo/async-context` | `ExecutionContext`, `currentContext`, `runWithContext` and `AsyncContextError` - the execution id and extras of the request in flight. Node only |
 | `@repo/logger` | `Logger` on pino - `Logger.for(source)`, one block per line stamped with the request's execution id and order. Node only, since it reads `@repo/async-context` |
@@ -26,7 +26,7 @@ path under `src/`:
 import type { NewUser } from "@repo/types/user";                   // src/user.ts
 import { Logger } from "@repo/logger/logger";                      // src/logger.ts
 import { currentContext } from "@repo/async-context/async-context";
-import { todoTable } from "@repo/repositories/resources";         // src/resources.ts
+import { invoiceBucket } from "@repo/repositories/resources";     // src/resources.ts
 import { defineEnv } from "@repo/env/define-env";                  // src/define-env.ts
 ```
 
@@ -58,7 +58,8 @@ Consumers must be built after these. Turborepo handles that via `dependsOn: ["^b
   SDK.** ESLint enforces it. See `.claude/rules/general/catalyst-sdk.md`.
 - **Catalyst resources are declared once, in `repositories/src/resources.ts`** - one
   `export const` per table, bucket, cache segment and job, built with the wrapper's
-  `create` factory. Apps import the handle; they never construct a wrapper themselves.
+  `create` factory. A table's handle is imported only by its repository; a bucket, cache or
+  job handle by whatever needs it. Nothing constructs a wrapper anywhere else.
   It sits in this package rather than in an app, so two deployables cannot name the same
   table twice, and rather than in `catalyst-node`, which wraps the SDK for any solution.
   `packages/repositories` arrives with the first resource.

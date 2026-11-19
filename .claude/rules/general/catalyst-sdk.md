@@ -37,10 +37,13 @@ import { Cache } from "@repo/catalyst-node/cache";
 import { Job } from "@repo/catalyst-node/job";
 import { Table } from "@repo/catalyst-node/table";
 
-export const todoTable = Table.create<{
+/** A row of the Todo table, keyed by its Catalyst column names. */
+export interface TodoRow {
   TITLE: string;
   NOTES?: string;
-}>("Todo");
+}
+
+export const todoTable = Table.create<TodoRow>("Todo");
 export const invoiceBucket = Bucket.create("invoices");
 export const sessionCache = Cache.create();
 export const reminderJob = Job.create<{ todoId: string }>({
@@ -116,10 +119,9 @@ or omitting one from a typed job, is a compile error.
 
 ### Declaring a table's row
 
-`Row` is an object type keyed by the Catalyst column names - `TITLE`, not
-`title` - written inline in `create`, and it is the only place a table's columns are
-written down. Name it as an exported interface beside the handle only when a second caller
-needs the type itself. Everything else is derived from it:
+`Row` is an interface keyed by the Catalyst column names - `TITLE`, not `title` - exported
+beside the handle as `<Table>Row`, because the table's repository maps from it. It is the only
+place a table's columns are written down. Everything else is derived from it:
 
 | Call | Takes | Returns |
 |---|---|---|

@@ -38,7 +38,7 @@ receives the `x-zc-*` credential headers, a signed-in user's included. Locally
 | a page that shows data | the page's Server Component, wrapped in `withCatalystPage`, reading during render - no API call, no client loading state for it |
 | a form that changes data | a Server Action - a `"use server"` file beside its page, wrapped in `withCatalystFn`: `app/(auth)/sign-up/register-user.ts` |
 | an endpoint something outside the app calls - a mobile app, a webhook, a Catalyst function | `app/api/.../route.ts`, its handler written in the `GET` / `POST` export and wrapped in `withCatalystFn` |
-| data | always `@repo/catalyst-node` - a repository or a handle, which reads the request's app from the execution context. Never ZCQL or an SDK call in `apps/web` |
+| data | a repository in `@repo/repositories`, or a bucket, cache or job handle from its `resources.ts` - each reads the request's app from the execution context. Never a table handle, ZCQL or an SDK call in `apps/web` |
 
 A Server Action and a route handler are both plain async functions - no wrapper of our own
 besides `withCatalystFn`. Use an action for a write from our own pages, and a route

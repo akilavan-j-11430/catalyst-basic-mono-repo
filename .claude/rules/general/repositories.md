@@ -20,6 +20,11 @@ Postgres then rewrites the repository and leaves every caller alone:
 
 ```ts
 // packages/repositories/src/todo-repository.ts
+import { CatalystScope } from "@repo/catalyst-node/catalyst-scope";
+import type { StoredRow } from "@repo/catalyst-node/table";
+import type { Todo } from "@repo/types/todo";
+import { todoTable, type TodoRow } from "@/resources";
+
 /** Repository: every Data Store read and write of todos, and the only code naming their columns. */
 export class TodoRepository {
   static async find(todoId: string): Promise<Todo | undefined> {
@@ -33,6 +38,8 @@ export class TodoRepository {
 }
 
 // apps/web/src/app/(app)/todos/[todoId]/page.tsx
+import { TodoRepository } from "@repo/repositories/todo-repository";
+
 const todo = await TodoRepository.find(todoId);
 ```
 

@@ -232,7 +232,7 @@ is the page - copy it as the shape for your own.
 | `@repo/async-context` | `ExecutionContext` over `AsyncLocalStorage` - the execution id and extras of the request in flight. |
 | `@repo/logger` | `Logger.for(source)` on pino - each line a block naming its source and, inside a request, the execution id and order. |
 | `@repo/env` | `defineEnv` - each app declares the variables it reads, so a typo is a compile error and an unset one throws `MissingEnvVariableError`. |
-| `@repo/catalyst-node` | `CatalystSession` and the Catalyst wrappers plus the resource handles built from them - the only package that imports `@zcatalyst/*`. Each entry point sets the apps it needs on its execution context with `CatalystSession.setApp`, and every wrapper reads them from there. |
+| `@repo/catalyst-node` | `CatalystSession` and the Catalyst wrappers - the only package that imports `@zcatalyst/*`. Each entry point sets the apps it needs on its execution context with `CatalystSession.setApp`, and every wrapper reads them from there. |
 | `@repo/http-client` | `HttpClient` - every call to a service outside this repo. Reads nothing ambient, so it runs in Node and in the browser. |
 | `@repo/case-conversion` | `CamelCase.convertKeys` - renames a vendor's snake_case or kebab-case keys at any depth, for `catalyst-node`. Framework-free, so the web app may use it too. |
 | `@repo/testing` | `VitestProjects.forWorkspace`, the Vitest settings every tested workspace starts from. Dev-only - see `.claude/rules/general/testing.md`. |
@@ -416,8 +416,9 @@ Short version; `CLAUDE.md` has the full list.
 - **Logging.** Use `Logger.for("<source>")` from `@repo/logger`, not `console`. It attaches
   the source and, inside a request, the execution ID and per-request ordering.
 - **Catalyst SDK.** `zcAuth.init(req)` happens once per request, at the entry point -
-  `withCatalystPage` / `withCatalystFn` in the web app. Code below it imports a resource
-  handle from `@repo/repositories/resources` and never initializes its own app.
+  `withCatalystPage` / `withCatalystFn` in the web app. Code below it reads a table through
+  its repository in `@repo/repositories`, takes a bucket, cache or job handle from that
+  package's `resources.ts`, and never initializes its own app.
 - **Ports** come from `X_ZOHO_CATALYST_LISTEN_PORT` with a local fallback. Never
   hardcode.
 - **Underscore-prefixed params** (`_req`, `_next`) mark arguments a signature requires
