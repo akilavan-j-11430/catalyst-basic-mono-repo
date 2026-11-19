@@ -113,8 +113,12 @@ stages a self-contained copy in `slate/web/` (gitignored), and `catalyst.json` p
 Slate never runs turbo and cannot resolve `workspace:*`, so the staged copy is a plain
 npm project:
 
-- each `@repo/*` dependency is copied from its built `dist/` into `vendor/<pkg>` and
-  installed as `file:./vendor/<pkg>`;
+- each `@repo/*` package the app reaches - directly, or through another one, as
+  `@repo/catalyst-node` brings `@repo/async-context` - is copied from its built `dist/` into
+  `vendor/<pkg>` and installed as `file:./vendor/<pkg>`;
+- a vendored package's own third-party dependencies (`pino`, the `@zcatalyst/*` SDKs) are
+  installed at the staged app's root, where Node finds them walking up from `vendor/`. Two
+  packages asking for different versions of one dependency stop the script;
 - each `workspace:*` devDependency (`@repo/eslint-config`) is dropped - npm refuses a
   manifest that names one - and with it `eslint.config.mjs` and the `lint` script, since
   `next build` never lints and the config would import the dropped package. `next build`
@@ -127,8 +131,8 @@ npm project:
 hand-edit it**; only the staged copy is rewritten. It applies to the first deployment
 only, so the Slate app's build settings in the Console must say npm too.
 
-A vendored package keeps only `name`, `version`, `type` and `exports`, so the script
-refuses a `@repo/*` package that declares runtime `dependencies` rather than drop them.
+A vendored package's manifest keeps only `name`, `version`, `type` and `exports`: its
+dependencies are already the staged app's own.
 `apps/web/turbo.json` makes `bundle` depend on `^build` alone - it needs the packages'
 `dist/`, not a local `next build`.
 

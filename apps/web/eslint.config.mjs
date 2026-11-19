@@ -34,11 +34,12 @@ const eslintConfig = defineConfig([
     },
   },
   // camelCase everywhere except src/catalyst/, the seam where the Catalyst web SDK's
-  // `email_id` is read before it is mapped, and the vendored shadcn primitives in
-  // src/components/ui/. See `.claude/rules/general/readable-code.md`.
+  // `email_id` is read before it is mapped, src/env.ts, whose keys are environment variable
+  // names, and the vendored shadcn primitives in src/components/ui/.
+  // See `.claude/rules/general/readable-code.md`.
   {
     files: ["src/**/*.{ts,tsx}"],
-    ignores: ["src/catalyst/**", "src/components/ui/**"],
+    ignores: ["src/catalyst/**", "src/env.ts", "src/components/ui/**"],
     rules: camelCaseNamingRule,
   },
   // No test runner here yet, so every test file is rejected rather than silently never run.
