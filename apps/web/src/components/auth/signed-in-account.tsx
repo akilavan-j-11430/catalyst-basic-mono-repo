@@ -3,7 +3,6 @@
 import { LogOut } from "lucide-react";
 import type { CurrentUser } from "@repo/types/user";
 import { AuthClient } from "@/catalyst/auth-client";
-import { useSignedInUser } from "@/components/auth/auth-gate";
 import { Button } from "@/components/ui/button";
 
 function displayName(user: CurrentUser): string {
@@ -11,9 +10,8 @@ function displayName(user: CurrentUser): string {
   return full === "" ? user.emailId : full;
 }
 
-export function SignedInAccount() {
-  const user = useSignedInUser();
-
+/** The signed-in user, read by the page on the server, with a sign-out button. */
+export function SignedInAccount({ user }: { user: CurrentUser }) {
   return (
     <div className="space-y-6">
       <div>
