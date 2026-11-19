@@ -14,6 +14,7 @@ dist
 
 # Catalyst
 .catalystrc
+catalyst.json
 appsails
 slate
 functions
