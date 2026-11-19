@@ -172,15 +172,11 @@ export function allowTestsIn(kinds) {
   };
 }
 
-/** The test-tooling import ban on its own, for apps/web, whose config is built on Next's. */
-export const testToolingBan = {
+/** Every import ban - the Catalyst SDK, the HTTP clients, the test tooling - for apps/web,
+ *  whose config is built on Next's. Its Catalyst seam re-allows the SDK with allowCatalystSdk. */
+export const webImportBan = {
   files: ["src/**/*.{ts,tsx,mts,cts}"],
-  rules: {
-    "no-restricted-imports": [
-      "error",
-      { paths: testToolingImports, patterns: testToolingPatterns },
-    ],
-  },
+  rules: { "no-restricted-imports": restrictedImports() },
 };
 
 export default tseslint.config(

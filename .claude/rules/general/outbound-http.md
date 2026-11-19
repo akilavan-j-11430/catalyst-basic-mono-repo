@@ -2,9 +2,10 @@
 
 Every request to a service outside this monorepo goes through `HttpClient`
 (`@repo/http-client/http-client`). No `fetch`, no `axios`, no `node:https`, no other
-client in `packages/*`, a Node app or `apps/web`. ESLint enforces this - `apps/web` bans
-`fetch` in its own config - and the transports under `packages/http-client/src/`
-(`*-transport.ts`) are the only exemption.
+client in `packages/*`, a Node app or `apps/web`. `@repo/eslint-config` enforces this
+everywhere - `apps/web`, whose config is built on Next's, through `webImportBan` and its own
+`fetch` ban - and the transports under `packages/http-client/src/` (`*-transport.ts`) are
+the only exemption.
 
 The point is one seam. Transport, auth headers, encoding, timeout, logging and error
 mapping all live in the client, so moving off `fetch` means adding one `HttpTransport`

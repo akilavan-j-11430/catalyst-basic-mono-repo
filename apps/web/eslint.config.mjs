@@ -1,7 +1,12 @@
 import { defineConfig, globalIgnores } from "eslint/config";
 import nextVitals from "eslint-config-next/core-web-vitals";
 import nextTs from "eslint-config-next/typescript";
-import { camelCaseNamingRule, testFileBan, testToolingBan } from "@repo/eslint-config";
+import {
+  allowCatalystSdk,
+  camelCaseNamingRule,
+  testFileBan,
+  webImportBan,
+} from "@repo/eslint-config";
 
 const FETCH_MESSAGE =
   "Read in a Server Component or write in a Server Action - see .claude/rules/nextjs/code-placement.md.";
@@ -43,8 +48,11 @@ const eslintConfig = defineConfig([
   // No test runner here yet, so every test file is rejected rather than silently never run.
   // See `.claude/rules/general/testing.md`.
   testFileBan,
-  // Test tooling never ships: the browser bundle must not import it.
-  testToolingBan,
+  // The Catalyst SDK only through @repo/catalyst-node, outside services only through
+  // HttpClient, and no test tooling in what ships. src/catalyst/ is the one seam allowed the
+  // Catalyst web SDK. See `.claude/rules/general/catalyst-sdk.md`.
+  webImportBan,
+  allowCatalystSdk(["src/catalyst/**"]),
   // Override default ignores of eslint-config-next.
   globalIgnores([
     // Default ignores of eslint-config-next:

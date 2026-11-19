@@ -29,7 +29,7 @@ packages/http-client/
 - Test tooling - `vitest`, `@vitest/*`, `supertest`, `@repo/testing` - may be imported only
   from `test/`, `vitest.config.ts` / `.mts`, and `@repo/testing`'s own `src/` (which is test
   tooling). ESLint rejects a static import of it in `src/`, in every TypeScript extension,
-  where a bundler would ship it - `apps/web` applies the same ban through `testToolingBan`,
+  where a bundler would ship it - `apps/web` applies the same ban through `webImportBan`,
   since its config is built on Next's. A dynamic `import("vitest")` is not checked, nor is a
   dynamic import of a banned SDK; do not write one.
 - `@/` resolves to the workspace's `src/`, so a test imports the code under test exactly as
