@@ -1,3 +1,9 @@
+---
+paths:
+  - "apps/*/src/job-dispatcher.ts"
+  - "apps/*/src/jobs/**"
+---
+
 # Job function
 
 A Job function runs the work a `Job` handle submits (`catalyst-sdk.md`). One function
@@ -5,7 +11,8 @@ serves every job that names it as `jobTargetFunctionName`. It reads `jobName` fr
 params and runs the matching job.
 
 Creating the workspace, its bundle, `catalyst.json` and the `deploy` flag is covered in
-the `add-job-fn` skill. This file covers what goes inside.
+the `add-job-fn` skill. This file covers the function's wiring; where a job's work goes and
+how it checks its params is `code-placement.md`.
 
 Cron functions are deprecated and not used. To run a job later, use
 `submitOneTimeCron` on its `Job` handle.
@@ -17,6 +24,7 @@ apps/<name>/
   src/index.ts              the function - `module.exports = handler`, the only bundle entry
   src/job-dispatcher.ts     JobDispatcher - checks jobName, picks the job, runs it
   src/jobs/<job-name>.ts    one class per job, named after its jobName
+  src/<area>/<areas>.ts     work two jobs share - `code-placement.md`
   src/dev-server.ts         local only - POST /:jobName runs the dispatcher
   catalyst-config.json      from `catalyst functions:add --type job`
 ```
@@ -82,23 +90,27 @@ export class JobDispatcher {
 ```ts
 // src/jobs/reminder.ts
 import type { JobParams } from "@repo/catalyst-node/job";
+import { InputValidation } from "@repo/input-validation/input-validation";
+import { z } from "zod";
+
+const reminderParams = z.object({
+  todoId: z.string({ error: "is required." }).min(1, "is required."),
+});
 
 /** Sends the reminder for one todo. */
 export class ReminderJob {
   static async run(params: JobParams): Promise<void> {
-    const { todoId } = params;
-    if (!todoId) {
-      throw new Error("Reminder job needs a todoId.");
-    }
-    // repositories and handles from catalyst-node, called as a route calls them
+    const { todoId } = InputValidation.parse(reminderParams, params);
+    // repositories and handles, called as a route calls them
   }
 }
 ```
 
 - **One class per job**, with a `static async run(params)`. The file is named after the
   jobName in kebab-case.
-- **Check its own params first.** A param typed on the handle (`Job.create<{ todoId:
-  string }>`) is still a string the job has to check: the dispatcher only knows `jobName`.
+- **Parse its own params first**, with a zod schema (`code-placement.md`). A param typed on
+  the handle (`Job.create<{ todoId: string }>`) is still a string the job has to check: the
+  dispatcher only knows `jobName`.
 - **It reaches Catalyst the way a route does**, through repositories and handles, which read
   the app the entry point set. Only Admin is available, as described below.
 - **Only Admin is available.** No signed-in user starts a job, so the entry point sets only

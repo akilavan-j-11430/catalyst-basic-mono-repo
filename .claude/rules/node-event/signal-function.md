@@ -1,3 +1,9 @@
+---
+paths:
+  - "apps/*/src/signal-dispatcher.ts"
+  - "apps/*/src/signals/**"
+---
+
 # Signal function
 
 A Signal function is an Event function that a Catalyst Signals rule targets. It follows
@@ -6,7 +12,8 @@ Each event is sent to its own handler by the event's name, and an event no handl
 is an error.
 
 Creating the workspace, its bundle, `catalyst.json` and the `deploy` flag is covered in
-the `add-signal-fn` skill. This file covers what goes inside.
+the `add-signal-fn` skill. This file covers the function's wiring; where an event's work goes
+and how it checks its data is `code-placement.md`.
 
 ## Layout
 
@@ -15,6 +22,7 @@ apps/<name>/
   src/index.ts                the function - `module.exports = handler`, the only bundle entry
   src/signal-dispatcher.ts    SignalDispatcher - picks the handler for each event and runs it
   src/signals/<event-name>.ts one class per event, named after its event name
+  src/<area>/<areas>.ts       work two handlers share - `code-placement.md`
   src/dev-server.ts           local only - POST /:eventName runs the dispatcher
   catalyst-config.json        from `catalyst functions:add --type event`
 ```
@@ -93,13 +101,13 @@ export class CacheItemCreatedSignal {
   static readonly apiName = "cache_item_created";
 
   static async run(data: Record<string, unknown>): Promise<void> {
-    // narrow `data` to the fields this event carries, then call repositories and handles
+    // parse `data` with this event's schema, then call repositories and handles
   }
 }
 ```
 
-- **Narrow `data` first.** It is `unknown` content from a publisher, so check the fields
-  the handler reads before using them.
+- **Parse `data` first**, with a zod schema naming the fields the handler reads
+  (`code-placement.md`). It is whatever the publisher sent.
 - **Admin is the only scope.** An event has no signed-in user, so the entry point sets only
   the Admin app.
 - **A handler must be safe to run twice** (idempotent consumer). Signals retries a failed

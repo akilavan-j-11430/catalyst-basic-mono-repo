@@ -196,9 +196,8 @@ Topic rules live one-per-file in `.claude/rules/` and load automatically, in two
 - `readable-code.md` - casing, naming, and when complexity is worth it.
 - `testing.md` - where tests live, how Catalyst is faked, and what to run before calling a
   change done.
-- `repositories.md` - what a route, a service and a repository each do, when a service is
-  worth adding, where repositories live, and whether an outside service is a repository or
-  a client.
+- `repositories.md` - where repositories live, why every table sits behind one, and whether
+  an outside service is a repository or a client.
 
 `.claude/rules/nextjs/` holds the rules that apply only to `apps/web`, each scoped with
 `paths:` frontmatter:
@@ -217,11 +216,20 @@ Creating one is a skill (below):
 - `advanced-io-function.md` - an Express app exported, never listening.
 - `basic-io-function.md` - a single handler, arguments in, one string out.
 
+`.claude/rules/node-api/` holds the rules for an Express app - `apps/api`, any AppSail, an
+Advanced I/O function:
+- `code-placement.md` - what a route does, when its work moves into an area
+  (`src/<area>/<areas>.ts`) and when into a package.
+
 `.claude/rules/node-job/` holds the rules for a Job function:
 - `job-function.md` - one function for every job, dispatching on `jobName`.
+- `code-placement.md` - where a job's work goes, how it parses its params, and when it moves.
 
 `.claude/rules/node-event/` holds the rules for a Signal (Event) function:
 - `signal-function.md` - one function for every Signals event, dispatching on its name.
+- `code-placement.md` - where an event's work goes, how it parses its data, and when it moves.
+
+Each `node-*` rule is scoped with `paths:` frontmatter to the files only that kind has.
 
 Add a file to the folder it belongs to rather than growing this one. Give a rule `paths:`
 frontmatter when it applies to only part of the tree.
@@ -313,7 +321,7 @@ That file is the only place a router mounts, so `src/app.ts` never changes. A ro
 calls Catalyst mounts `initCatalystScopes([...])` (`@repo/http-server/middleware`) ahead of its handler,
 naming the scopes it uses - `router.use` it instead when every route on the router needs them.
 The route stays thin - validate, call one operation, respond - and a business rule goes in
-a service only once there is one to hold. See `.claude/rules/general/repositories.md`.
+an area, `src/<area>/<areas>.ts`. See `.claude/rules/node-api/code-placement.md`.
 
 **A table** - declare its handle in `packages/repositories/src/resources.ts`, its
 domain type in `packages/types`, and a repository in
