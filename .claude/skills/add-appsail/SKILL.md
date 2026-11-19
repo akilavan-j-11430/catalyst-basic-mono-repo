@@ -8,8 +8,8 @@ description: Add a new Catalyst AppSail to this repo, shaped like apps/api - wor
 1. **Agree it with the user.** It is a new deployable, so settle three things first: its
    name, why it is not a function or an `apps/api` router, and whether the web app calls
    it.
-2. **Read `.claude/skills/deployable-steps.md`.** The second AppSail also moves
-   `AppSailLogOutput` (`catalyst-logger.ts`) into `@repo/logger`.
+2. **Read `.claude/skills/deployable-steps.md`.** Its `index.ts` configures the logger with
+   `CatalystLogOutput` (`@repo/logger/catalyst-log-output`), as `apps/api` does.
 3. **Copy the shape of `apps/api` into `apps/<name>`.** Import the plumbing from
    `@repo/http-server` rather than copying it. Then:
    - `package.json`: the app's name, and the same `build`, `bundle`, `dev`, `typecheck`,

@@ -11,7 +11,7 @@ description: Add a second Catalyst Slate app to this repo, shaped like apps/web 
 3. **Set up the workspace.** Copy the shape of `apps/web` into `apps/<name>`, leaving
    out its product code. Bring:
    - the root layout, with its `Toaster`
-   - `src/execution-context.ts`, `src/env.ts` and `src/instrumentation.ts`
+   - `src/execution-context.ts`, `src/server-logging.ts` and `src/env.ts`
    - `src/catalyst/`
    - the shared components it uses
    - `globals.css`

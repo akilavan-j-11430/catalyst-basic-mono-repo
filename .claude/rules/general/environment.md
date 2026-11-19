@@ -98,10 +98,10 @@ The platform injects these itself - Catalyst, or Next for `NEXT_RUNTIME` - and t
 read before any app template is in play. They stay as they are:
 
 - `apps/api/src/index.ts` - `X_ZOHO_CATALYST_LISTEN_PORT`, `PORT`
-- `apps/api/src/framework/catalyst-logger.ts` - `X_ZOHO_SPARKLET_LOG_FD`
+- `packages/logger/src/catalyst-log-output.ts` - `X_ZOHO_SPARKLET_LOG_FD`, the log collector
+  Catalyst hands a running app. The one read inside a package: no app configures it, and the
+  class that writes SparkP packets to it is the only code that knows what it means.
 - `apps/proxy/src/index.ts` - `X_ZOHO_CATALYST_LISTEN_PORT`
-- `apps/web/src/instrumentation.ts` - `NEXT_RUNTIME`, so the logger is configured only in
-  the Node.js runtime
 
 They are not configuration this repo owns, so they do not belong on a template. `apps/proxy`
 has no `src/env.ts` for exactly that reason.
@@ -113,8 +113,8 @@ caller's credentials ride on request headers, because `zcAuth.init(req)` is per 
 
 `apps/web` has its own template, `src/env.ts`, built with `defineEnv` like any other app's:
 today only `TZ`. Sign-up's redirect is not a key here, because the Server Action takes it from
-the request's own origin. It imports `server-only`, so only a page, a Server Action or
-`instrumentation.ts` reads it - at request time, through `env`, never `process.env`. The
+the request's own origin. It imports `server-only`, so only server code - a page, a Server
+Action, `server-logging.ts` - reads it, through `env`, never `process.env`. The
 four steps above apply unchanged, with `apps/web/turbo.json` passing the key through for
 `dev`.
 

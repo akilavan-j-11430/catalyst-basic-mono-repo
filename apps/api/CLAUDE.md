@@ -15,8 +15,7 @@ src/
 |-- routes/api-router.ts  the only place a router mounts
 |-- routes/ping.ts        reference route - copy this shape
 |-- routes/auth.ts        POST /auth/register - registers a Catalyst app user
-|-- routes/me.ts          GET /me - the app user the request is signed in as
-`-- framework/catalyst-logger.ts   AppSailLogOutput - log blocks -> AppSail's log collector
+`-- routes/me.ts          GET /me - the app user the request is signed in as
 test/
 |-- setup.ts              fakes zcAuth.init for every test, with @repo/testing/catalyst-auth
 `-- integration/          the app from app.ts, driven through Supertest
@@ -33,10 +32,14 @@ The Express plumbing - `initExecutionContext`, `initCatalystScopes`, `errorHandl
 other app that serves HTTP. It is imported from there, never copied.
 
 `index.ts` configures the logger before anything logs:
-`Logger.configure({ timeZone: env.optional("TZ"), output: AppSailLogOutput.fromPlatform() })`.
-`AppSailLogOutput` (`framework/catalyst-logger.ts`) frames each block for the log collector
-AppSail hands the app as `X_ZOHO_SPARKLET_LOG_FD`; outside AppSail there is none, and the
-logger writes to stdout.
+`Logger.configure({ timeZone: env.optional("TZ"), output: CatalystLogOutput })`.
+`CatalystLogOutput` (`@repo/logger/catalyst-log-output`) frames each block for the log
+collector AppSail hands the app as `X_ZOHO_SPARKLET_LOG_FD`; outside AppSail there is none, and
+the logger writes to stdout. The web app's `src/server-logging.ts` configures it the same way.
+It writes through a non-blocking stream, so on `SIGTERM` or `SIGINT` `index.ts` shuts down
+gracefully - stops taking requests, lets those in flight finish, `await
+CatalystLogOutput.flush()`, then exits - and the last lines are not lost. The web app, whose
+shutdown Next runs, flushes alongside it from `src/server-logging.ts`, as a best effort.
 
 ## Middleware order
 

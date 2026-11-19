@@ -87,4 +87,4 @@ Known, accepted, and the first things a migration touches:
   (`@repo/http-server/middleware`), and repositories and wrappers pick a `CatalystScope` in
   `runIn`. Removing Catalyst deletes those lines.
 - `packages/http-server/src/middleware.ts` calls `zcAuth.init` to build the per-request app.
-- `apps/api/src/framework/catalyst-logger.ts` writes to the AppSail log descriptor.
+- `packages/logger/src/catalyst-log-output.ts` writes to Catalyst's log descriptor.

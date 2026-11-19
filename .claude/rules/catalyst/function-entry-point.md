@@ -21,12 +21,11 @@ they all must get right.
 - **Admin is the only scope wherever no signed-in user made the call.** That is always
   the case for a job or an event. A wrapper that asks for User throws `SCOPE_UNAVAILABLE`.
   The fix is to add an Admin path to the wrapper, not to build a User app.
-- **Logging goes through `Logger.for("<source>")`** (`@repo/logger/logger`). It writes to
-  stdout unless configured, which is what a function wants, so a function calls
-  `Logger.configure` only to set a `timeZone`. Never bring in `AppSailLogOutput`
-  (`catalyst-logger.ts`): it writes to AppSail's log descriptor, and a function does not
-  have one. Whether Catalyst collects a function's stdout has not been checked on a deployed
-  function yet.
+- **Logging goes through `Logger.for("<source>")`** (`@repo/logger/logger`). The entry point
+  configures it once with `output: CatalystLogOutput`, as every app does: it
+  writes to the log collector when Catalyst hands the function one, and to stdout when it does
+  not. Which a deployed function gets, and whether Catalyst collects its stdout, has not been
+  checked yet.
 
 `src/index.ts` is the bundle's only entry. A `src/dev-server.ts` is never imported from it,
 so the dev server never ships.

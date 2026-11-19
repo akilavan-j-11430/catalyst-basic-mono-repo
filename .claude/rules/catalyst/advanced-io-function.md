@@ -58,8 +58,8 @@ changes, because the shared plumbing comes from `@repo/http-server` (`.claude/sk
 - Data goes through repositories and handles. The app never constructs an SDK client.
 
 These parts differ from `apps/api`:
-- **No `AppSailLogOutput` (`catalyst-logger.ts`).** It writes to AppSail's log descriptor,
-  which a function does not have; the logger's stdout default is right here.
+- **The logger is configured in `index.ts`,** not at listen time:
+  `Logger.configure({ output: CatalystLogOutput })` before exporting the app.
 - **No port lookup in `index.ts`.** Only the dev server listens.
 - **Paths live in `packages/routing/src/<name>-path.ts`**, named after the app, and start
   with the app's own prefix.

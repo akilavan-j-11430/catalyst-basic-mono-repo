@@ -1,4 +1,5 @@
 import "server-only";
+import "@/server-logging";
 import { randomUUID } from "node:crypto";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";

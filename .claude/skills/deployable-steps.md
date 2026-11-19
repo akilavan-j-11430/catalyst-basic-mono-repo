@@ -72,9 +72,12 @@ Import it; never copy it. It is the one package allowed to import `express`
 stays external, so every app that runs it in the cloud lists `express` in its own
 `dependencies`.
 
-`AppSailLogOutput` (`apps/api/src/framework/catalyst-logger.ts`) is specific to AppSail,
-not to Express. The second AppSail moves it into `@repo/logger`, beside `Logger`. Every app
-that logs lists `pino` in its own `dependencies`, as it does `express`.
+Every entry point configures the logger once with
+`output: CatalystLogOutput` (`@repo/logger/catalyst-log-output`). It writes to
+the log collector Catalyst hands a running app, and to stdout wherever there is none, locally
+included. It writes through a non-blocking stream, so an app that owns its process - an
+AppSail - flushes it on `SIGTERM`/`SIGINT` before exiting, as `apps/api/src/index.ts` does. Every app that logs lists `pino` in its
+own `dependencies`, as it does `express`.
 
 ## Before calling it done
 

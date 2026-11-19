@@ -30,10 +30,10 @@ function toRegisteredUser(details: RegisteredUserDetails): RegisteredUser {
   Catalyst table rows are mapped field by field in their repository instead.
 - ESLint enforces it (`@typescript-eslint/naming-convention`, from `@repo/eslint-config`).
   The vendor seams are exempt through `allowVendorNames(files)` - all of `catalyst-node`'s
-  `src/`, the package that wraps Catalyst, plus `apps/api`'s `env.ts` and
-  `catalyst-logger.ts` - and so are three tests whose inputs are vendor-cased:
-  `case-conversion`'s `camel-case.test.ts`, `env`'s `define-env.test.ts` and `catalyst-node`'s
-  `user-management.test.ts`. `apps/web` builds on Next's config instead and leaves
+  `src/`, the package that wraps Catalyst, plus `apps/api`'s `env.ts` and `logger`'s
+  `catalyst-log-output.ts` - and so are four tests whose inputs are vendor-cased:
+  `case-conversion`'s `camel-case.test.ts`, `env`'s `define-env.test.ts`, `catalyst-node`'s
+  `user-management.test.ts` and `logger`'s `catalyst-log-output.test.ts`. `apps/web` builds on Next's config instead and leaves
   `src/catalyst/` out of the rule's `files` with `ignores`. A key that needs quotes
   (`"content-type"`, `"--width"`) is a wire string and is never checked. Add a file to the
   exemption only when it is a seam, or a test whose input is the vendor's casing - the

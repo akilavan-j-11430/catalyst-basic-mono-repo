@@ -45,8 +45,8 @@ Where new work goes:
   `CatalystSession.setApp`, and every wrapper reads them from there.
 - Logging -> `packages/logger` (`Logger.for("<source>")`); the request's execution
   context -> `packages/async-context`. Both rest on `node:async_hooks`, so they are server
-  only - in `apps/web` only server code (a page, a Server Action, `instrumentation.ts`)
-  reaches them, never a client component.
+  only - in `apps/web` only server code (a page, a Server Action, a route handler) reaches
+  them, never a client component.
 - Never `apps/proxy`. It is local-only plumbing and ships nothing; a feature added
   there works in dev and vanishes in the cloud.
 
@@ -290,7 +290,7 @@ In `apps/api`:
   its keys - add one to the template in `src/env.ts` first, so a typo is a compile error.
   Values live in `.env`, never in `app-config.json` or any other Catalyst file, and
   nothing Catalyst-related belongs in the environment at all. The platform-injected reads
-  at module scope in `index.ts` and `framework/catalyst-logger.ts` are the exception.
+  in `index.ts` and in `@repo/logger`'s `CatalystLogOutput` are the exception.
   See `.claude/rules/general/environment.md`.
 
 ## Adding to the repo

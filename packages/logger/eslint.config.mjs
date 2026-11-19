@@ -1,3 +1,8 @@
-import config, { allowTestsIn } from "@repo/eslint-config";
+import config, { allowTestsIn, allowVendorNames } from "@repo/eslint-config";
 
-export default [...config, allowTestsIn(["unit"])];
+// Catalyst's log record names its timestamp `_zl_timestamp`, in the output and in its test.
+export default [
+  ...config,
+  allowVendorNames(["src/catalyst-log-output.ts", "test/unit/catalyst-log-output.test.ts"]),
+  allowTestsIn(["unit"]),
+];
