@@ -5,8 +5,9 @@ paths:
 
 # Component design
 
-Four rules for `apps/web`: a trigger owns what it opens, styling lives in shared
-components, each page decides its own width, and no wait ever looks stuck.
+Five rules for `apps/web`: a trigger owns what it opens, styling lives in shared
+components, each page decides its own width, no wait ever looks stuck, and whether a change
+asks "are you sure?" is decided per button, by the person you are working with.
 
 ## A trigger and what it opens are one component
 
@@ -43,7 +44,7 @@ export function InviteUserDialog() {
 - shadcn's `Dialog`, `AlertDialog`, `Sheet` and `Popover` are not vendored yet. Each
   arrives through `shadcn add` with its first use; they import from the `radix-ui` package
   already installed, so none brings a new runtime dependency. Whether a button that
-  changes data opens a confirmation is decided per button - see `consent.md`.
+  changes data opens a confirmation is decided per button - see the last section.
 
 ## Styling lives in shared components
 
@@ -112,3 +113,33 @@ The person waiting always sees that something is happening, and what.
 - A failed action ends in a toast the form raises, or a message on the field the server
   rejected (`forms.md`), so a wait always ends in either the content or a message - never in
   a loader that spins forever.
+
+## Ask before adding a confirm dialog
+
+Whether a button asks "are you sure?" is a product decision, made per button by the person
+you are working with - not something the code decides on its own.
+
+- **Before you build or change a button that changes stored data, ask whether it needs a
+  confirm dialog,** and build one only on a yes. Never add one unasked, and never remove one
+  without asking. Sign-up has been asked about: it needs none.
+- **That means** a button that creates, updates, removes, sends or publishes - anything that
+  calls a Server Action or a write. Not sign-in or sign-out, which change no stored data, and
+  not a button that only opens something, navigates, filters or sorts. When it is unclear: if
+  the change is still there after a reload, ask.
+- **Ask by naming the button and what it changes:** "The Delete invoice button removes the
+  invoice and its payments, and cannot be undone. Should it ask for confirmation first?"
+
+When the answer is yes:
+
+- **A popup** - shadcn's `AlertDialog`, owned by the same component as its button, as in the
+  first section - never inline text, a toast or `window.confirm()`. Review what
+  `shadcn add alert-dialog` changes before keeping it: it can offer to overwrite the vendored
+  `button.tsx` and add packages this app does not use.
+- **The title asks the action, naming its target** - "Delete invoice INV-42?", never "Are you
+  sure?" - and the description says what will happen, and plainly when it cannot be undone.
+- **Cancel has the focus when it opens,** so a stray Enter never confirms. The confirm button
+  repeats the verb - "Delete invoice", never "Yes" - with the destructive variant when the
+  change cannot be undone. While it runs, both buttons are disabled and the confirm button
+  shows a pending label.
+- **A form is checked first,** so the popup only asks about valid values. A form that already
+  opens in a popup gets no second one on top: its own title and submit button name the change.

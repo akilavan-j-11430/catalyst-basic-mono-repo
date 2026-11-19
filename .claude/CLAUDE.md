@@ -201,10 +201,8 @@ Topic rules live one-per-file in `.claude/rules/` and load automatically, in two
 - `forms.md` - every form: react-hook-form, its resolver, and how it calls a Server Action
   and shows the result.
 - `typography.md` - every font.
-- `component-design.md` - how a component is split, styled and laid out, and how it shows a
-  wait.
-- `consent.md` - before building a button that changes data, ask whether it needs a confirm
-  dialog.
+- `component-design.md` - how a component is split, styled and laid out, how it shows a
+  wait, and asking before adding a confirm dialog to a button that changes data.
 
 `.claude/rules/catalyst/` holds one rule per kind of Catalyst function - what goes inside
 it, how it is run locally, and its limits. Creating one is a skill (below):
