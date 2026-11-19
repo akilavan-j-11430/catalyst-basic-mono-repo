@@ -133,7 +133,7 @@ vi.mock("@zcatalyst/datastore", () => ({
 - The specifier must match the import in the code under test exactly. A mismatch does not
   fail - the real module runs.
 - `vi.mock` names the SDK as a string, so the ESLint ban on importing `@zcatalyst/*` outside
-  `catalyst/` still holds in tests.
+  `packages/catalyst-node` still holds in tests.
 
 A wrapper reads its app from the request's execution context, so a `catalyst-node` unit test
 runs the call through `inRequest(...)` (`test/in-request.ts`). It starts a context and sets

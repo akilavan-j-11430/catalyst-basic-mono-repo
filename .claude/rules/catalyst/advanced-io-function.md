@@ -1,3 +1,8 @@
+---
+paths:
+  - "apps/*/catalyst-config.json"
+---
+
 # Advanced I/O function
 
 An Advanced I/O function is an Express app built as `node-api/express-app.md` describes,

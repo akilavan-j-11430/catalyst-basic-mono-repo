@@ -1,5 +1,6 @@
 ---
 paths:
+  - "apps/*/catalyst-config.json"
   - "apps/*/src/signal-dispatcher.ts"
   - "apps/*/src/signals/**"
 ---

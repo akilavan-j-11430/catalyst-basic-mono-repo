@@ -1,3 +1,9 @@
+---
+paths:
+  - "apps/*/catalyst-config.json"
+  - "apps/*/src/index.ts"
+---
+
 # Function entry point
 
 `src/index.ts` is the entry point of every Catalyst function in this repo, whatever its

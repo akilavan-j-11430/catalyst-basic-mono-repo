@@ -64,7 +64,7 @@ Consumers must be built after these. Turborepo handles that via `dependsOn: ["^b
   table twice, and rather than in `catalyst-node`, which wraps the SDK for any solution.
   `packages/repositories` arrives with the first resource.
 - **A capability an app lacks becomes a method on the wrapper**, never an SDK call at the
-  call site. `catalyst/` is meant to be the whole list of what this repo asks of
+  call site. `packages/catalyst-node/src/` is meant to be the whole list of what this repo asks of
   Catalyst, so anything used from a route has to be visible there.
 - Node-only APIs (`node:async_hooks`, `fs`) belong in a server-only package -
   `async-context`, `logger`, `catalyst-node`. In `apps/web` only server code - a page, a

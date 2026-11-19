@@ -190,6 +190,8 @@ Topic rules live one-per-file in `.claude/rules/` and load automatically, one fo
 
 `.claude/rules/general/` holds the rules for the whole repo:
 - `catalyst-sdk.md` - every Catalyst call, and how few of them a solution makes.
+- `catalyst-wrappers.md` - how a wrapper inside `packages/catalyst-node` is written; loads
+  only there.
 - `outbound-http.md` - every call to a service outside this repo.
 - `logging.md` - every log line, and how each deployable injects `CatalystLogOutput` into the
   logger and flushes it on shutdown.
@@ -236,7 +238,9 @@ function. None ships today:
 - `signal-function.md` - one function for every Signals event, dispatching on its name.
 - `code-placement.md` - where an event's work goes, how it parses its data, and when it moves.
 
-Each `node-*` rule is scoped with `paths:` frontmatter to the files only that kind has.
+Every rule in `catalyst/` and `node-*/` is scoped with `paths:` frontmatter, so it loads only
+once a workspace of its kind exists - a function's `catalyst-config.json`, or files only that
+kind has. Before then, the skill that creates one points to it.
 
 Add a file to the folder it belongs to rather than growing this one. Give a rule `paths:`
 frontmatter when it applies to only part of the tree.
@@ -258,7 +262,7 @@ frontmatter when it applies to only part of the tree.
 - **A file earns its existence from a second caller or from a boundary, not from
   tidiness.** Something used in exactly one place lives where it is used; split it out
   when the second caller arrives, and let that caller tell you what the shape should be.
-  The exception is a seam - `catalyst/`, `src/execution-context.ts` - which exists so
+  The exception is a seam - `apps/web/src/catalyst/`, `src/execution-context.ts` - which exists so
   that everything passes through one place. A seam is
   right at one caller, because being the only route through is its whole job. Everything
   else - a validation rule, a formatter, a resolver - is not.
@@ -272,8 +276,8 @@ frontmatter when it applies to only part of the tree.
   response body before it is parsed, a caught `error`, a value the SDK itself leaves
   untyped. Narrow it at the first point you can, and type the result. What this rules out
   is `any`/`unknown` standing in for a type nobody looked up: derive it from the signature
-  that produces it, or declare it. `.claude/rules/general/catalyst-sdk.md` shows how when the
-  vendor types are awkward.
+  that produces it, or declare it. `.claude/rules/general/catalyst-wrappers.md` shows how when
+  the vendor types are awkward.
 
 In `apps/web`:
 

@@ -1,5 +1,6 @@
 ---
 paths:
+  - "apps/*/catalyst-config.json"
   - "apps/*/src/job-dispatcher.ts"
   - "apps/*/src/jobs/**"
 ---
@@ -88,35 +89,17 @@ export class JobDispatcher {
 
 ## A job
 
-```ts
-// src/jobs/reminder.ts
-import type { JobParams } from "@repo/catalyst-node/job";
-import { InputValidation } from "@repo/input-validation/input-validation";
-import { z } from "zod";
+A class in `src/jobs/<job-name>.ts`, named after its jobName in kebab-case, with a
+`static async run(params)` - `ReminderJob` in `code-placement.md` is the example, with how it
+parses its params and where its work goes.
 
-const reminderParams = z.object({
-  todoId: z.string({ error: "is required." }).min(1, "is required."),
-});
-
-/** Sends the reminder for one todo. */
-export class ReminderJob {
-  static async run(params: JobParams): Promise<void> {
-    const { todoId } = InputValidation.parse(reminderParams, params);
-    // repositories and handles, called as a route calls them
-  }
-}
-```
-
-- **One class per job**, with a `static async run(params)`. The file is named after the
-  jobName in kebab-case.
-- **Parse its own params first**, with a zod schema (`code-placement.md`). A param typed on
-  the handle (`Job.create<{ todoId: string }>`) is still a string the job has to check: the
-  dispatcher only knows `jobName`.
+- **Its params are strings it checks itself.** A param typed on the handle
+  (`Job.create<{ todoId: string }>`) is still a string, and the dispatcher only knows
+  `jobName`.
 - **It reaches Catalyst the way a route does**, through repositories and handles, which read
-  the app the entry point set. Only Admin is available, as described below.
-- **Only Admin is available.** No signed-in user starts a job, so the entry point sets only
-  the Admin app, and a wrapper that asks for User throws `SCOPE_UNAVAILABLE`. `Job` itself
-  uses Admin, so a job can submit another job.
+  the app the entry point set. No signed-in user starts a job, so that is the Admin app only,
+  and a wrapper that asks for User throws `SCOPE_UNAVAILABLE`. `Job` itself uses Admin, so a
+  job can submit another job.
 - **A retry runs it again.** Catalyst can rerun a failed job, so a job must be safe to run
   twice for the same params.
 

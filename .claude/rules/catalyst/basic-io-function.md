@@ -1,3 +1,9 @@
+---
+paths:
+  - "apps/*/catalyst-config.json"
+  - "apps/*/src/handler.ts"
+---
+
 # Basic I/O function
 
 A Basic I/O function does one thing: it reads its arguments, does one piece of work, and

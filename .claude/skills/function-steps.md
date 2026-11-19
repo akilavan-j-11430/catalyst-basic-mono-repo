@@ -1,8 +1,9 @@
 # Steps every function shares
 
 Every `add-*-fn` skill reads this file, after `deployable-steps.md` and before its own
-steps. What goes inside the function is in that kind's rule under
-`.claude/rules/catalyst/`, and every entry point follows
+steps. What goes inside the function is in that kind's rule - `.claude/rules/node-job/` for a
+Job function, `.claude/rules/node-event/` for a Signal function, `.claude/rules/catalyst/`
+for Basic I/O and Advanced I/O - and every entry point follows
 `.claude/rules/catalyst/function-entry-point.md`.
 
 1. **Generate its config once.** From the repo root:
