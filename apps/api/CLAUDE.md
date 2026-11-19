@@ -177,7 +177,7 @@ const user: NewUser = InputValidation.parse(newUserSchema, req.body);
 The field's path is put in front of the message, so write each message as what is wrong
 with the field - the client reads `emailId is not a valid email address.` A message on the
 object itself covers a body that is not an object at all. The schema lives in the route that
-uses it; shape only - a business rule belongs in a service (`.claude/rules/general/api-layers.md`).
+uses it; shape only - a business rule belongs in a service (`.claude/rules/general/repositories.md`).
 
 ## Errors and responses
 

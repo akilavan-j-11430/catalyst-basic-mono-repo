@@ -48,7 +48,7 @@ Where new work goes:
   whether they sit in a Data Store table or in a CRM; every Catalyst resource handle goes in
   its `resources.ts`. An outside service asked to *do* something - create a lead, send an
   email - is a client in its own `packages/<service>`. The package arrives with the first
-  resource; `.claude/rules/general/api-layers.md` has the rule.
+  resource; `.claude/rules/general/repositories.md` has the rule.
 - Logging -> `packages/logger` (`Logger.for("<source>")`); the request's execution
   context -> `packages/async-context`. Both rest on `node:async_hooks`, so they are server
   only - in `apps/web` only server code (a page, a Server Action, a route handler) reaches
@@ -196,7 +196,7 @@ Topic rules live one-per-file in `.claude/rules/` and load automatically, in two
 - `readable-code.md` - casing, naming, and when complexity is worth it.
 - `testing.md` - where tests live, how Catalyst is faked, and what to run before calling a
   change done.
-- `api-layers.md` - what a route, a service and a repository each do, when a service is
+- `repositories.md` - what a route, a service and a repository each do, when a service is
   worth adding, where repositories live, and whether an outside service is a repository or
   a client.
 
@@ -210,12 +210,17 @@ Topic rules live one-per-file in `.claude/rules/` and load automatically, in two
 - `component-design.md` - how a component is split, styled and laid out, how it shows a
   wait, and asking before adding a confirm dialog to a button that changes data.
 
-`.claude/rules/catalyst/` holds one rule per kind of Catalyst function - what goes inside
-it, how it is run locally, and its limits. Creating one is a skill (below):
+`.claude/rules/catalyst/` holds the rules every Catalyst function shares, and the kinds that
+have no folder of their own - what goes inside each, how it is run locally, and its limits.
+Creating one is a skill (below):
 - `function-entry-point.md` - the export, init, scope and logger every function gets right.
-- `job-function.md` - one function for every job, dispatching on `jobName`.
 - `advanced-io-function.md` - an Express app exported, never listening.
 - `basic-io-function.md` - a single handler, arguments in, one string out.
+
+`.claude/rules/node-job/` holds the rules for a Job function:
+- `job-function.md` - one function for every job, dispatching on `jobName`.
+
+`.claude/rules/node-event/` holds the rules for a Signal (Event) function:
 - `signal-function.md` - one function for every Signals event, dispatching on its name.
 
 Add a file to the folder it belongs to rather than growing this one. Give a rule `paths:`
@@ -308,7 +313,7 @@ That file is the only place a router mounts, so `src/app.ts` never changes. A ro
 calls Catalyst mounts `initCatalystScopes([...])` (`@repo/http-server/middleware`) ahead of its handler,
 naming the scopes it uses - `router.use` it instead when every route on the router needs them.
 The route stays thin - validate, call one operation, respond - and a business rule goes in
-a service only once there is one to hold. See `.claude/rules/general/api-layers.md`.
+a service only once there is one to hold. See `.claude/rules/general/repositories.md`.
 
 **A table** - declare its handle in `packages/repositories/src/resources.ts`, its
 domain type in `packages/types`, and a repository in
@@ -316,7 +321,7 @@ domain type in `packages/types`, and a repository in
 handle and maps rows to the domain type. Routes call the repository. The first one creates
 `packages/repositories` as a shared package (below), depending on `@repo/catalyst-node`, with
 `allowVendorNames` over its `src/` for the Catalyst column names. See
-`.claude/rules/general/api-layers.md`.
+`.claude/rules/general/repositories.md`.
 
 **An AppSail, a function or a Slate app** - a new deployable, so agree it with the user
 first, then pick the kind and run its skill in `.claude/skills/`:

@@ -6,7 +6,7 @@ description: Add a Catalyst Job function to this repo - the workspace, catalyst-
 # Add a Job function
 
 One Job function runs every job that names it as `jobTargetFunctionName`. What goes
-inside it is described in `.claude/rules/catalyst/job-function.md`. This skill creates it.
+inside it is described in `.claude/rules/node-job/job-function.md`. This skill creates it.
 
 1. **Agree it with the user.** It is a new deployable. Settle its name, which is often
    `job-executor`, and the first job it runs.

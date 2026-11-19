@@ -7,7 +7,7 @@ description: Add a Catalyst Signal (Event) function to this repo - the workspace
 
 One Signal function handles every event a Signals rule delivers to it. It routes each
 event to a handler by the event's `api_name`. What goes inside it is described in
-`.claude/rules/catalyst/signal-function.md`; this skill creates it.
+`.claude/rules/node-event/signal-function.md`; this skill creates it.
 
 1. **Agree it with the user.** It is a new deployable. Settle its name, the publisher, and
    the events it handles first.

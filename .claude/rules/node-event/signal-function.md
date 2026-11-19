@@ -1,7 +1,7 @@
 # Signal function
 
 A Signal function is an Event function that a Catalyst Signals rule targets. It follows
-the same shape as a job function (`job-function.md`): one function serves many events.
+the same shape as a job function (`node-job/job-function.md`): one function serves many events.
 Each event is sent to its own handler by the event's name, and an event no handler claims
 is an error.
 
@@ -108,7 +108,7 @@ export class CacheItemCreatedSignal {
 
 ## The entry point
 
-The entry point follows `job-function.md` and differs in three places:
+The entry point follows `node-job/job-function.md` and differs in three places:
 
 ```ts
 // src/index.ts - the parts that differ from the job entry point
@@ -159,7 +159,7 @@ app.post(
 
 The body is the event's `data` in camelCase, exactly as a handler receives it. Its paths,
 proxy route, port, `devDependency` on `express` and `dev` script all follow
-`job-function.md`.
+`node-job/job-function.md`.
 
 The dev server is the local loop - not `catalyst functions:execute`. It skips the
 delivery envelope and the camelCase conversion in `index.ts`, so check those with one real

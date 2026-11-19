@@ -53,7 +53,7 @@ export const reminderJob = Job.create<{ todoId: string }>({
 
 **Always `create`, never `new`.** The constructors are private precisely so that this file
 is the only seam. Never declare a second handle for a resource that already has one. A
-table handle is imported only by that table's repository (`api-layers.md`); a
+table handle is imported only by that table's repository (`repositories.md`); a
 bucket, cache or job handle may be imported wherever it is needed:
 
 ```ts
@@ -67,7 +67,7 @@ const storedTodo = await todoTable.runIn(CatalystScope.User).getRow(todoId);
 It lives in a package rather than in an app because the web app is one deployable among
 however many a solution grows, and two of them reaching the same table must not name it
 twice. It is not in `catalyst-node` because the handles name this solution's resources, and
-that package wraps the SDK for any solution (`api-layers.md`).
+that package wraps the SDK for any solution (`repositories.md`).
 
 The four factories differ, because the resources do:
 
