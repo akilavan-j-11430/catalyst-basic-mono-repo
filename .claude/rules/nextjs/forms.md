@@ -63,3 +63,8 @@ function submit(user: NewUser): void {
 - **The wait shows from the click**: the form swaps itself for `Loader` while `isPending`,
   as `SignUpForm` does, or disables its submit button with a pending label
   (`component-design.md`).
+- **A write the page shows is re-read by the action.** After a create, update or delete that
+  changes what a page lists, the action calls `revalidatePath("<that page's path>")` (`next/cache`)
+  before it returns, so the page's Server Component reads again in the same round trip.
+  Without it the list stays as it was until a reload. Sign-up changes nothing a page shows,
+  so `registerUser` has none.
