@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useTransition } from "react";
 import {
   useForm,
   type FieldErrors,
@@ -10,9 +10,9 @@ import {
 import { toast } from "sonner";
 import type { NewUser } from "@repo/types/user";
 import { registerUser } from "@/app/(auth)/sign-up/register-user";
-import { ConfirmChange } from "@/components/shared/confirm-change";
 import { FormField } from "@/components/shared/form-field";
 import { Button } from "@/components/ui/button";
+import { Loader } from "@/components/shared/loader";
 import { FieldGroup } from "@/components/ui/field";
 
 const EMPTY: NewUser = { firstName: "", lastName: "", emailId: "" };
@@ -65,14 +65,11 @@ export function SignUpForm() {
     formState: { errors },
   } = useForm<NewUser>({ resolver: resolveSignUp, defaultValues: EMPTY });
   const [isPending, startTransition] = useTransition();
-  // Valid values waiting for consent; the popup is open while this is set.
-  const [userToRegister, setUserToRegister] = useState<NewUser | null>(null);
 
-  function createAccount(user: NewUser): void {
+  function submit(user: NewUser): void {
     startTransition(async () => {
       try {
         const result = await registerUser(user);
-        setUserToRegister(null);
         if (!result.ok) {
           // The server's own check, on a field the browser's rules let through.
           if (result.field in EMPTY) {
@@ -87,16 +84,18 @@ export function SignUpForm() {
         });
         reset(EMPTY);
       } catch {
-        setUserToRegister(null);
         toast.error("Your account could not be created. Please try again.");
       }
     });
   }
 
+  if (isPending) {
+    return <Loader label="Creating your account" />;
+  }
+
   return (
     <form
-      // The form is checked first, so the popup only ever asks about valid values.
-      onSubmit={handleSubmit(setUserToRegister)}
+      onSubmit={handleSubmit(submit)}
       noValidate
       autoComplete="off"
     >
@@ -129,16 +128,6 @@ export function SignUpForm() {
           Create account
         </Button>
       </FieldGroup>
-      <ConfirmChange
-        open={userToRegister !== null}
-        onOpenChange={(open) => !open && setUserToRegister(null)}
-        title="Create your account?"
-        description={`We will send a confirmation email to ${userToRegister?.emailId ?? ""}. Open it to set your password.`}
-        confirmLabel="Create account"
-        pendingLabel="Creating account..."
-        pending={isPending}
-        onConfirm={() => userToRegister && createAccount(userToRegister)}
-      />
     </form>
   );
 }
