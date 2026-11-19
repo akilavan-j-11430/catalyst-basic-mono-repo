@@ -322,8 +322,9 @@ worth one at all is `.claude/rules/node-api/code-placement.md`:
 | a process that runs past 15 minutes, holds WebSockets, or keeps state between requests | an AppSail, browser-facing or not | `add-appsail` |
 | a second frontend on its own domain | a Slate app | `add-slate` |
 
-Cron functions are deprecated and not used - schedule a job with `submitOneTimeCron` on
-its `Job` handle. A Job or Signal function stops at 15 minutes and a Basic I/O or Advanced
+Cron functions are deprecated and not used - run a job once, later, with `submitOneTimeCron` on
+its `Job` handle, and on a schedule from a cron set up in the Console
+(`.claude/rules/node-job/job-function.md`, "A recurring job"). A Job or Signal function stops at 15 minutes and a Basic I/O or Advanced
 I/O function at 30 seconds; an AppSail has no timeout but is billed for uptime. The steps
 all kinds share are in `.claude/skills/deployable-steps.md` and
 `.claude/skills/function-steps.md`, which each skill reads first.

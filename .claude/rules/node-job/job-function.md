@@ -14,8 +14,8 @@ Creating the workspace, its bundle, `catalyst.json` and the `deploy` flag is cov
 the `add-job-fn` skill. This file covers the function's wiring; where a job's work goes and
 how it checks its params is `code-placement.md`.
 
-Cron functions are deprecated and not used. To run a job later, use
-`submitOneTimeCron` on its `Job` handle.
+Cron functions are deprecated and not used. To run a job once, later, use
+`submitOneTimeCron` on its `Job` handle; to run one on a schedule, see "A recurring job".
 
 ## Layout
 
@@ -225,6 +225,23 @@ curl -X POST http://localhost:3001/job-executor/reminder \
 The dev server is the local loop - not `catalyst functions:execute`. It proves the job
 logic; a real submission still has to be checked after deploying, because it does not
 exercise the job pool, the deployed environment or the timing.
+
+## A recurring job
+
+A job that runs on a schedule - nightly, every five minutes - runs from a cron set up once
+per environment in the Console (**Job Scheduling -> Cron**) or through the Catalyst MCP
+(`CatalystbyZoho_Create_Cron_Job`), like a table. No code creates it at runtime.
+
+- **Type:** Calendar for a fixed clock time (daily, monthly, yearly), Cron Expression for
+  anything else. Periodic fires once the moment it is created or updated.
+- **Target:** this function, in the job pool its handles name.
+- **Params: `jobName` is required.** A cron's own job name is not passed to the function,
+  so the dispatcher sees only what the cron's params hold. Put the handle's `jobName` there,
+  plus whatever the job parses.
+- **Set it up in each environment** - Development and Production keep their own crons - and
+  write it down beside the job's handle in `resources.ts`, as a comment naming the cron and
+  its schedule, so a reader of the code knows it exists.
+- **Never put a secret in its params.** Reading a cron back returns its params in plain text.
 
 ## Limits
 
