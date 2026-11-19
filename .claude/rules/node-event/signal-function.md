@@ -64,6 +64,8 @@ import { CacheItemCreatedSignal } from "@/signals/cache-item-created";
 
 /** One event of a delivery, after camelCase conversion. */
 export interface SignalEvent {
+  /** The same on every delivery of this event, so a retry can be told apart. */
+  eventId: string;
   apiName: string;
   data: Record<string, unknown>;
 }
@@ -73,13 +75,13 @@ export class SignalDispatcher {
   private static readonly logger = Logger.for("signal-dispatcher");
   private static readonly handlers: Record<
     string,
-    (data: Record<string, unknown>) => Promise<void>
+    (data: Record<string, unknown>, eventId: string) => Promise<void>
   > = {
     [CacheItemCreatedSignal.apiName]: CacheItemCreatedSignal.run,
   };
 
   static async run(signalEvent: SignalEvent): Promise<void> {
-    const { apiName, data } = signalEvent;
+    const { eventId, apiName, data } = signalEvent;
     if (!apiName) {
       throw new Error("Signal event carries no api_name.");
     }
@@ -87,13 +89,14 @@ export class SignalDispatcher {
     if (!handle) {
       throw new Error(`No handler is registered for event "${apiName}".`);
     }
-    SignalDispatcher.logger.info(`Handling event ${apiName}`);
-    await handle(data);
+    SignalDispatcher.logger.info(`Handling event ${apiName} (${eventId})`);
+    await handle(data, eventId);
   }
 }
 ```
 
-Each handler is a class with a `static readonly apiName` and a `static async run(data)`.
+Each handler is a class with a `static readonly apiName` and a `static async run(data,
+eventId)`.
 The class holds the event name, so the dispatcher never writes it as a string literal:
 
 ```ts
@@ -101,7 +104,7 @@ The class holds the event name, so the dispatcher never writes it as a string li
 export class CacheItemCreatedSignal {
   static readonly apiName = "cache_item_created";
 
-  static async run(data: Record<string, unknown>): Promise<void> {
+  static async run(data: Record<string, unknown>, eventId: string): Promise<void> {
     // parse `data` with this event's schema, then call repositories and handles
   }
 }
@@ -113,7 +116,8 @@ export class CacheItemCreatedSignal {
   the Admin app.
 - **A handler must be safe to run twice** (idempotent consumer). Signals retries a failed
   delivery under the rule's retry policy, so a handler can see the same event again.
-  Use the event's `id` to tell a repeat when the work cannot simply be done twice.
+  When the work cannot simply be done twice, record `eventId` with it and skip an event
+  already recorded.
 
 ## The entry point
 
@@ -122,7 +126,7 @@ The entry point follows `node-job/job-function.md` and differs in three places:
 ```ts
 // src/index.ts - the parts that differ from the job entry point
 interface SignalsDelivery {
-  events: { event_config: { api_name: string }; data: Record<string, unknown> }[];
+  events: { id: string; event_config: { api_name: string }; data: Record<string, unknown> }[];
 }
 
 interface SignalsEvent {
@@ -136,6 +140,7 @@ await runWithContext(execution, async () => {
   // One at a time, so a failure names the event that caused it.
   for (const signalEvent of events) {
     await SignalDispatcher.run({
+      eventId: signalEvent.id,
       apiName: signalEvent.eventConfig.apiName,
       data: signalEvent.data,
     });
@@ -160,13 +165,18 @@ app.post(SyncPath.Sync + SyncPath.EventName, async (req, res) => {
   const execution = new ExecutionContext({ executionId: randomUUID(), extras: {} });
   await runWithContext(execution, async () => {
     await CatalystSession.setApp(req.headers, CatalystScope.Admin);
-    await SignalDispatcher.run({ apiName: req.params.eventName, data: req.body });
+    await SignalDispatcher.run({
+      eventId: randomUUID(),
+      apiName: req.params.eventName,
+      data: req.body,
+    });
   });
   res.json({ eventName: req.params.eventName });
 });
 ```
 
-The body is the event's `data` in camelCase, exactly as a handler receives it. Its
+The body is the event's `data` in camelCase, exactly as a handler receives it, and each
+call gets a new `eventId`. Its
 execution context, its path file (`SyncPath` from `@/sync-path`), proxy route, port,
 `devDependency` on `express` and `dev` script all follow `node-job/job-function.md`.
 

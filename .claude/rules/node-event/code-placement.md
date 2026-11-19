@@ -14,7 +14,7 @@ event's work goes and when it moves. The moves are the ones a Node API makes
 
 | You need | It starts in |
 |---|---|
-| an event handled | a class in `src/signals/<event-name>.ts` with its `static readonly apiName` and a `static async run(data)`, and one line in the dispatcher |
+| an event handled | a class in `src/signals/<event-name>.ts` with its `static readonly apiName` and a `static async run(data, eventId)`, and one line in the dispatcher |
 | its data checked | a zod schema in the handler's file, through `InputValidation.parse` |
 | the work | the handler's `run` itself |
 | data | a repository in `@repo/repositories`, or a bucket, cache or job handle, in Admin scope |
@@ -38,7 +38,7 @@ const cacheItemCreatedData = z.object({
 export class CacheItemCreatedSignal {
   static readonly apiName = "cache_item_created";
 
-  static async run(data: Record<string, unknown>): Promise<void> {
+  static async run(data: Record<string, unknown>, eventId: string): Promise<void> {
     const { cacheName, segmentDetails } = InputValidation.parse(cacheItemCreatedData, data);
     // repositories and handles, called as a route calls them
   }
