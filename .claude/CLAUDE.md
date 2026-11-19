@@ -191,6 +191,8 @@ Topic rules live one-per-file in `.claude/rules/` and load automatically, in two
 `.claude/rules/general/` holds the rules for the whole repo:
 - `catalyst-sdk.md` - every Catalyst call, and how few of them a solution makes.
 - `outbound-http.md` - every call to a service outside this repo.
+- `logging.md` - every log line, and how each deployable injects `CatalystLogOutput` into the
+  logger and flushes it on shutdown.
 - `environment.md` - every environment variable.
 - `code-design.md` - every class, and the pattern it follows.
 - `readable-code.md` - casing, naming, and when complexity is worth it.
@@ -300,7 +302,7 @@ In `apps/api`:
   `toErrorResponse` (`@repo/http-server/response`) so payloads share one envelope.
 - Log through `Logger.for("<source>")` (`@repo/logger/logger`), not `console`. Each line is
   a block naming its source and, inside a request, the execution id and the line's order.
-  `index.ts` configures it once - see `apps/api/CLAUDE.md`.
+  `index.ts` injects `CatalystLogOutput` once - see `.claude/rules/general/logging.md`.
 - Call external services through `HttpClient` (`@repo/http-client/http-client`), never
   `fetch` or another client directly. A client that should carry the request's execution
   id as `app-execution-id` passes it through its `headers` resolver. See

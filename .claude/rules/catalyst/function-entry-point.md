@@ -21,8 +21,8 @@ they all must get right.
 - **Admin is the only scope wherever no signed-in user made the call.** That is always
   the case for a job or an event. A wrapper that asks for User throws `SCOPE_UNAVAILABLE`.
   The fix is to add an Admin path to the wrapper, not to build a User app.
-- **Logging goes through `Logger.for("<source>")`** (`@repo/logger/logger`). The entry point
-  configures it once with `output: CatalystLogOutput`, as every app does: it
+- **Logging goes through `Logger.for("<source>")`** (`@repo/logger/logger`,
+  `general/logging.md`). The entry point configures it once with `output: CatalystLogOutput`, as every app does: it
   writes to the log collector when Catalyst hands the function one, and to stdout when it does
   not. Which a deployed function gets, and whether Catalyst collects its stdout, has not been
   checked yet.

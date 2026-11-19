@@ -31,15 +31,8 @@ The Express plumbing - `initExecutionContext`, `initCatalystScopes`, `errorHandl
 `HttpError` and the response builders - lives in `@repo/http-server`, shared with every
 other app that serves HTTP. It is imported from there, never copied.
 
-`index.ts` configures the logger before anything logs:
-`Logger.configure({ timeZone: env.optional("TZ"), output: CatalystLogOutput })`.
-`CatalystLogOutput` (`@repo/logger/catalyst-log-output`) frames each block for the log
-collector AppSail hands the app as `X_ZOHO_SPARKLET_LOG_FD`; outside AppSail there is none, and
-the logger writes to stdout. The web app's `src/server-logging.ts` configures it the same way.
-It writes through a non-blocking stream, so on `SIGTERM` or `SIGINT` `index.ts` shuts down
-gracefully - stops taking requests, lets those in flight finish, `await
-CatalystLogOutput.flush()`, then exits - and the last lines are not lost. The web app, whose
-shutdown Next runs, flushes alongside it from `src/server-logging.ts`, as a best effort.
+`index.ts` injects `CatalystLogOutput` into the logger before anything logs, and flushes it
+on `SIGTERM` or `SIGINT` after the requests in flight finish - `.claude/rules/general/logging.md`.
 
 ## Middleware order
 
@@ -226,20 +219,8 @@ catch (error) {
 
 ## Logging
 
-Use `Logger.for("<source>")` from `@repo/logger/logger`, not `console` - one per file, at
-module scope, named for the part of the app that logs:
-
-```ts
-const logger = Logger.for("billing");
-
-logger.info("Invoice sent", { invoiceId }, status);
-```
-
-Each call writes one block. Every value goes on its own line under `Content:` - objects as
-JSON, an Error with its stack. Inside a request the block also carries the execution id
-and the line's order within that request, read from the async context; outside one, both
-lines are left out. `Logger.configure` runs once in `index.ts` and throws after the first
-line, so never call it anywhere else.
+`Logger.for("<source>")` from `@repo/logger/logger`, one per file, never `console` -
+`.claude/rules/general/logging.md`.
 
 ## Build
 

@@ -98,10 +98,8 @@ export const registerUser = withCatalystFn(
 `RequestSession.isSignedIn` check, but a layout does not re-run on a client-side navigation,
 so each page names its own scopes as well.
 
-`@repo/logger` is configured in `src/server-logging.ts`, which `execution-context.ts` imports.
-Not in `instrumentation.ts`: Next bundles it apart from the pages, each bundle gets its own copy
-of the logger, and the pages' copy would never be configured. Every entry point imports
-`execution-context.ts`, so every copy is configured before it writes a line.
+`@repo/logger` gets `CatalystLogOutput` in `src/server-logging.ts`, which `execution-context.ts`
+imports - `general/logging.md` says why there and not in `instrumentation.ts`.
 
 ## When it moves
 
