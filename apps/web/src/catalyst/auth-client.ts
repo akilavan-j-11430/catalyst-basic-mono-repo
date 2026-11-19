@@ -1,4 +1,5 @@
 import type { Authentication } from "@zcatalyst/auth/web";
+import { AppUrl } from "@/lib/app-url";
 
 /**
  * Facade: everything this app asks of the Catalyst web SDK - showing the sign-in form and
@@ -11,22 +12,26 @@ export class AuthClient {
 
   /** Renders Catalyst's sign-in form into the element with `containerId`, styled by the
    *  stylesheet at `paths.stylesheet`, and sends the person to `paths.afterSignIn` once
-   *  signed in. */
+   *  signed in.
+   *
+   *  Every URL handed to the SDK is resolved inside Catalyst's own iframe and by its redirect
+   *  endpoint, neither of which shares this app's origin, so a bare path would resolve against
+   *  theirs - hence `AppUrl.absolute` on each one, here and in `signOut`. */
   static async showSignIn(
     containerId: string,
     paths: { afterSignIn: string; stylesheet: string },
   ): Promise<void> {
     const auth = await AuthClient.session();
     await auth.signIn(containerId, {
-      redirectUrl: AuthClient.appUrl(paths.afterSignIn),
-      cssUrl: AuthClient.appUrl(paths.stylesheet),
+      redirectUrl: AppUrl.absolute(paths.afterSignIn),
+      cssUrl: AppUrl.absolute(paths.stylesheet),
     });
   }
 
   /** Signs out and sends the browser to `path`. */
   static async signOut(path: string): Promise<void> {
     const auth = await AuthClient.session();
-    await auth.signOut(AuthClient.appUrl(path));
+    await auth.signOut(AppUrl.absolute(path));
   }
 
   /**
@@ -43,15 +48,5 @@ export class AuthClient {
       });
     }
     return AuthClient.pendingSession;
-  }
-
-  /**
-   * Every URL handed to the SDK is resolved inside Catalyst's own iframe and by its
-   * redirect endpoint, neither of which shares this app's origin, so a bare path would
-   * resolve against theirs. Prefixing the current origin keeps one call site correct on
-   * localhost and on the Slate domain.
-   */
-  private static appUrl(path: string): string {
-    return new URL(path, window.location.origin).toString();
   }
 }
