@@ -4,10 +4,9 @@ Reverse proxy that gives local development a single origin. Runs as the Catalyst
 AppSail named `proxy`, and is the only service the browser talks to directly.
 
 **This app is never deployed.** It exists for local development only. The cloud has no
-equivalent: there the web app reads and writes on its own server and calls no API (see the
-root `.claude/CLAUDE.md`). It is declared in
-`catalyst.json` so `catalyst serve` can run it; `pnpm deploy` ships only `appsail:api`
-and `slate:web`. Do not add it to the deploy list.
+equivalent: there the web app reads and writes on its own server (see the root
+`.claude/CLAUDE.md`). It is declared in `catalyst.json` so `catalyst serve` can run it;
+`pnpm deploy` ships only `slate:web`. Do not add it to the deploy list.
 
 Port: `X_ZOHO_CATALYST_LISTEN_PORT` when the CLI injects it (4600 in practice), else
 **3000** as a standalone fallback. Under `catalyst serve` the CLI fronts it on a
@@ -16,26 +15,20 @@ the entry point, not 3000.
 
 ## Routing
 
-`src/index.ts` registers two `http-proxy-middleware` instances, in order:
+`src/index.ts` registers one `http-proxy-middleware` instance, `webProxy`, which sends every
+path to `http://localhost:4000` - `apps/web` (Next.js). It sets `changeOrigin: true` and
+`ws: true` for HMR, and the `server.on("upgrade")` handler hands every WebSocket upgrade to
+it. There is no path rewriting.
 
-| Path | Upstream | Serves |
-|------|----------|--------|
-| `/api` | `http://localhost:8000` | `apps/api` (Express) |
-| everything else | `http://localhost:4000` | `apps/web` (Next.js) |
-
-Both set `changeOrigin: true`. The catch-all has `ws: true` for HMR. WebSocket
-upgrades are dispatched in the `server.on("upgrade")` handler using the same
-`/api` prefix test, so `/api` upgrades reach the API and all others reach Next.js.
-
-There is no path rewriting - `/api/foo` arrives at the API as `/api/foo`, which is
-what `apps/api` mounts its middleware on.
+An app added later that serves HTTP - an API app, a function's dev server - gets its own
+instance for its prefix, registered before `webProxy`, which takes every other path.
+`.claude/rules/general/routing.md` shows it.
 
 ## Auth
 
 `app-config.json` sets `catalyst_auth: true` with `login_redirect: "/"`. Locally, login
-is enforced here. `apps/api` does not set it: locally it is reached only through this
-proxy, and in the cloud each of its routes guards itself with
-`initCatalystScopes([CatalystScope.User])`.
+is enforced here. Nothing sits in front of a deployed app, so in the cloud each page, action
+or route guards itself by naming the scopes it reads.
 
 ## Running
 
@@ -43,7 +36,7 @@ There is no `dev` script - the proxy runs from bundled output through the Cataly
 From the repo root:
 
 ```bash
-pnpm dev      # everything: this proxy via catalyst serve, plus api, web, watchers
+pnpm dev      # everything: this proxy via catalyst serve, plus web and the package watchers
 pnpm serve    # this proxy alone
 ```
 
@@ -55,9 +48,9 @@ Running `pnpm serve` yourself is unaffected: a terminal takes the interactive pa
 
 Because it serves the bundle, **edits to `src/` require a re-bundle** to take effect.
 
-Running `node appsails/proxy/index.js` by hand works for the frontend but breaks the
-API: the Catalyst SDK parses project details off request headers, and only
-`catalyst serve` injects them. Every `/api` call 500s with `app/invalid_project_details`.
+Running `node appsails/proxy/index.js` by hand serves the pages but breaks every Catalyst
+read: the Catalyst SDK parses project details off request headers, and only
+`catalyst serve` injects them, so each fails with `app/invalid_project_details`.
 
 ## Build output
 

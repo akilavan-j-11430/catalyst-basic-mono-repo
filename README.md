@@ -11,12 +11,9 @@ minutes.
 - **Server-side data in the web app**: pages read Catalyst in their Server Components and
   forms write through Server Actions, on the modular `@zcatalyst/*` SDKs, with a
   per-request execution context and structured logging.
-- An **Express 5** API, deployed as a Catalyst AppSail, with the same execution context and
-  logging and a consistent response shape. The web app no longer calls it; it is kept until a
-  Slate deploy proves the web app's server receives the Catalyst headers.
 - A **reverse proxy** AppSail, for local development only, that gives the stack a single
   origin and enforces Catalyst login at the edge.
-- **Shared TypeScript packages** for response types, runtime utilities, and a common
+- **Shared TypeScript packages** for shared types, runtime utilities, and a common
   tsconfig - wired up with pnpm workspaces.
 - A **Turborepo pipeline** so packages build in dependency order, plus one-command bundle
   and deploy.
@@ -42,22 +39,22 @@ and done consistently.
               +-----------------------------+
               |  :4600   proxy  (local only)|   catalyst_auth: true
               +-----------------------------+
-                     |                  |
-          /api/*     |                  |    /*
-                     v                  v
-        +---------------------+   +----------------------+
-        |  :8000   api        |   |  :4000   web         |
-        |  Express 5          |   |  Next.js 16          |
-        |  AppSail            |   |  Slate               |
-        +---------------------+   +----------------------+
+                            |
+                            |   /*
+                            v
+              +-----------------------------+
+              |  :4000   web                |
+              |  Next.js 16                 |
+              |  Slate                      |
+              +-----------------------------+
 ```
 
-**Why the proxy exists, and why it is local only.** Locally the proxy puts the web app
-and the API behind one origin. The browser's session cookie and the Catalyst headers
-`catalyst serve` injects then reach the API with no extra setup, and `catalyst_auth:
-true` enforces login once, at the edge. It is listed in `catalyst.json` so `catalyst
-serve` can run it, and `pnpm deploy` ships only `appsail:api` and `slate:web`. **Do not
-add it to the deploy list.**
+**Why the proxy exists, and why it is local only.** Locally the proxy puts the web app -
+and any app added later that serves HTTP - behind one origin. The browser's session cookie
+and the Catalyst headers `catalyst serve` injects then reach the app with no extra setup,
+and `catalyst_auth: true` enforces login once, at the edge. It is listed in `catalyst.json`
+so `catalyst serve` can run it, and `pnpm deploy` ships only `slate:web`. **Do not add it to
+the deploy list.**
 
 **The web app reads and writes on its own server.** A page reads Catalyst in its Server
 Component and a form writes through a Server Action, both on Next's server, with the
@@ -65,18 +62,20 @@ Catalyst app built from the `x-zc-*` headers on the request. The browser calls n
 ours, so there is no API URL, token or CORS to set up for it.
 
 Slate serves the web app from `*.onslate.com`. Locally `catalyst serve` adds those headers;
-in the cloud that rests on Slate passing them to Next's server, which a Slate deploy has
-still to prove. Until it does, the API - AppSail at `*.catalystappsail.com` - and the
-proxy's `/api` route stay, unused by the web app. There nothing sits in front of the API,
-so each route enforces its own login: a route that mounts
-`initCatalystScopes([CatalystScope.User])` answers 401 to a caller with no valid token.
+in the cloud that rests on Slate passing them to Next's server, which is still unproven and
+is checked on the first Slate deploy. There is no fallback app behind it.
+
+**No API app ships.** A caller outside the web app - a mobile app, a webhook, another
+service - starts at a `route.ts` in `apps/web`. An Advanced I/O function or an AppSail is
+added only when that cannot serve the caller; `.claude/rules/node-api/code-placement.md`
+says when.
 
 **Two things to internalise before you start.** First, the entry port is assigned by
 the Catalyst CLI - it takes the first free port from 3000 upward, so in practice it is
 usually **3001**. Read the URL `catalyst serve` prints rather than assuming 3000.
 Second, you must go *through* `catalyst serve`: it injects the Catalyst project headers
-that the SDK parses off each request. Hitting the proxy or the API directly serves the
-frontend fine but makes every `/api` call fail with `app/invalid_project_details`.
+that the SDK parses off each request. Hitting the proxy or `:4000` directly serves the
+static parts fine but makes every Catalyst read fail with `app/invalid_project_details`.
 
 ---
 
@@ -84,7 +83,7 @@ frontend fine but makes every `/api` call fail with `app/invalid_project_details
 
 | Requirement | Why |
 |---|---|
-| **Node.js 24** | The API AppSail declares `"stack": "node24"` in `app-config.json`. Matching locally avoids surprises at deploy time. |
+| **Node.js 24** | The proxy AppSail declares `"stack": "node24"` in `app-config.json`, as every AppSail and function the skills add does. Matching locally avoids surprises at deploy time. |
 | **pnpm 10.28.1** | Pinned via `packageManager` in the root `package.json`. `corepack enable` will honour it. |
 | **Catalyst CLI** | `npm install -g zcatalyst-cli` |
 | **A Catalyst account** | `catalyst login` (one time, opens a browser) |
@@ -116,13 +115,13 @@ at the repo root, holding your project ID, environment, and domain. That file is
 you never commit it.
 
 Do not confuse it with `catalyst.json`, which *is* committed. That one declares what
-this repo deploys (two AppSails and one Slate app) and is the same for everybody.
+this repo runs and deploys (the local-only proxy AppSail and one Slate app) and is the same
+for everybody.
 
 **3. Set up environment variables**
 
 ```bash
 cp .env.example .env
-cp apps/api/.env.example apps/api/.env
 cp apps/web/.env.example apps/web/.env
 ```
 
@@ -148,8 +147,6 @@ Values this repo's own code reads. Each is a key on the owning app's template - 
 
 | Variable | Owner | Purpose |
 |---|---|---|
-| `AUTH_REDIRECT_URL` | `apps/api` | Where Catalyst sends a new user from the confirmation email. Locally the origin `catalyst serve` prints, usually `http://localhost:3001/`. |
-| `TZ` | `apps/api` | Timezone for log timestamps. Defaults to `Asia/Kolkata`. |
 | `TZ` | `apps/web` | Timezone for the web server's log timestamps. Optional. |
 
 These never go in `app-config.json` or any other Catalyst file - that file is committed,
@@ -162,12 +159,11 @@ pnpm dev
 ```
 
 One command starts everything: it bundles the proxy, runs `catalyst serve` in front of
-it, and starts the API, the web app, and the shared-package watchers. You should see
-something close to:
+it, and starts the web app and the shared-package watchers. You should see something
+close to:
 
 ```
 web:dev:   - Local:   http://localhost:4000
-api:dev:   http://localhost:8000
 
  >>>>>>>>>>>>>> AppSail <<<<<<<<<<<<<<
  proxy: http://localhost:3001          <- open this one
@@ -180,27 +176,11 @@ injected into the proxy process, and `3001` is where the CLI fronts it for you.
 **5. Open the URL the CLI printed**
 
 Look for the `proxy:` line in the output - typically `http://localhost:3001`. Not
-`:4000`, and not necessarily `:3000`. That entry point is the only address that routes
-both the page and the API. You should get the Next.js starter page.
-
-Confirm the API is wired up too, substituting the port you were given:
-
-```bash
-curl http://localhost:3001/api/v1/ping
-# {"data":{"message":"pong"},"status":"success"}
-```
-
-That response proves the whole chain: the proxy reached the API, `catalyst serve`
-supplied the project headers, the execution context was created, and the shared
-response envelope was applied. `apps/api/src/routes/ping.ts` is the route - copy it as
-the shape for your own.
-
-An unknown path returns the matching error envelope:
-
-```bash
-curl http://localhost:3001/api/v1/nope
-# {"status":"error","message":"The requested url does not exist."}
-```
+`:4000`, and not necessarily `:3000`. That entry point is the only address that carries
+the Catalyst headers. Sign in, and the home page reads your account from Catalyst on the
+server. That proves the whole chain: `catalyst serve` supplied the project headers, and the
+page's execution context built the Catalyst app from them. `apps/web/src/app/(app)/page.tsx`
+is the page - copy it as the shape for your own.
 
 ---
 
@@ -210,17 +190,14 @@ curl http://localhost:3001/api/v1/nope
 .
 |-- apps/
 |   |-- proxy/          reverse proxy   -> local only, never deployed
-|   |-- api/            Express API     -> AppSail "api"    :8000
 |   `-- web/            Next.js app     -> Slate "web"      :4000
 |-- packages/
-|   |-- routing/            @repo/routing            route path segments
-|   |-- types/              @repo/types              shared API response shapes
+|   |-- types/              @repo/types              shapes two workspaces use
 |   |-- async-context/      @repo/async-context      the execution context of the request in flight
 |   |-- logger/             @repo/logger             Logger, one block per line
 |   |-- catalyst-node/      @repo/catalyst-node      Catalyst wrappers and CatalystSession
 |   |-- env/                @repo/env                defineEnv, each app's declared variables
 |   |-- http-client/        @repo/http-client        HttpClient, for Node and the browser
-|   |-- http-server/        @repo/http-server        shared Express middleware and responses
 |   |-- input-validation/   @repo/input-validation   zod-checked input, InvalidInputError
 |   |-- case-conversion/    @repo/case-conversion    vendor keys -> camelCase
 |   |-- testing/            @repo/testing            shared Vitest config
@@ -235,11 +212,9 @@ curl http://localhost:3001/api/v1/nope
 
 | Workspace | Job |
 |---|---|
-| `apps/proxy` | Local development only. Routes `/api` to the API and everything else to the web app, including WebSocket upgrades for HMR. Enforces Catalyst login. Never deployed. |
-| `apps/api` | Express API. Establishes a per-request execution context, sets the request's Catalyst apps on it, times requests, and maps typed errors to HTTP statuses. |
-| `apps/web` | Next.js frontend. Calls the API with relative `/api/...` paths. |
-| `@repo/routing` | `ApiPath` segments, combined with `+` - the API mounts them and the web app calls them, so no path is a string literal in either. |
-| `@repo/types` | `RecordResponse`, `PagedRecordResponse`, `ErrorResponse` - imported by both the API and the web app so the contract is written once. |
+| `apps/proxy` | Local development only. Routes every path to the web app, including WebSocket upgrades for HMR. Enforces Catalyst login. Never deployed. |
+| `apps/web` | Next.js frontend. Pages read Catalyst in their Server Components and forms write through Server Actions, on its own server. |
+| `@repo/types` | Shapes two workspaces use - the user shapes, and the HTTP response `HttpClient` returns - written once. |
 | `@repo/async-context` | `ExecutionContext` over `AsyncLocalStorage` - the execution id and extras of the request in flight. |
 | `@repo/logger` | `Logger.for(source)` on pino - each line a block naming its source and, inside a request, the execution id and order. |
 | `@repo/env` | `defineEnv` - each app declares the variables it reads, so a typo is a compile error and an unset one throws `MissingEnvVariableError`. |
@@ -259,23 +234,23 @@ All run from the repo root.
 | Command | Expands to | When you want it |
 |---|---|---|
 | `pnpm dev` | `concurrently ... "pnpm run serve < /dev/null" "turbo run dev"` | Day-to-day. Everything at once. Open the URL it prints. |
-| `pnpm serve` | `turbo run bundle --filter=proxy && catalyst serve --only appsail:proxy` | The entry point alone, against your own already-running api/web. |
-| `pnpm build` | `turbo build` | Compile everything - `src/` only; tests are type-checked by `pnpm typecheck`. `tsc --build tsconfig.build.json && tsc-alias -p tsconfig.build.json` in packages and the API, `next build` in web. |
-| `pnpm bundle` | `turbo run bundle` | Produce deployable AppSail output in `appsails/`. Runs `build` first. |
+| `pnpm serve` | `turbo run bundle --filter=proxy && catalyst serve --only appsail:proxy` | The entry point alone, against your own already-running web app. |
+| `pnpm build` | `turbo build` | Compile everything - `src/` only; tests are type-checked by `pnpm typecheck`. `tsc --build tsconfig.build.json && tsc-alias -p tsconfig.build.json` in packages, `next build` in web. |
+| `pnpm bundle` | `turbo run bundle` | Produce the proxy's AppSail output in `appsails/` and the staged Slate app in `slate/web/`. Runs `build` first. |
 | `pnpm lint` | `turbo lint` | ESLint in every workspace with code - test files included. |
 | `pnpm typecheck` | `turbo typecheck` | `tsc --noEmit` in every workspace with code, tests included. |
 | `pnpm test:unit` | `turbo test:unit` | Unit tests (`test/unit/` in each tested workspace). No network, Catalyst SDKs mocked. |
-| `pnpm test:integration` | `turbo test:integration` | Integration tests (`test/integration/`): the Express app through Supertest, `HttpClient` against a local server. Catalyst is still faked, so no `catalyst serve`. |
+| `pnpm test:integration` | `turbo test:integration` | Integration tests (`test/integration/`): `HttpClient` against a local server. Catalyst is still faked, so no `catalyst serve`. |
 | `pnpm verify` | `turbo run build lint typecheck test:unit test:integration` | Before calling a change done. Build, lint, typecheck and both test suites in one run - not `bundle`: run that too after a dependency or `scripts/bundle.mjs` change. |
-| `pnpm deploy` | `turbo run bundle && catalyst deploy --only appsail:api,slate:web` | Ship the API and the frontend. The proxy is local only and is intentionally excluded. |
+| `pnpm deploy` | `turbo run bundle && catalyst deploy --only slate:web` | Ship the frontend. The proxy is local only and is intentionally excluded. |
 
 Scoping to one workspace:
 
 ```bash
-pnpm --filter api dev
+pnpm --filter web dev
 pnpm --filter web build
 pnpm --filter @repo/types build
-pnpm turbo run test:integration --filter=api   # tests go through turbo, so the packages they import are rebuilt first
+pnpm turbo run test:unit --filter=@repo/logger   # tests go through turbo, so the packages they import are rebuilt first
 ```
 
 ---
@@ -285,7 +260,9 @@ pnpm turbo run test:integration --filter=api   # tests go through turbo, so the 
 This is the part that is easy to get wrong when you add an app, so it is worth
 understanding once.
 
-Each AppSail app has a `scripts/bundle.mjs`. Running `pnpm bundle` executes it, and it:
+Each AppSail has a `scripts/bundle.mjs`. Running `pnpm bundle` executes it, and for an
+AppSail that imports `@repo/*` packages - an API app, once there is one
+(`.claude/rules/node-api/express-app.md`) - it:
 
 1. **Wipes and recreates** `appsails/<name>/` at the repo root.
 2. **Bundles** `src/index.ts` with esbuild - CommonJS, target node24, single `index.js`.
@@ -314,16 +291,14 @@ matching directory there, which is how the CLI finds the output.
 pnpm deploy
 ```
 
-Which is `turbo run bundle && catalyst deploy --only appsail:api,slate:web`:
+Which is `turbo run bundle && catalyst deploy --only slate:web`:
 
-1. Turborepo builds the packages, then the API, then bundles into `appsails/`.
-2. The CLI uploads `appsails/api/` as the `api` AppSail.
-3. The CLI uploads `slate/web/` - `apps/web` staged with its `@repo/*` packages vendored
-   in - as the `web` Slate app, which Slate then builds.
+1. Turborepo builds the packages, then stages `apps/web` in `slate/web/` with its `@repo/*`
+   packages vendored in.
+2. The CLI uploads `slate/web/` as the `web` Slate app, which Slate then builds.
 
 **The proxy is not in that list, and must not be.** It is a local-development
-component only. In the cloud the web app reads and writes on its own server and calls no
-API.
+component only. In the cloud the web app reads and writes on its own server.
 
 **The web app's key** - `TZ` - is set in **Console -> Slate -> web
 -> Environment Variables**, once per environment. The server reads it at request time.
@@ -331,13 +306,10 @@ Sign-up needs no redirect key: the Server Action sends new users to the origin t
 came from. `apps/web/.env.example` documents it, and a local `apps/web/.env` never reaches Slate,
 because the bundle leaves it out.
 
-**Environment variables are not carried by the deploy.** `app-config.json` declares no
-`env_variables`, on purpose - it is committed, so a value there is a value in git. Set
-what the deployed app needs in **Console -> AppSail -> api -> Configuration ->
-Environment Variables** before the first deploy that needs it, and remember that the
-Development and Production environments are configured separately. `AUTH_REDIRECT_URL`
-is required by `POST /api/v1/auth/register`; without it that route fails with a
-`MissingEnvVariableError` naming the variable.
+**Environment variables are not carried by the deploy.** No Catalyst file declares one, on
+purpose - those files are committed, so a value there is a value in git. Set what a deployed
+app needs in the Console before the first deploy that needs it, and remember that the
+Development and Production environments are configured separately.
 
 **Environments.** Catalyst projects have a Development and a Production environment,
 with separate data and separate IDs. `catalyst init` sets your active one and records
@@ -368,14 +340,14 @@ they are private and never published.
 1. The directory under `apps/`.
 2. The `outDir` in its `scripts/bundle.mjs` (`appsails/<name>/`).
 3. Its entry in `catalyst.json` (`name` and `source`).
-4. The `--only appsail:<name>` flags in the root `deploy` script.
+4. The `--only` flags in the root `deploy` script (`appsail:<name>`, `slate:<name>`).
 
 The proxy is local only, so dropping it changes only local development.
 
 **Add a shared package.** Create `packages/<name>` with `"private": true`,
 `"type": "module"`, the same subpath `exports` block as the existing packages, a
 `tsconfig.json` extending `@repo/typescript-config/base.json` plus a `tsconfig.build.json`
-extending that one for the emit (copy them from `packages/routing`, which is framework-free), and
+extending that one for the emit (copy them from `packages/types`, which is framework-free), and
 `"build": "tsc --build tsconfig.build.json && tsc-alias -p tsconfig.build.json"`. Add it to
 consumers as `"workspace:*"`.
 
@@ -392,21 +364,16 @@ Short version; `CLAUDE.md` has the full list.
 - **Path alias.** `@/*` resolves to `./src/*` in every app and every built package. Use it rather than
   climbing with `../../`.
 - **Subpath imports.** Shared packages have no barrel file. Import the exact module:
-  `@repo/types/api`, `@repo/logger/logger`.
+  `@repo/types/user`, `@repo/logger/logger`.
 - **File names** are kebab-case: `http-error.ts`, `async-context.ts`.
 - **Naming.** Identifiers and JSON keys are camelCase: `emailId`, `nextPageToken`. A
   vendor's own wire shape (`email_id`, `ROWID`) keeps its spelling and is converted at
   the wrapper.
-- **Errors.** In the API, throw `HttpError.BadRequest(...)` and friends instead of
-  setting a status by hand. The terminal error handler maps them; anything unrecognised
-  becomes a generic 500.
-- **Responses.** Build every payload with `toRecordResponse`, `toPagedResponse`, or
-  `toErrorResponse` so clients always get the same `status` / `data` envelope.
 - **Logging.** Use `Logger.for("<source>")` from `@repo/logger`, not `console`. It attaches
   the source and, inside a request, the execution ID and per-request ordering.
-- **Catalyst SDK.** `zcAuth.init(req)` happens once per request in middleware. Handlers
-  import a resource handle from `@repo/repositories/resources` and never
-  initialize their own app.
+- **Catalyst SDK.** `zcAuth.init(req)` happens once per request, at the entry point -
+  `withCatalystPage` / `withCatalystFn` in the web app. Code below it imports a resource
+  handle from `@repo/repositories/resources` and never initializes its own app.
 - **Ports** come from `X_ZOHO_CATALYST_LISTEN_PORT` with a local fallback. Never
   hardcode.
 - **Underscore-prefixed params** (`_req`, `_next`) mark arguments a signature requires
@@ -429,20 +396,20 @@ it looks like a proxy fault rather than a hung process. Redirect stdin from `/de
 as the root `dev` script does, and never remove that redirect. Typing `catalyst serve`
 in a terminal is unaffected - a terminal takes the interactive path.
 
-**Every `/api` call returns 500 `Something went wrong`** - you are bypassing
-`catalyst serve`. Only the CLI injects the project headers the Catalyst SDK parses, so
-`zcAuth.init(req)` throws `app/invalid_project_details`. The API log shows the
-real error. Use the CLI's printed URL, not `:8000` or a hand-started proxy.
+**You keep landing on sign-in, or sign-up fails** - you are bypassing `catalyst serve`.
+Only the CLI injects the `x-zc-*` headers the Catalyst SDK parses, so the web app sees no
+signed-in user and `zcAuth.init` throws `app/invalid_project_details`. The web server's log
+shows the real error. Use the CLI's printed URL, not `:4000` or a hand-started proxy.
 
 **You cannot find the app on port 3000** - the CLI takes the first free port from 3000
 upward, so it is often 3001 or 3002. Read the `proxy:` line in the `pnpm dev` output.
 
 **`Port 4000 is already in use`** - a previous run is still up.
-`lsof -ti:4000 | xargs kill` and retry. Same for 8000.
+`lsof -ti:4000 | xargs kill` and retry.
 
-**`catalyst serve` starts but the page is blank or 502** - the proxy is running but its
-upstreams are not. `pnpm dev` starts all three; if you ran `pnpm serve` alone, the API
-and web app are not up.
+**`catalyst serve` starts but the page is blank or 502** - the proxy is running but the
+web app is not. `pnpm dev` starts both; if you ran `pnpm serve` alone, the web app is not
+up.
 
 **`catalyst serve` cannot find the app** - `appsails/proxy/` does not exist yet. Run
 `pnpm bundle` first. `pnpm dev` does this for you.
@@ -459,10 +426,6 @@ apps that still have a bundle script. Delete the directory and re-run `pnpm bund
 **Catalyst CLI errors about a missing project** - you have not run `catalyst init` in
 this clone, so there is no `.catalystrc`. It is gitignored by design; every developer
 runs it once.
-
-**`.env not found. Continuing without it.`** - the API looks for both the root `.env`
-and `apps/api/.env`, and one of them is missing. The api's own keys live in
-`apps/api/.env`, so if that is the one, copy `apps/api/.env.example` across.
 
 **Authentication works in Development but breaks in Production** - the ZAID differs
 per environment. Check which environment `.catalystrc` has active.

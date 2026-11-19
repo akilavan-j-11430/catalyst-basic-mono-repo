@@ -26,6 +26,7 @@ apps/<name>/
   src/jobs/<job-name>.ts    one class per job, named after its jobName
   src/<area>/<areas>.ts     work two jobs share - `code-placement.md`
   src/dev-server.ts         local only - POST /:jobName runs the dispatcher
+  src/<name>-path.ts        the dev server's path segments - `general/routing.md`
   catalyst-config.json      from `catalyst functions:add --type job`
 ```
 
@@ -179,44 +180,38 @@ from the body, then calls the same `JobDispatcher.run` as the deployed function:
 // src/dev-server.ts - local only, never imported by index.ts, so never bundled
 import express from "express";
 import { randomUUID } from "node:crypto";
-import { JobExecutorPath } from "@repo/routing/job-executor-path";
 import { CatalystScope } from "@repo/catalyst-node/catalyst-scope";
-import {
-  errorHandler,
-  initCatalystScopes,
-  initExecutionContext,
-} from "@repo/http-server/middleware";
-import { toRecordResponse } from "@repo/http-server/response";
+import { CatalystSession } from "@repo/catalyst-node/catalyst-session";
+import { ExecutionContext, runWithContext } from "@repo/async-context/async-context";
 import { JobDispatcher } from "@/job-dispatcher";
+import { JobExecutorPath } from "@/job-executor-path";
 
 const app = express();
 app.use(express.json());
-app.post(
-  JobExecutorPath.JobExecutor + JobExecutorPath.JobName,
-  initExecutionContext,
-  initCatalystScopes([CatalystScope.Admin]),
-  async (req, res) => {
-    const { jobName } = req.params;
-    await JobDispatcher.run({ ...req.body, jobName, jobId: randomUUID() });
-    res.json(toRecordResponse({ jobName }));
-  },
-);
-app.use(errorHandler);
+app.post(JobExecutorPath.JobExecutor + JobExecutorPath.JobName, async (req, res) => {
+  const execution = new ExecutionContext({ executionId: randomUUID(), extras: {} });
+  await runWithContext(execution, async () => {
+    await CatalystSession.setApp(req.headers, CatalystScope.Admin);
+    await JobDispatcher.run({ ...req.body, jobName: req.params.jobName, jobId: randomUUID() });
+  });
+  res.json({ jobName: req.params.jobName });
+});
 app.listen(8100);
 ```
 
-- **Its paths live in `packages/routing/src/<name>-path.ts`**, named after the app, as
-  for any app that serves HTTP. That file holds the prefix (`JobExecutor: "/job-executor"`)
-  and the parameter (`JobName: "/:jobName"`).
-- **It is reached through the proxy.** `apps/proxy` routes the prefix to the dev port, so
-  the headers `catalyst serve` injects reach `initCatalystScopes`. Without them the Admin
-  app cannot be built.
+- **It builds its execution context and sets the Admin app exactly as `index.ts` does**,
+  from the request's headers instead of `catalystHeaders`. It needs no shared Express
+  plumbing; a throw reaches Express's default handler, which answers 500.
+- **Its paths live in its own `src/<name>-path.ts`**, as for any app that serves HTTP
+  (`general/routing.md`). That file holds the prefix (`JobExecutor: "/job-executor"`) and
+  the parameter (`JobName: "/:jobName"`).
+- **It is reached through the proxy.** `apps/proxy` routes the prefix to the dev port
+  (`general/routing.md`), so the headers `catalyst serve` injects reach `setApp`. Without
+  them the Admin app cannot be built.
 - `express` is a `devDependency`. The bundle installs `dependencies` only, and
   `dev-server.ts` is never bundled.
 - `"dev": "tsx watch --env-file-if-exists=../../.env --env-file-if-exists=.env src/dev-server.ts"`,
   on its own port from 8100 up. `pnpm dev` then starts it with everything else.
-- The middleware and response builders are the shared Express plumbing, which comes from
-  `@repo/http-server` (`.claude/skills/deployable-steps.md`).
 
 ```bash
 curl -X POST http://localhost:3001/job-executor/reminder \

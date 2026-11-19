@@ -2,8 +2,9 @@
 
 Every request to a service outside this monorepo goes through `HttpClient`
 (`@repo/http-client/http-client`). No `fetch`, no `axios`, no `node:https`, no other
-client in `apps/api` or `packages/*`. ESLint enforces this; the transports under
-`packages/http-client/src/` (`*-transport.ts`) are the only exemption.
+client in `packages/*`, a Node app or `apps/web`. ESLint enforces this - `apps/web` bans
+`fetch` in its own config - and the transports under `packages/http-client/src/`
+(`*-transport.ts`) are the only exemption.
 
 The point is one seam. Transport, auth headers, encoding, timeout, logging and error
 mapping all live in the client, so moving off `fetch` means adding one `HttpTransport`
@@ -155,8 +156,9 @@ Stack
 
 `status` is `undefined` only when nothing came back at all - timeout, DNS, refused.
 
-In `apps/api`, letting it reach `errorHandler` gives a 500, which is the right default for
-an upstream failure. Catch it only to map a specific upstream status onto an `HttpError`:
+In an API app, letting it reach `errorHandler` gives a 500, which is the right default for
+an upstream failure (`node-api/express-app.md`). Catch it only to map a specific upstream
+status onto an `HttpError`:
 
 ```ts
 try {
@@ -189,8 +191,8 @@ To move to axios, add `packages/http-client/src/axios-transport.ts` beside
 `fetch-transport.ts` and pass `transport: axiosTransport`; its equivalent option would be
 `httpAgent`/`httpsAgent` in the same position. Note axios would be a new runtime
 dependency, which per the root instructions is a decision to bring back to the user - and
-it must be added to `apps/api/package.json` too, since `scripts/bundle.mjs` derives the
-deployed manifest from that file alone.
+it must be added to the deploying app's `package.json` too, since its `scripts/bundle.mjs`
+derives the deployed manifest from that file alone.
 
 ## Not covered by this rule
 

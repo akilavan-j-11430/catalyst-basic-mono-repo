@@ -45,10 +45,10 @@ says what the shape should be.
 
 ## No callback parameters in server code
 
-In `apps/api`, `packages/async-context`, `packages/logger` and `packages/catalyst-node`, a method does its work in its own body. Do not
-write a helper that takes a callback (`cb`, `fn`, `call: () => Promise<T>`) just to wrap
-`try/catch`, logging or a cast around it - write the `try/catch` inline in each method, as
-`bucket.ts` does. A helper takes values and returns values.
+In `packages/async-context`, `packages/logger`, `packages/catalyst-node` and any Node app, a
+method does its work in its own body. Do not write a helper that takes a callback (`cb`,
+`fn`, `call: () => Promise<T>`) just to wrap `try/catch`, logging or a cast around it - write
+the `try/catch` inline in each method, as `bucket.ts` does. A helper takes values and returns values.
 
 ```ts
 // not this
@@ -81,9 +81,8 @@ form where Node has one:
 | a one-shot event you wait for | `await once(emitter, "ready")` from `node:events` |
 
 Keep a listener only when the code must not wait for the event - logging after a response,
-cleanup on a client disconnect, a handler that fires many times. `res.on("finish")` in
-`packages/http-server/src/middleware.ts` and `server.on("upgrade")` in `apps/proxy/src/index.ts` are
-that case.
+cleanup on a client disconnect, a handler that fires many times. `server.on("upgrade")` in
+`apps/proxy/src/index.ts` is that case.
 
 Naming and simplicity are covered in `readable-code.md`.
 

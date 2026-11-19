@@ -22,7 +22,8 @@ inside it is described in `.claude/rules/node-job/job-function.md`. This skill c
    `Job.create` sets `jobTargetFunctionName: "<name>"`. Each job also gets one line in the
    dispatcher's `jobs` map, keyed by its handle's `config.jobName`.
 5. **Set up the dev server:**
-   - Add `packages/routing/src/<name>-path.ts` with the prefix and `JobName: "/:jobName"`.
+   - Add `src/<name>-path.ts` with the prefix and `JobName: "/:jobName"`
+     (`.claude/rules/general/routing.md`).
    - Add a proxy route for the prefix.
    - Add `express` as a `devDependency`.
    - Add a `dev` script that runs `tsx watch` on `src/dev-server.ts`, on a port from 8100

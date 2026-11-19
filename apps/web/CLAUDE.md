@@ -8,7 +8,7 @@ Dev port: **4000** (`next dev -p 4000`).
 
 ## Where data comes from
 
-This app serves its own reads and writes on the server and never calls `apps/api`. A page
+This app serves its own reads and writes on the server; no API app ships. A page
 reads in its Server Component, wrapped in `withCatalystPage`; a form writes through a Server
 Action, wrapped in `withCatalystFn` (`src/execution-context.ts`). Both set the request's
 Catalyst apps from Next's request headers, and the `@repo/catalyst-node` wrappers read them
@@ -29,10 +29,12 @@ Open the URL `catalyst serve` prints (first free port from 3000 up - often 3001)
 headers `catalyst serve` adds, so a request made straight to `:4000` has no Catalyst app to
 read with.
 
-`apps/api` and the proxy's `/api` route are still there, but nothing here calls them. They
-stay until a Slate deploy proves Slate passes those same headers to Next's server.
+Whether Slate passes those same headers to Next's server is still unproven, and is checked on
+the first Slate deploy. There is no fallback app behind it. A caller outside this app - a
+mobile app, a webhook, another service - starts at a `route.ts` here; an API app of its own
+comes only when that cannot serve it (`.claude/rules/node-api/code-placement.md`).
 
-Shapes both sides use live in `@repo/types` (`@repo/types/user` for the user shapes) -
+Shapes two workspaces use live in `@repo/types` (`@repo/types/user` for the user shapes) -
 defined once, never redeclared here. Server-only configuration is on `src/env.ts`
 (`TZ`), read through `env`; the browser reads no environment variable. Sign-up's
 confirmation link points at the origin the Server Action request came from, so no URL is

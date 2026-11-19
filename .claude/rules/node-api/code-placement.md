@@ -1,21 +1,37 @@
 ---
 paths:
-  - "apps/api/**"
   - "apps/*/src/app.ts"
   - "apps/*/src/routes/**"
 ---
 
 # Where code goes in a Node API
 
-A Node API is an Express app: `apps/api` on AppSail, any AppSail added after it, and an
-Advanced I/O function, which is built the same way. This rule says what a route does, where
-the work behind it goes, and when that work moves. Code starts as small as it can and moves
+A Node API is an Express app - an AppSail, or an Advanced I/O function, which is built the
+same way. This rule says when to create one, what a route does, where the work behind it goes,
+and when that work moves. Code starts as small as it can and moves
 only when a real caller asks for it - "a file earns its existence from a second caller" in the
 root `CLAUDE.md`. `apps/web` makes the same moves (`nextjs/code-placement.md`), so an area has
 one name wherever it lives.
 
-How the app is wired - middleware order, mounting a router, the execution context, errors and
-responses - is in `apps/api/CLAUDE.md`.
+How the app is wired - middleware order, the execution context, errors and responses - is
+`express-app.md`; its paths are `general/routing.md`.
+
+## No API app until one is needed
+
+None ships. The web app's pages read and its Server Actions write on its own server, and a
+caller outside the web app - a mobile app, a webhook, another service - starts at a
+`route.ts` in `apps/web` (`nextjs/code-placement.md`).
+
+Create an API app only when that cannot serve the caller, and agree it with the user first,
+since it is a new deployable:
+
+| The API must | Create | Skill |
+|---|---|---|
+| deploy and scale apart from the web app, each request under 30 s | an Advanced I/O function | `add-aio-fn` |
+| run past 30 s, hold WebSockets, or keep state between requests | an AppSail | `add-appsail` |
+
+Either way it is built as `express-app.md` describes, named for what it serves - `billing`,
+not `api` - with its paths in `src/<name>-path.ts`.
 
 ## The layers
 
@@ -30,14 +46,14 @@ responses - is in `apps/api/CLAUDE.md`.
 A route reads as: check, call, respond.
 
 ```ts
-meRouter.get(ApiPath.Me, initCatalystScopes([CatalystScope.User]), async (_req, res) => {
-  res.json(toRecordResponse(await UserManagement.currentUser()));
+invoiceRouter.get(BillingPath.InvoiceId, initCatalystScopes([CatalystScope.User]), async (req, res) => {
+  const { invoiceId } = InputValidation.parse(invoiceParams, req.params);
+  res.json(toRecordResponse(await InvoiceRepository.find(invoiceId)));
 });
 ```
 
 - **It checks shape only** - a required field, an email, a number in range - with a zod
-  schema through `InputValidation.parse`, never a check per field ("Validating input" in
-  `apps/api/CLAUDE.md`). The schema lives in the route file until a second route needs it.
+  schema through `InputValidation.parse`, never a check per field (`express-app.md`). The schema lives in the route file until a second route needs it.
 - **A business rule is not validation.** "A discharged patient cannot be admitted again"
   belongs to the area, which throws, and the route lets the error reach `errorHandler`.
 - **`HttpError` and the response builders stay in the route.** An area throws its own error
@@ -58,8 +74,8 @@ Each move is made when its trigger happens, never in advance:
 | another deployable needs the operation - the web app, a job, a Signal function | a package, `packages/<area>` (`@repo/admissions`), that both import. Nothing imports from an app |
 | an area file passes ~300 lines, or holds groups that have nothing to do with each other | one file per group - `admission-transfers.ts` - and a subfolder per group once a group itself grows |
 
-Until the first trigger, the route calls the repository or wrapper directly, as `/me` calls
-`UserManagement.currentUser()`. An area method that only forwards one call is an empty layer.
+Until the first trigger, the route calls the repository or wrapper directly, as the invoice
+route above calls `InvoiceRepository.find`. An area method that only forwards one call is an empty layer.
 
 ## An area
 

@@ -203,23 +203,25 @@ reads it back:
 
 Apps are not built on first use. A wrapper that asks for a scope the entry point did not
 set throws `CatalystError` (`SCOPE_UNAVAILABLE`), and one called outside an execution
-context throws `AsyncContextError`. The same wrappers then serve an Express route, a
-Next.js server component or a Catalyst function - each entry point sets the apps from the
+context throws `AsyncContextError`. The same wrappers then serve a Next.js page or Server
+Action, an Express route or a Catalyst function - each entry point sets the apps from the
 headers it has, and no call passes them along.
 
-```ts
-// apps/api - initCatalystScopes sets the User app; the handler just calls the wrapper
-meRouter.get(ApiPath.Me, initCatalystScopes([CatalystScope.User]), async (_req, res) => {
-  res.json(toRecordResponse(await UserManagement.currentUser()));
+```tsx
+// apps/web/src/app/(app)/page.tsx - withCatalystPage sets the User app; the page calls the wrapper
+export default withCatalystPage([CatalystScope.User], async function HomePage() {
+  const user = await UserManagement.currentUser();
+  ...
 });
 ```
 
 A scope `setApp` cannot build - User, when the request carries no signed-in user - rejects
 with `CatalystError` (`SCOPE_UNAVAILABLE`), holding only the SDK's code and message: the
 SDK's own error carries the request headers, credential tokens included, so it is never
-attached or logged. In `apps/api`, `initCatalystScopes([...])`
-(`@repo/http-server/middleware`) turns a User failure into a 401 before the handler runs,
-and lets an Admin failure become a 500.
+attached or logged. In `apps/web`, `withCatalystPage` turns a User failure into a redirect to
+`/sign-in` and `withCatalystFn` into a throw, before the page or action runs
+(`nextjs/code-placement.md`); an API app's `initCatalystScopes([...])` turns it into a 401
+(`node-api/express-app.md`). An Admin failure throws, and an API app answers it with a 500.
 
 **Never hold an app at module scope** or store it on a handle. It is the one object here
 that carries a caller's credentials, so one kept past its request serves another user's
@@ -299,15 +301,16 @@ repo's vocabulary to a Catalyst call, so:
 
 ## A missing capability is a new method
 
-**When a route needs something the wrapper does not do yet, add the method to the
+**When a caller needs something the wrapper does not do yet, add the method to the
 wrapper.** Never reach past it - not to the SDK, not to `CatalystSession.app`, not with
 a one-off client built at the call site. The ESLint boundary stops the import, but the
 rule is about intent: the point of `catalyst/` is that one directory answers
-what this repo asks of Catalyst, and a capability used from a route is invisible there.
+what this repo asks of Catalyst, and a capability used from a page or a route is invisible
+there.
 
 So `listObject` on `Bucket`, `getPagedRows` on `Table`, `submitOneTimeCron` on `Job` -
 each arrived because something needed it. Add the next one the same way, following the
-rules above, and call it from the route:
+rules above, and call it from where it is needed:
 
 ```ts
 // packages/catalyst-node/src/bucket.ts - on ScopedBucket
@@ -315,7 +318,7 @@ async copyObject(sourceKey: string, targetKey: string): Promise<void> {
   ...
 }
 
-// apps/api/src/routes/invoice.ts
+// apps/web/src/invoice/invoices.ts
 await invoiceBucket.runIn(CatalystScope.User).copyObject(draftKey, finalKey);
 ```
 

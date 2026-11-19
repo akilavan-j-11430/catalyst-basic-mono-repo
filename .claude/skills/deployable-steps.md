@@ -28,17 +28,20 @@ it.
   workspace instead.
 - **The bundle reads the workspace's `package.json`.** It strips every `@repo/*`
   dependency, which esbuild inlines, and installs the rest. A runtime dependency missing
-  from that file is missing in the cloud.
-- **Its paths**, if it serves HTTP or has a dev server, go in
-  `packages/routing/src/<name>-path.ts`, named after the app as `api-path.ts` is for
-  `api`. The first segment is the app's own prefix, never `/api`, which belongs to
-  `apps/api`. In `apps/proxy/src/index.ts`, register a `createProxyMiddleware` for that
-  prefix and port **before** the catch-all to `web`. If the app serves WebSockets, add the
-  prefix to the `server.on("upgrade")` dispatch as well. This is the one change to
-  `apps/proxy` a deployable makes, and it is what carries the headers `catalyst serve`
-  injects through to the new app.
-- **Local ports:** `api` uses 8000, `web` 4000 and `proxy` 4600. A new AppSail takes 8001
-  and up, a function's dev server 8100 and up, and a Slate app 4001 and up.
+  from that file is missing in the cloud - `pino`, which the logger needs, in every app
+  that logs, and `express` in every app that serves HTTP when deployed.
+- **Its logger** is configured once at its entry point with `output: CatalystLogOutput`,
+  and an AppSail flushes it on shutdown (`general/logging.md`).
+- **Its paths**, if it serves HTTP or has a dev server, go in its own `src/<name>-path.ts`,
+  whose first segment is the app's own prefix (`general/routing.md`). In
+  `apps/proxy/src/index.ts`, register a `createProxyMiddleware` for that prefix and port
+  **before** `webProxy`, which takes every other path. If the app serves WebSockets, its
+  upgrades need the same split: `server.on("upgrade")` hands every upgrade to `webProxy`
+  today, so it then picks the proxy by prefix. This is the one change to `apps/proxy` a
+  deployable makes, and it is what carries the headers `catalyst serve` injects through to
+  the new app.
+- **Local ports:** `web` uses 4000 and `proxy` 4600. An AppSail takes 8000 and up, a
+  function's dev server 8100 and up, and a Slate app 4001 and up.
 - **Every new deployable gets** a `CLAUDE.md` in its workspace, a row in the root
   `CLAUDE.md` workspace table, and a line in the README architecture when the local
   routing changes.
@@ -52,32 +55,11 @@ function from its server code - a page or a Server Action - through `HttpClient`
 - Its base URL is a server-side key on `apps/web/src/env.ts` (`BILLING_URL`), added in the
   four steps of `environment.md` and set in **Console -> Slate -> web -> Environment
   Variables**.
+- Its path file moves to `packages/routing`, so the web app and the app import one
+  definition of every path (`general/routing.md`, "When the paths move").
 - No server-to-backend call exists yet, so the first one settles how it proves who the
   caller is - a route guarded with `initCatalystScopes([CatalystScope.User])` answers 401
   without it. Agree that with the user and write the decision into `apps/web/CLAUDE.md`.
-
-## The shared Express plumbing: `@repo/http-server`
-
-`packages/http-server` holds the Express plumbing every app that serves HTTP shares - a
-second AppSail, an Advanced I/O function, the dev server of a job or Signal function:
-
-- `@repo/http-server/middleware` - `initExecutionContext`, `initCatalystScopes`,
-  `recordRequestTiming`, `errorHandler`, which answers `InvalidInputError` from
-  `@repo/input-validation` with a 400
-- `@repo/http-server/http-error` - `HttpError`
-- `@repo/http-server/response` - the response builders
-
-Import it; never copy it. It is the one package allowed to import `express`
-(`packages/CLAUDE.md`). esbuild inlines it like every `@repo/*` package, but `express`
-stays external, so every app that runs it in the cloud lists `express` in its own
-`dependencies`.
-
-Every entry point configures the logger once with
-`output: CatalystLogOutput` (`@repo/logger/catalyst-log-output`). It writes to
-the log collector Catalyst hands a running app, and to stdout wherever there is none, locally
-included. It writes through a non-blocking stream, so an app that owns its process - an
-AppSail - flushes it on `SIGTERM`/`SIGINT` before exiting, as `apps/api/src/index.ts` does. Every app that logs lists `pino` in its
-own `dependencies`, as it does `express`.
 
 ## Before calling it done
 

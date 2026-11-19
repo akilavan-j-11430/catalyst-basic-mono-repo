@@ -5,20 +5,19 @@
 reads in its own `src/env.ts` and exports the handle:
 
 ```ts
-// apps/api/src/env.ts
+// apps/web/src/env.ts
+import "server-only";
 import { defineEnv } from "@repo/env/define-env";
 
-type ApiEnv = {
-  /** Where Catalyst sends a new user from the confirmation email. */
-  AUTH_REDIRECT_URL: string;
-  /** Timezone for log timestamps. */
+type WebEnv = {
+  /** Timezone for log timestamps. Falls back to the logger's own default. */
   TZ: string;
 };
 
-export const env = defineEnv<ApiEnv>();
+export const env = defineEnv<WebEnv>();
 ```
 
-Two apps never share a key list, because two AppSails are configured separately. The
+Two apps never share a key list, because two deployables are configured separately. The
 template is the app's whole configuration surface, so what a deploy has to supply is one
 file to read.
 
@@ -28,8 +27,8 @@ an `undefined` at runtime:
 ```ts
 import { env } from "@/env";
 
-env.get("AUTH_REDIRECT_URL");   // string - throws MissingEnvVariableError naming it when unset
-env.optional("TZ");             // string | undefined - for a key with a fallback
+env.get("TZ");        // string - throws MissingEnvVariableError naming it when unset
+env.optional("TZ");   // string | undefined - for a key with a fallback
 ```
 
 `get` and `optional` both treat an empty value as unset, so a variable declared but left
@@ -64,16 +63,17 @@ static async register(registration: {
   redirectUrl: string;
 }): Promise<RegisteredUser>
 
-// apps/api/src/routes/auth.ts
-await UserManagement.register({
+// apps/web/src/app/(auth)/sign-up/register-user.ts
+const registered = await UserManagement.register({
   user,
-  redirectUrl: env.get("AUTH_REDIRECT_URL"),
+  redirectUrl: await redirectUrl(),
 });
 ```
 
-It is the same rule as `.claude/rules/general/catalyst-sdk.md` - a wrapper takes and returns plain
-values - and it is what makes the failure land in the route, which is what the variable
-configures.
+Sign-up's redirect is not a key: the Server Action takes it from the request's own origin.
+Were it one, the action would read it through its own `env`. It is the same rule as
+`.claude/rules/general/catalyst-sdk.md` - a wrapper takes and returns plain values - and it is
+what makes the failure land in the caller, which is what the variable configures.
 
 `Logger` is the same shape from the other side: it holds the timezone in a static and
 takes it through `Logger.configure({ timeZone })`, which the app calls once at startup with
@@ -97,7 +97,7 @@ Then set it in the Catalyst Console before the next deploy that needs it.
 The platform injects these itself - Catalyst, or Next for `NEXT_RUNTIME` - and they are
 read before any app template is in play. They stay as they are:
 
-- `apps/api/src/index.ts` - `X_ZOHO_CATALYST_LISTEN_PORT`, `PORT`
+- an AppSail's `src/index.ts` - `X_ZOHO_CATALYST_LISTEN_PORT`, `PORT`, the port to listen on
 - `packages/logger/src/catalyst-log-output.ts` - `X_ZOHO_SPARKLET_LOG_FD`, the log collector
   Catalyst hands a running app. The one read inside a package: no app configures it, and the
   class that writes SparkP packets to it is the only code that knows what it means.
@@ -111,12 +111,10 @@ caller's credentials ride on request headers, because `zcAuth.init(req)` is per 
 
 ## `apps/web` reads its keys on the server
 
-`apps/web` has its own template, `src/env.ts`, built with `defineEnv` like any other app's:
-today only `TZ`. Sign-up's redirect is not a key here, because the Server Action takes it from
-the request's own origin. It imports `server-only`, so only server code - a page, a Server
-Action, `server-logging.ts` - reads it, through `env`, never `process.env`. The
-four steps above apply unchanged, with `apps/web/turbo.json` passing the key through for
-`dev`.
+`apps/web`'s template, `src/env.ts`, is the one above: today only `TZ`. It imports
+`server-only`, so only server code - a page, a Server Action, `server-logging.ts` - reads
+it, through `env`, never `process.env`. The four steps above apply unchanged, with
+`apps/web/turbo.json` passing the key through for `dev`.
 
 - **The browser reads none.** There is no `NEXT_PUBLIC_*` key today: pages read and actions
   write on the server, so the browser needs no backend URL. A `NEXT_PUBLIC_*` value is
@@ -130,15 +128,13 @@ four steps above apply unchanged, with `apps/web/turbo.json` passing the key thr
 `turbo.json`'s `globalPassThroughEnv` forwards variables to local tasks and keeps them out
 of the cache key. It configures the build, not the runtime, and declaring a key there is
 not declaring it to an app. It lists the platform values the Catalyst CLI and SDK read,
-not this repo's own keys, which reach `apps/api` because its `dev` script loads `.env`
-directly through `tsx --env-file-if-exists`.
+not this repo's own keys, which reach an app because it loads its own `.env` - Next does
+for `apps/web`, and a Node app's `dev` script passes it to `tsx --env-file-if-exists`.
 
 An app may carry its own `turbo.json` with `extends: ["//"]`, but a **global key is
 root-only**: turbo 2.11 rejects `globalPassThroughEnv` there with `Found an unknown key`.
 The per-app equivalent is task-level `passThroughEnv`, which is accepted and merges over
-the inherited task definition. `apps/api/turbo.json` is that file: its `dev` task passes
+the inherited task definition. `apps/web/turbo.json` is that file: its `dev` task passes
 through every key on the `src/env.ts` template and nothing else. The platform-injected
 reads above are set only when Catalyst runs the app, never under turbo, so they have no
-place there.
-`apps/web/turbo.json` does the same for its template. `apps/proxy` has no turbo task that
-runs it, so it has none.
+place there. `apps/proxy` has no turbo task that runs it, so it has none.

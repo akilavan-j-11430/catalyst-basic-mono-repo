@@ -10,8 +10,8 @@ writes back one string. What goes inside it is described in
 `.claude/rules/catalyst/basic-io-function.md`. This skill creates it.
 
 1. **Agree it with the user.** It is a new deployable, so settle its name, its arguments
-   and what it writes back. If it needs more than one operation, use an `apps/api` route
-   or an Advanced I/O function instead.
+   and what it writes back. If it needs more than one operation, use a `route.ts` in
+   `apps/web` or an Advanced I/O function instead.
 2. **Read `.claude/skills/deployable-steps.md` and `.claude/skills/function-steps.md`**,
    then follow them with `--type bio`.
 3. **Write the function**, following `basic-io-function.md`:
@@ -20,7 +20,7 @@ writes back one string. What goes inside it is described in
    - `src/index.ts` is `module.exports = handler`.
    - `src/dev-server.ts` calls the same handler from an Express route.
 4. **Set up the dev server:**
-   - Add `packages/routing/src/<name>-path.ts` with the prefix.
+   - Add `src/<name>-path.ts` with the prefix (`.claude/rules/general/routing.md`).
    - Add a proxy route for that prefix.
    - Add `express` as a `devDependency`.
    - Add a `dev` script that runs `tsx watch` on `src/dev-server.ts`, on a port from 8100

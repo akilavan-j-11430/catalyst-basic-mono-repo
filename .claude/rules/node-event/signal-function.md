@@ -24,6 +24,7 @@ apps/<name>/
   src/signals/<event-name>.ts one class per event, named after its event name
   src/<area>/<areas>.ts       work two handlers share - `code-placement.md`
   src/dev-server.ts           local only - POST /:eventName runs the dispatcher
+  src/<name>-path.ts          the dev server's path segments - `general/routing.md`
   catalyst-config.json        from `catalyst functions:add --type event`
 ```
 
@@ -153,21 +154,19 @@ event name from the path and the event's `data` from the body, then calls
 `SignalDispatcher.run`:
 
 ```ts
-app.post(
-  SyncPath.Sync + SyncPath.EventName,
-  initExecutionContext,
-  initCatalystScopes([CatalystScope.Admin]),
-  async (req, res) => {
-    const { eventName } = req.params;
-    await SignalDispatcher.run({ apiName: eventName, data: req.body });
-    res.json(toRecordResponse({ eventName }));
-  },
-);
+app.post(SyncPath.Sync + SyncPath.EventName, async (req, res) => {
+  const execution = new ExecutionContext({ executionId: randomUUID(), extras: {} });
+  await runWithContext(execution, async () => {
+    await CatalystSession.setApp(req.headers, CatalystScope.Admin);
+    await SignalDispatcher.run({ apiName: req.params.eventName, data: req.body });
+  });
+  res.json({ eventName: req.params.eventName });
+});
 ```
 
-The body is the event's `data` in camelCase, exactly as a handler receives it. Its paths,
-proxy route, port, `devDependency` on `express` and `dev` script all follow
-`node-job/job-function.md`.
+The body is the event's `data` in camelCase, exactly as a handler receives it. Its
+execution context, its path file (`SyncPath` from `@/sync-path`), proxy route, port,
+`devDependency` on `express` and `dev` script all follow `node-job/job-function.md`.
 
 The dev server is the local loop - not `catalyst functions:execute`. It skips the
 delivery envelope and the camelCase conversion in `index.ts`, so check those with one real

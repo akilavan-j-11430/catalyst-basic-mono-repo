@@ -11,9 +11,10 @@ and when it moves. Code starts as small as it can and moves only when a real cal
 for it, the same rule as "a file earns its existence from a second caller" in the root
 `CLAUDE.md`.
 
-The browser never calls `apps/api` any more: a page reads in its Server Component and a
-form writes through a Server Action, and this rule is for every one of them. `apps/api` is
-kept, unused by this app, until a Slate deploy proves the point below.
+No API app ships: a page reads in its Server Component, a form writes through a Server
+Action, and a caller outside the app starts at a `route.ts`. This rule is for every one of
+them. An API app is created only when a `route.ts` cannot serve the caller
+(`node-api/code-placement.md`).
 
 ## Built, and not yet
 
@@ -26,8 +27,8 @@ Not built yet: an ESLint rule that stops a client component importing a server f
 Node-only package. Until it exists, `import "server-only"` at the top of every server file is
 the guard - a client component that reaches one fails `next build`.
 
-Still unproven, and checked by a Slate deploy before `apps/api` is deleted: whether Slate's
-Next.js server receives the `x-zc-*` credential headers, a signed-in user's included. Locally
+Still unproven, and checked on the first Slate deploy: whether Slate's Next.js server
+receives the `x-zc-*` credential headers, a signed-in user's included. Locally
 `catalyst serve` sends them.
 
 ## Where it starts

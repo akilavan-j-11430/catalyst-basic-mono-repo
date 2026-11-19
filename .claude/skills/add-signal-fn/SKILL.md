@@ -20,8 +20,8 @@ event to a handler by the event's `api_name`. What goes inside it is described i
    - Each event gets one class in `src/signals/<event-name>.ts`, holding its `apiName`.
    - `src/dev-server.ts` serves the local route.
 4. **Set up the dev server:**
-   - Add `packages/routing/src/<name>-path.ts` with the prefix and
-     `EventName: "/:eventName"`.
+   - Add `src/<name>-path.ts` with the prefix and `EventName: "/:eventName"`
+     (`.claude/rules/general/routing.md`).
    - Add a proxy route for the prefix.
    - Add `express` as a `devDependency`.
    - Add a `dev` script that runs `tsx watch` on `src/dev-server.ts`, on a port from 8100

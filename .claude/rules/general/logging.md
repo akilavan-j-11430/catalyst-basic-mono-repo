@@ -34,7 +34,7 @@ Logger.configure({ timeZone: env.optional("TZ"), output: CatalystLogOutput });
 | Deployable | Configured in | On shutdown |
 |---|---|---|
 | the Next.js server (`apps/web`) | `src/server-logging.ts`, imported by `src/execution-context.ts` | `process.once("SIGTERM", () => void CatalystLogOutput.flush())` beside it - best effort, since Next runs its own shutdown |
-| an AppSail (`apps/api`) | `src/index.ts`, before `listen` | on `SIGTERM` and `SIGINT`: close the server, `await CatalystLogOutput.flush()`, then exit |
+| an AppSail | `src/index.ts`, before `listen` | on `SIGTERM` and `SIGINT`: close the server, `await CatalystLogOutput.flush()`, then exit |
 | a Catalyst function | `src/index.ts`, before the export (`function-entry-point.md`) | not settled until the first deploy shows whether a function gets a collector |
 
 - **Only an entry point configures.** `configure` throws once a line has been written, so a

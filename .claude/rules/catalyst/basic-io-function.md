@@ -3,8 +3,8 @@
 A Basic I/O function does one thing: it reads its arguments, does one piece of work, and
 writes back one string. It has a single handler and nothing else. There is no routing, no
 dispatch, and no switch on an argument that picks between kinds of request. If you need a
-second operation, write a second function, or use an Advanced I/O function or an `api`
-route if it needs real HTTP.
+second operation, write a second function, or use an Advanced I/O function if it needs
+real HTTP.
 
 Creating the workspace, its bundle, `catalyst.json` and the `deploy` flag is covered in
 the `add-bio-fn` skill. This file covers what goes inside.
@@ -16,6 +16,7 @@ apps/<name>/
   src/handler.ts        the handler - the one thing this function does
   src/index.ts          `module.exports = handler` - the bundle entry
   src/dev-server.ts     local only - calls the same handler from an Express route
+  src/<name>-path.ts    the dev server's path - `general/routing.md`
   catalyst-config.json  from `catalyst functions:add --type bio`
 ```
 
@@ -105,8 +106,8 @@ into the `BasicIo` and context objects Catalyst would pass, and turns `write` an
 ```ts
 // src/dev-server.ts - local only, never imported by index.ts, so never bundled
 import express from "express";
-import { TodoLookupPath } from "@repo/routing/todo-lookup-path";
 import { handler, type BasicIo, type BasicIoContext } from "@/handler";
+import { TodoLookupPath } from "@/todo-lookup-path";
 
 const app = express();
 app.get(TodoLookupPath.TodoLookup, async (req, res) => {
@@ -136,11 +137,11 @@ app.get(TodoLookupPath.TodoLookup, async (req, res) => {
 app.listen(8100);
 ```
 
-- **Its path lives in `packages/routing/src/<name>-path.ts`.** The proxy routes that path
-  to the dev port, so the request carries the Catalyst headers. Called directly, the init
-  fails with `app/invalid_project_details`.
-- **It needs no `@repo/http-server`.** The handler builds its own execution context, as
-  it does when deployed.
+- **Its path lives in its own `src/<name>-path.ts`** (`general/routing.md`). The proxy
+  routes that path to the dev port, so the request carries the Catalyst headers. Called
+  directly, the init fails with `app/invalid_project_details`.
+- **It needs no Express plumbing.** The handler builds its own execution context, as it
+  does when deployed.
 - **`express` is a `devDependency`.** The `dev` script runs `tsx watch` on
   `src/dev-server.ts`, on a port from 8100 up.
 

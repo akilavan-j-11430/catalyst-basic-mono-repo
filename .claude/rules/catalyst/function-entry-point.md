@@ -10,11 +10,12 @@ they all must get right.
   `base.json`'s `module: "ESNext"` (TS1203).
 - **The entry point starts one execution context per run and sets the apps it needs.** An
   Advanced I/O function does both through `initExecutionContext` and `initCatalystScopes`,
-  as `apps/api` does. Every other kind does it in `index.ts`: inside `runWithContext`, it
-  first awaits `CatalystSession.setApp(context.catalystHeaders, CatalystScope.Admin)` for
-  each scope its code uses, then runs the work. Apps are not built on first use, so a
-  wrapper asking for a scope the entry point did not set throws `SCOPE_UNAVAILABLE`. No
-  function calls `zcAuth.init` itself - `setApp` does.
+  as every Express app does (`node-api/express-app.md`). Every other kind does it in
+  `index.ts`: inside `runWithContext`, it first awaits
+  `CatalystSession.setApp(context.catalystHeaders, CatalystScope.Admin)` for each scope its
+  code uses, then runs the work. Apps are not built on first use, so a wrapper asking for a
+  scope the entry point did not set throws `SCOPE_UNAVAILABLE`. No function calls
+  `zcAuth.init` itself - `setApp` does.
   Not yet run on a deployed function: the SDK recognises a function's context by its
   `catalystHeaders` key, and `setApp` hands it `{ headers }`. If the first function's
   init rejects, give `CatalystSession` a way to pass the context through as-is.

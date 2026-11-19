@@ -31,10 +31,11 @@ description: Add a second Catalyst Slate app to this repo, shaped like apps/web 
    alone.
 6. **Add it to the deploy.** In the root `package.json`, add `slate:<name>` to the
    `deploy` script's `--only` list.
-7. **Set up local routing.** The proxy's catch-all belongs to `web`, so this app is served
+7. **Set up local routing.** The proxy's catch-all, `webProxy`, belongs to `web`, so this app is served
    under its own prefix:
-   - Add a `createProxyMiddleware` for `/<name>` with `ws: true`. Register it before the
-     catch-all, and add the prefix to the `server.on("upgrade")` dispatch.
+   - Add a `createProxyMiddleware` for `/<name>` with `ws: true`. Register it before
+     `webProxy`, and have `server.on("upgrade")` pick between the two by prefix - today it
+     hands every upgrade to `webProxy`.
    - In `next.config.ts`, set `basePath: "/<name>"` **only when `NODE_ENV` is
      `development`**. Slate serves every app from `/`, so a basePath in the deployed
      build would 404 every asset.

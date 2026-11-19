@@ -32,14 +32,14 @@ export class TodoRepository {
   }
 }
 
-// apps/api/src/routes/todo.ts
-const todo = await TodoRepository.find(req.params.todoId);
+// apps/web/src/app/(app)/todos/[todoId]/page.tsx
+const todo = await TodoRepository.find(todoId);
 ```
 
-An area calls a repository; a route calls one directly only while there is no area in
-between (`node-api/code-placement.md`). Bucket, cache and job handles need no repository -
-whatever needs one calls its wrapper directly - but their handles live in
-`@repo/repositories`'s `resources.ts` too.
+An area calls a repository; a page, an action or a route calls one directly only while there
+is no area in between (`nextjs/code-placement.md`, `node-api/code-placement.md`). Bucket,
+cache and job handles need no repository - whatever needs one calls its wrapper directly -
+but their handles live in `@repo/repositories`'s `resources.ts` too.
 
 ## An outside service: a repository or a client
 
