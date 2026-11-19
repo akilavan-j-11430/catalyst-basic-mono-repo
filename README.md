@@ -389,8 +389,11 @@ The proxy is local only, so dropping it changes only local development.
 `"type": "module"`, the same subpath `exports` block as the existing packages, a
 `tsconfig.json` extending `@repo/typescript-config/base.json` plus a `tsconfig.build.json`
 extending that one for the emit (copy them from `packages/types`, which is framework-free), and
-`"build": "tsc --build tsconfig.build.json && tsc-alias -p tsconfig.build.json"`. Add it to
-consumers as `"workspace:*"`.
+the four scripts - `build`, `dev`, `typecheck`, `lint` - and the devDependencies they run
+(`@repo/eslint-config`, `@repo/typescript-config`, `concurrently`, `eslint`), copied from
+`packages/async-context/package.json`. Turbo skips a workspace without a script, so a missing
+`lint` or `typecheck` drops it from `pnpm verify` silently, and a missing `dev` leaves the apps
+reading a stale `dist/`. Add it to consumers as `"workspace:*"`.
 
 **Project-specific values** all live in `.catalystrc` (project ID, environment,
 domain) and your `.env` files. Nothing project-specific is committed, so a fresh clone

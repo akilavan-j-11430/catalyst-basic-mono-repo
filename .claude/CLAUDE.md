@@ -331,10 +331,13 @@ all kinds share are in `.claude/skills/deployable-steps.md` and
 **A shared package** - `packages/<name>` with `"type": "module"`, the same subpath
 `exports` block as the others, a `tsconfig.json` extending
 `@repo/typescript-config/base.json` (no emit, covers `src` and `test`) and a
-`tsconfig.build.json` extending it (`src` only, emits `dist/`),
-`"build": "tsc --build tsconfig.build.json && tsc-alias -p tsconfig.build.json"`, and an
-`eslint.config.mjs` spreading `@repo/eslint-config` - plus `allowTestsIn([...])` once it has
-tests. A package the browser may import is
+`tsconfig.build.json` extending it (`src` only, emits `dist/`), an `eslint.config.mjs`
+spreading `@repo/eslint-config` - plus `allowTestsIn([...])` once it has tests - and the four
+scripts - `build`, `dev`, `typecheck`, `lint` - with the devDependencies they run
+(`@repo/eslint-config`, `@repo/typescript-config`, `concurrently`, `eslint`), copied from
+`packages/async-context/package.json`. Turbo skips a workspace without a script, so a missing
+`lint` or `typecheck` drops it from `pnpm verify` silently, and a missing `dev` leaves the apps
+reading a stale `dist/`. A package the browser may import is
 framework-free and sets `"types": []` - copy `packages/types` - or `@types/node` from the
 repo root lets Node APIs compile in its `src/`. A server-only package declares `@types/node`
 and `"types": ["node"]` instead - copy `packages/async-context`. `@repo/testing` is the one

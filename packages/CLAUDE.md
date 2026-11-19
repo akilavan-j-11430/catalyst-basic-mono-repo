@@ -92,9 +92,12 @@ Consumers must be built after these. Turborepo handles that via `dependsOn: ["^b
 block, a `tsconfig.json` extending `@repo/typescript-config/base.json` with `noEmit`, the
 `@/*` path and `include: ["src", "test", "vitest.config.ts"]`, a `tsconfig.build.json`
 extending it with `noEmit: false` / `rootDir: ./src` / `outDir: ./dist` /
-`include: ["src"]`, and
-`"build": "tsc --build tsconfig.build.json && tsc-alias -p tsconfig.build.json"`. Then add
-it to consumers as `"workspace:*"`. `@repo/testing` is the exception: it exports its
+`include: ["src"]`, and the
+four scripts - `build`, `dev`, `typecheck`, `lint` - and the devDependencies they run
+(`@repo/eslint-config`, `@repo/typescript-config`, `concurrently`, `eslint`), copied from
+`packages/async-context/package.json`. Turbo skips a workspace without a script, so a missing
+`lint` or `typecheck` drops it from `pnpm verify` silently, and a missing `dev` leaves the apps
+reading a stale `dist/`. Then add it to consumers as `"workspace:*"`. `@repo/testing` is the exception: it exports its
 TypeScript sources and has no build - see `.claude/rules/general/testing.md`.
 
 A package the browser may import is framework-free, so it also sets `"types": []`: in
