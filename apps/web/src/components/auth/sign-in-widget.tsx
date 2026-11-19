@@ -77,13 +77,7 @@ export function SignInWidget() {
     mounted.current = true;
 
     let stop = (): void => undefined;
-    AuthClient.session()
-      .then((auth) =>
-        auth.signIn(CONTAINER_ID, {
-          redirectUrl: AuthClient.appUrl("/"),
-          cssUrl: AuthClient.appUrl(STYLESHEET),
-        }),
-      )
+    AuthClient.showSignIn(CONTAINER_ID, { afterSignIn: "/", stylesheet: STYLESHEET })
       .then(() => {
         setReady(true);
         stop = observeContentHeight((height) =>

@@ -1,12 +1,33 @@
 import type { Authentication } from "@zcatalyst/auth/web";
 
 /**
- * Facade: everything this app asks of the Catalyst web SDK - the session, sign-out, and the
- * URLs handed to the SDK. The only code in the browser that reaches it. Who is signed in is
- * read on the server, by the page that shows them.
+ * Facade: everything this app asks of the Catalyst web SDK - showing the sign-in form and
+ * signing out. The only code in the browser that reaches it, and the SDK's objects never leave
+ * it: callers pass paths and get nothing of the SDK's back. Who is signed in is read on the
+ * server, by the page that shows them.
  */
 export class AuthClient {
   private static pendingSession: Promise<Authentication> | null = null;
+
+  /** Renders Catalyst's sign-in form into the element with `containerId`, styled by the
+   *  stylesheet at `paths.stylesheet`, and sends the person to `paths.afterSignIn` once
+   *  signed in. */
+  static async showSignIn(
+    containerId: string,
+    paths: { afterSignIn: string; stylesheet: string },
+  ): Promise<void> {
+    const auth = await AuthClient.session();
+    await auth.signIn(containerId, {
+      redirectUrl: AuthClient.appUrl(paths.afterSignIn),
+      cssUrl: AuthClient.appUrl(paths.stylesheet),
+    });
+  }
+
+  /** Signs out and sends the browser to `path`. */
+  static async signOut(path: string): Promise<void> {
+    const auth = await AuthClient.session();
+    await auth.signOut(AuthClient.appUrl(path));
+  }
 
   /**
    * The SDK reads `document` when its module is evaluated, which would crash the server
@@ -14,7 +35,7 @@ export class AuthClient {
    * Holding the promise also makes `init` happen once - the SDK's own credential fetch
    * clears its in-flight promise in a `finally`, so concurrent callers each re-request.
    */
-  static session(): Promise<Authentication> {
+  private static session(): Promise<Authentication> {
     if (AuthClient.pendingSession === null) {
       AuthClient.pendingSession = import("@zcatalyst/auth/web").then(async ({ zcAuth }) => {
         await zcAuth.init();
@@ -30,13 +51,7 @@ export class AuthClient {
    * resolve against theirs. Prefixing the current origin keeps one call site correct on
    * localhost and on the Slate domain.
    */
-  static appUrl(path: string): string {
+  private static appUrl(path: string): string {
     return new URL(path, window.location.origin).toString();
-  }
-
-  /** Signs out and sends the browser to `path`. */
-  static async signOut(path: string): Promise<void> {
-    const auth = await AuthClient.session();
-    await auth.signOut(AuthClient.appUrl(path));
   }
 }
