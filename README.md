@@ -11,6 +11,9 @@ minutes.
 - **Server-side data in the web app**: pages read Catalyst in their Server Components and
   forms write through Server Actions, on the modular `@zcatalyst/*` SDKs, with a
   per-request execution context and structured logging.
+- **Sign-in and sign-up pages**: Catalyst's hosted sign-in widget at `/sign-in`, and a
+  sign-up form that registers the user through a Server Action. The home page needs a
+  signed-in user and shows their account.
 - A **reverse proxy** AppSail, for local development only, that gives the stack a single
   origin and enforces Catalyst login at the edge.
 - **Shared TypeScript packages** for shared types, runtime utilities, and a common
@@ -18,8 +21,8 @@ minutes.
 - A **Turborepo pipeline** so packages build in dependency order, plus one-command bundle
   and deploy.
 
-It is deliberately small. There is no database layer, no auth UI, and no example CRUD
-resource - just the plumbing that every Catalyst solution ends up needing, done once
+It is deliberately small. There is no database layer and no example CRUD resource -
+just the plumbing that every Catalyst solution ends up needing, done once
 and done consistently.
 
 ---
