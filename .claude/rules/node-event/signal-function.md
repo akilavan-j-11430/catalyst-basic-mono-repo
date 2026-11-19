@@ -141,11 +141,13 @@ await runWithContext(execution, async () => {
     });
   }
 });
+await CatalystLogOutput.flush();
 context.closeWithSuccess();
 ```
 
-As in the job function, any throw lands in `closeWithFailure()`, and every run closes one
-way or the other.
+As in the job function, the logger is configured at the top of the file, any throw lands in
+`closeWithFailure()`, every run closes one way or the other, and the logger is flushed
+before either close.
 
 ## The dev server
 

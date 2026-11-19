@@ -36,6 +36,7 @@ import { randomUUID } from "node:crypto";
 import { CatalystScope } from "@repo/catalyst-node/catalyst-scope";
 import { CatalystSession } from "@repo/catalyst-node/catalyst-session";
 import { ExecutionContext, runWithContext } from "@repo/async-context/async-context";
+import { CatalystLogOutput } from "@repo/logger/catalyst-log-output";
 import { Logger } from "@repo/logger/logger";
 import { TodoRepository } from "@repo/repositories/todo-repository";
 
@@ -73,13 +74,18 @@ export async function handler(context: BasicIoContext, basicIo: BasicIo): Promis
     basicIo.setStatus(500);
     basicIo.write("Something went wrong.");
   }
+  await CatalystLogOutput.flush();
   context.close();
 }
 ```
 
 ```ts
-// src/index.ts
+// src/index.ts - the deployed entry only; the dev server leaves the logger on stdout
+import { CatalystLogOutput } from "@repo/logger/catalyst-log-output";
+import { Logger } from "@repo/logger/logger";
 import { handler } from "@/handler";
+
+Logger.configure({ output: CatalystLogOutput });
 
 module.exports = handler;
 ```

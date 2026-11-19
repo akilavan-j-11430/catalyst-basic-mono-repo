@@ -47,7 +47,7 @@ export const reminderJob = Job.create<{ todoId: string }>({
   jobName: "reminder",
   aliasName: "reminder",
   jobPoolName: "default",
-  jobTargetFunctionName: "job_executor",
+  jobTargetFunctionName: "job-executor",
 });
 ```
 
@@ -104,7 +104,7 @@ export const nightlyReportJob = Job.create({
   jobName: "nightly_report",
   aliasName: "nightly_report",
   jobPoolName: "default",
-  jobTargetFunctionName: "report_executor",
+  jobTargetFunctionName: "report-executor",
 });
 
 await nightlyReportJob.submitJob();
@@ -251,7 +251,7 @@ data. Read it through `CatalystSession.app` at the point of use and let it go.
 User scope covers only the methods the browser SDK exposes
 (https://docs.catalyst.zoho.com/en/sdk/javascript/v1/webpack-bundler/#browser-supported-javascript-methods);
 everything else needs Admin. Use User unless the method is missing from the browser list.
-Cache is admin-only.
+Cache and Job Scheduling are admin-only, so their handles always use the Admin app.
 
 **A Table, Bucket or Zcql call starts from `runIn(scope)`.** These handles expose only
 `runIn`, which returns the operations bound to that scope (`ScopedTable`, `ScopedBucket`,

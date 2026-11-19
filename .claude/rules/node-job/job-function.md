@@ -115,8 +115,8 @@ export class ReminderJob {
 - **It reaches Catalyst the way a route does**, through repositories and handles, which read
   the app the entry point set. Only Admin is available, as described below.
 - **Only Admin is available.** No signed-in user starts a job, so the entry point sets only
-  the Admin app, and a wrapper that asks for User throws `SCOPE_UNAVAILABLE`. That includes `Job`'s own accessor, so a job that
-  submits another job needs an Admin path added to `job.ts` first.
+  the Admin app, and a wrapper that asks for User throws `SCOPE_UNAVAILABLE`. `Job` itself
+  uses Admin, so a job can submit another job.
 - **A retry runs it again.** Catalyst can rerun a failed job, so a job must be safe to run
   twice for the same params.
 
@@ -129,9 +129,11 @@ import { CatalystScope } from "@repo/catalyst-node/catalyst-scope";
 import { CatalystSession } from "@repo/catalyst-node/catalyst-session";
 import type { JobParams } from "@repo/catalyst-node/job";
 import { ExecutionContext, runWithContext } from "@repo/async-context/async-context";
+import { CatalystLogOutput } from "@repo/logger/catalyst-log-output";
 import { Logger } from "@repo/logger/logger";
 import { JobDispatcher } from "@/job-dispatcher";
 
+Logger.configure({ output: CatalystLogOutput });
 const logger = Logger.for("job-executor");
 
 /** What Catalyst passes a Job function - `types/job.d.ts` from `functions:add` lists it all. */
@@ -153,9 +155,11 @@ async function handler(jobRequest: JobRequest, context: JobContext): Promise<voi
       await CatalystSession.setApp(context.catalystHeaders, CatalystScope.Admin);
       await JobDispatcher.run(jobRequest.getAllJobParams());
     });
+    await CatalystLogOutput.flush();
     context.closeWithSuccess();
   } catch (error) {
     logger.error(error);
+    await CatalystLogOutput.flush();
     context.closeWithFailure();
   }
 }

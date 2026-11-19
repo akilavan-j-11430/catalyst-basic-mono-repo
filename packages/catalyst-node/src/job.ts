@@ -38,9 +38,10 @@ interface OneTimeCronRequest {
 }
 
 /** Fresh per call. The app is per-request and carries the caller's credentials,
- *  so a service must never be hoisted to module scope. */
+ *  so a service must never be hoisted to module scope. Job Scheduling is admin-only: the SDK
+ *  sends every job and cron call as admin, whatever app it is given. */
 function jobScheduling(): JobScheduling {
-  return new JobScheduling(CatalystSession.app(CatalystScope.User));
+  return new JobScheduling(CatalystSession.app(CatalystScope.Admin));
 }
 
 /** Catalyst carries job params as strings. A job that takes none is `Job<void>`. */
@@ -74,8 +75,8 @@ interface JobConfig {
   jobTargetFunctionName: string;
 }
 
-/** A Catalyst job. Holds its config only, and submits for the request in flight with its User
- *  credentials. */
+/** A Catalyst job. Holds its config only, and submits for the request in flight with its Admin
+ *  credentials - so a job function, which has only the Admin app, can submit one too. */
 export class Job<T extends JobParams | void = void> {
   private constructor(readonly config: JobConfig) {}
 
