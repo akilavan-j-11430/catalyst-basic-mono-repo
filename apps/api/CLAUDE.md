@@ -60,7 +60,7 @@ Every path segment is a constant in `ApiPath` (`@repo/routing/api-path`), shared
 ## Execution context
 
 `initExecutionContext` (`@repo/http-server/middleware`) gives every `/api` request an execution id and
-an empty `Catalyst`, and runs the rest of the chain inside `runWithContext`. It builds no
+empty extras, and runs the rest of the chain inside `runWithContext`. It builds no
 Catalyst app.
 
 A route that calls Catalyst says which scopes it needs, and only those are built:
@@ -69,8 +69,9 @@ A route that calls Catalyst says which scopes it needs, and only those are built
 authRouter.post(ApiPath.Register, initCatalystScopes([CatalystScope.Admin]), handler);
 ```
 
-`initCatalystScopes` calls `zcAuth.init(req, { scope })` from `@zcatalyst/auth` once per
-listed scope. Catalyst reads the project details and the caller's credentials off the
+`initCatalystScopes` calls `CatalystSession.setApp(req.headers, scope)` once per listed
+scope, which builds the app with `zcAuth.init` and sets it on the request's execution
+context. Catalyst reads the project details and the caller's credentials off the
 request headers, so the apps are per-request and nothing needs configuring in the
 environment. A route that names no scope - `ping` - never pays for an init. When every
 route on a router needs the same scopes, `router.use(initCatalystScopes([...]))` once.
@@ -82,13 +83,13 @@ Three things about that call are easy to get wrong:
   only fails later as `app.credential.getToken is not a function`.
 - **User and Admin are different apps.** A user-scope app acts as the signed-in caller, so
   `getCurrentUser()` identifies them and App User table permissions apply. An admin-scope
-  app acts as the application. The handler passes the request's session to the wrapper,
-  which asks it for the scope it needs - `session.app(scope)`.
+  app acts as the application. Each wrapper reads the one it needs from the execution
+  context - `CatalystSession.app(scope)`.
 - **A listed scope that fails fails the request.** A request with neither a user token nor
   a cookie cannot build the User app (`missing user credentials`), so a route that lists
-  User answers 401 before its handler runs. A scope the route did not list is built the
-  first time a wrapper asks for it, and one that cannot be built rejects with
-  `CatalystError` (`SCOPE_UNAVAILABLE`) - a 500, so list every scope the route needs.
+  User answers 401 before its handler runs; a failed Admin scope is a 500. A scope the route
+  did not list is never built: a wrapper that asks for it throws `CatalystError`
+  (`SCOPE_UNAVAILABLE`) - a 500, so list every scope the route needs.
 
 This is why requests must arrive through `catalyst serve` - only the CLI injects those
 headers. Bypass it and every `zcAuth.init` fails with `app/invalid_project_details` (logged
@@ -97,21 +98,22 @@ by `initCatalystScopes`), so every route that lists a scope fails - 401 for User
 handler.
 
 Handlers must **not** initialize Catalyst themselves, and must not reach for the app at
-all. `initCatalystScopes` leaves the request's `CatalystSession` on the response, and the
-handler passes `catalystSessionOf(res)` to each call. Table data goes through a repository in `packages/catalyst-node/src/repositories/`, which
-takes and returns domain types - a route never imports a table handle or `Zcql`:
+all. `initCatalystScopes` sets the apps on the request's execution context, and each wrapper
+reads them from there, so the handler just calls it. Table data goes through a repository in
+`packages/catalyst-node/src/repositories/`, which takes and returns domain types - a route never imports a table handle or `Zcql`:
 
 ```ts
 import { TodoRepository } from "@repo/catalyst-node/repositories/todo-repository";
 
-const todo = await TodoRepository.find(catalystSessionOf(res), req.params.todoId);
+const todo = await TodoRepository.find(req.params.todoId);
 ```
 
-A bucket, cache or job handle is called directly, naming the session and the scope with
-`runIn`:
+A bucket, cache or job handle is called directly. A bucket names its scope with `runIn`;
+cache and job have a fixed scope, so their methods sit on the handle:
 
 ```ts
-await invoiceBucket.runIn(catalystSessionOf(res), CatalystScope.User).getObject(invoiceKey);
+await invoiceBucket.runIn(CatalystScope.User).getObject(invoiceKey);
+await reminderJob.submitJob({ params: { todoId } });
 ```
 
 Handles are declared once in `packages/catalyst-node/src/resources.ts`, never in a

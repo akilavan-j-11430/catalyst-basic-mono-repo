@@ -32,8 +32,8 @@ steps. What goes inside the function is in that kind's rule under
    `@repo/logger`, `@repo/catalyst-node`, the `@zcatalyst/*` packages its wrappers need,
    and `pino` - the logger's runtime dependency, which the bundle installs rather than
    inlines. The function
-   builds a `CatalystSession` rather than the Catalyst app, so it needs no
-   `allowCatalystSdk([...])`.
+   sets its apps through `CatalystSession.setApp` rather than building them itself, so it
+   needs no `allowCatalystSdk([...])`.
 3. **`scripts/bundle.mjs`** is a copy of `apps/api`'s, with these changes:
    - `outDir` is `functions/<name>`.
    - It copies `catalyst-config.json` instead of `app-config.json`.

@@ -32,6 +32,7 @@ If the work takes more than a few lines, put it in a repository or a wrapper met
 ```ts
 // src/handler.ts
 import { randomUUID } from "node:crypto";
+import { CatalystScope } from "@repo/catalyst-node/catalyst-scope";
 import { CatalystSession } from "@repo/catalyst-node/catalyst-session";
 import { ExecutionContext, runWithContext } from "@repo/async-context/async-context";
 import { Logger } from "@repo/logger/logger";
@@ -60,9 +61,11 @@ export async function handler(context: BasicIoContext, basicIo: BasicIo): Promis
     return;
   }
   const execution = new ExecutionContext({ executionId: randomUUID(), extras: {} });
-  const session = CatalystSession.fromHeaders(context.catalystHeaders);
   try {
-    const todo = await runWithContext(execution, () => TodoRepository.find(session, todoId));
+    const todo = await runWithContext(execution, async () => {
+      await CatalystSession.setApp(context.catalystHeaders, CatalystScope.Admin);
+      return TodoRepository.find(todoId);
+    });
     basicIo.write(JSON.stringify(todo ?? null));
   } catch (error) {
     logger.error(error);
@@ -88,9 +91,10 @@ module.exports = handler;
   A run that is never closed holds the caller until it times out.
 - **Use Admin scope.** No one has checked yet whether a Basic I/O context can build a
   User app. Check that before a function relies on knowing who called it.
-- The export, the session and the logger are the same for every function, and
-  `function-entry-point.md` explains each one. The handler imports no `@zcatalyst/*` -
-  the session builds the app - so the function needs no `allowCatalystSdk`.
+- The export, the execution context, the apps and the logger are the same for every
+  function, and `function-entry-point.md` explains each one. The handler imports no
+  `@zcatalyst/*` - `CatalystSession.setApp` builds the app - so the function needs no
+  `allowCatalystSdk`.
 
 ## The dev server
 

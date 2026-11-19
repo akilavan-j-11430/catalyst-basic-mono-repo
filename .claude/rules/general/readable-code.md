@@ -75,7 +75,7 @@ big upload. Then say why in a short comment, so the next reader does not simplif
 
 ```ts
 // One bulk call instead of N single-row inserts - each insert is a billed round trip.
-await todoTable.runIn(session, CatalystScope.User).insertRows(newTodos);
+await todoTable.runIn(CatalystScope.User).insertRows(newTodos);
 ```
 
 A guess that something might be slow is not a reason. Saving a microsecond on a path that

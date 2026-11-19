@@ -50,7 +50,6 @@ apps/<name>/
 
 ```ts
 // src/signal-dispatcher.ts
-import type { CatalystSession } from "@repo/catalyst-node/catalyst-session";
 import { Logger } from "@repo/logger/logger";
 import { CacheItemCreatedSignal } from "@/signals/cache-item-created";
 
@@ -65,12 +64,12 @@ export class SignalDispatcher {
   private static readonly logger = Logger.for("signal-dispatcher");
   private static readonly handlers: Record<
     string,
-    (session: CatalystSession, data: Record<string, unknown>) => Promise<void>
+    (data: Record<string, unknown>) => Promise<void>
   > = {
     [CacheItemCreatedSignal.apiName]: CacheItemCreatedSignal.run,
   };
 
-  static async run(session: CatalystSession, signalEvent: SignalEvent): Promise<void> {
+  static async run(signalEvent: SignalEvent): Promise<void> {
     const { apiName, data } = signalEvent;
     if (!apiName) {
       throw new Error("Signal event carries no api_name.");
@@ -80,12 +79,12 @@ export class SignalDispatcher {
       throw new Error(`No handler is registered for event "${apiName}".`);
     }
     SignalDispatcher.logger.info(`Handling event ${apiName}`);
-    await handle(session, data);
+    await handle(data);
   }
 }
 ```
 
-Each handler is a class with a `static readonly apiName` and a `static async run(session, data)`.
+Each handler is a class with a `static readonly apiName` and a `static async run(data)`.
 The class holds the event name, so the dispatcher never writes it as a string literal:
 
 ```ts
@@ -93,16 +92,16 @@ The class holds the event name, so the dispatcher never writes it as a string li
 export class CacheItemCreatedSignal {
   static readonly apiName = "cache_item_created";
 
-  static async run(session: CatalystSession, data: Record<string, unknown>): Promise<void> {
+  static async run(data: Record<string, unknown>): Promise<void> {
     // narrow `data` to the fields this event carries, then call repositories and handles
-    // with the session
   }
 }
 ```
 
 - **Narrow `data` first.** It is `unknown` content from a publisher, so check the fields
   the handler reads before using them.
-- **Admin is the only scope.** An event has no signed-in user.
+- **Admin is the only scope.** An event has no signed-in user, so the entry point sets only
+  the Admin app.
 - **A handler must be safe to run twice** (idempotent consumer). Signals retries a failed
   delivery under the rule's retry policy, so a handler can see the same event again.
   Use the event's `id` to tell a repeat when the work cannot simply be done twice.
@@ -121,12 +120,13 @@ interface SignalsEvent {
   getRawData(): Record<string, unknown>;
 }
 
-// inside handler(event: SignalsEvent, context), after the session is built:
+// inside handler(event: SignalsEvent, context), after the execution context is built:
 const { events } = CamelCase.convertKeys(event.getRawData() as unknown as SignalsDelivery);
 await runWithContext(execution, async () => {
+  await CatalystSession.setApp(context.catalystHeaders, CatalystScope.Admin);
   // One at a time, so a failure names the event that caused it.
   for (const signalEvent of events) {
-    await SignalDispatcher.run(session, {
+    await SignalDispatcher.run({
       apiName: signalEvent.eventConfig.apiName,
       data: signalEvent.data,
     });
@@ -151,7 +151,7 @@ app.post(
   initCatalystScopes([CatalystScope.Admin]),
   async (req, res) => {
     const { eventName } = req.params;
-    await SignalDispatcher.run(catalystSessionOf(res), { apiName: eventName, data: req.body });
+    await SignalDispatcher.run({ apiName: eventName, data: req.body });
     res.json(toRecordResponse({ eventName }));
   },
 );

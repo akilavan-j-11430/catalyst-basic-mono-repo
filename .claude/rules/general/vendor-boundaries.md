@@ -46,8 +46,8 @@ which is the only code that imports that table's handle and names its columns:
 // packages/catalyst-node/src/repositories/todo-repository.ts
 /** Repository: every Data Store read and write of todos, and the only code naming their columns. */
 export class TodoRepository {
-  static async find(session: CatalystSession, todoId: string): Promise<Todo | undefined> {
-    const storedTodo = await todoTable.runIn(session, CatalystScope.User).getRow(todoId);
+  static async find(todoId: string): Promise<Todo | undefined> {
+    const storedTodo = await todoTable.runIn(CatalystScope.User).getRow(todoId);
     return storedTodo && TodoRepository.toTodo(storedTodo);
   }
 
@@ -57,7 +57,7 @@ export class TodoRepository {
 }
 
 // apps/api/src/routes/todo.ts
-const todo = await TodoRepository.find(catalystSessionOf(res), req.params.todoId);
+const todo = await TodoRepository.find(req.params.todoId);
 ```
 
 Moving to Postgres then rewrites `todo-repository.ts` against the same methods and leaves

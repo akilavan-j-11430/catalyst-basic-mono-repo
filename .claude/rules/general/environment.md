@@ -59,13 +59,13 @@ needs as a parameter, so the app that owns the variable is the one that reads it
 
 ```ts
 // packages/catalyst-node/src/user-management.ts
-static async register(
-  session: CatalystSession,
-  registration: { user: NewUser; redirectUrl: string },
-): Promise<RegisteredUser>
+static async register(registration: {
+  user: NewUser;
+  redirectUrl: string;
+}): Promise<RegisteredUser>
 
 // apps/api/src/routes/auth.ts
-await UserManagement.register(catalystSessionOf(res), {
+await UserManagement.register({
   user,
   redirectUrl: env.get("AUTH_REDIRECT_URL"),
 });

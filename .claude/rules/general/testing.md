@@ -137,10 +137,10 @@ vi.mock("@zcatalyst/datastore", () => ({
 - `vi.mock` names the SDK as a string, so the ESLint ban on importing `@zcatalyst/*` outside
   `catalyst/` still holds in tests.
 
-A wrapper takes the request's `CatalystSession`, so a `catalyst-node` unit test passes it one
-built from no headers at all - `CatalystSession.fromHeaders({})` - and the faked `zcAuth.init`
-hands back a stand-in app for whatever scope it asks for. See `queryAsUser` in
-`zcql.test.ts`.
+A wrapper reads its app from the request's execution context, so a `catalyst-node` unit test
+runs the call through `inRequest(...)` (`test/in-request.ts`). It starts a context and sets
+the User and Admin apps from no headers at all, and the faked `zcAuth.init` hands back a
+stand-in app for each. See `queryAsUser` in `zcql.test.ts`.
 
 ## Integration tests
 

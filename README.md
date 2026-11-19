@@ -236,14 +236,14 @@ curl http://localhost:3001/api/v1/nope
 | Workspace | Job |
 |---|---|
 | `apps/proxy` | Local development only. Routes `/api` to the API and everything else to the web app, including WebSocket upgrades for HMR. Enforces Catalyst login. Never deployed. |
-| `apps/api` | Express API. Establishes a per-request execution context, builds the request's Catalyst session, times requests, and maps typed errors to HTTP statuses. |
+| `apps/api` | Express API. Establishes a per-request execution context, sets the request's Catalyst apps on it, times requests, and maps typed errors to HTTP statuses. |
 | `apps/web` | Next.js frontend. Calls the API with relative `/api/...` paths. |
 | `@repo/routing` | `ApiPath` segments, combined with `+` - the API mounts them and the web app calls them, so no path is a string literal in either. |
 | `@repo/types` | `RecordResponse`, `PagedRecordResponse`, `ErrorResponse` - imported by both the API and the web app so the contract is written once. |
 | `@repo/async-context` | `ExecutionContext` over `AsyncLocalStorage` - the execution id and extras of the request in flight. |
 | `@repo/logger` | `Logger.for(source)` on pino - each line a block naming its source and, inside a request, the execution id and order. |
 | `@repo/env` | `defineEnv` - each app declares the variables it reads, so a typo is a compile error and an unset one throws `MissingEnvVariableError`. |
-| `@repo/catalyst-node` | `CatalystSession` and the Catalyst wrappers plus the resource handles built from them - the only package that imports `@zcatalyst/*`. Each entry point builds a session from its request's headers and passes it to every call. |
+| `@repo/catalyst-node` | `CatalystSession` and the Catalyst wrappers plus the resource handles built from them - the only package that imports `@zcatalyst/*`. Each entry point sets the apps it needs on its execution context with `CatalystSession.setApp`, and every wrapper reads them from there. |
 | `@repo/http-client` | `HttpClient` - every call to a service outside this repo. Reads nothing ambient, so it runs in Node and in the browser. |
 | `@repo/case-conversion` | `CamelCase.convertKeys` - renames a vendor's snake_case or kebab-case keys at any depth, for `catalyst-node`. Framework-free, so the web app may use it too. |
 | `@repo/testing` | `VitestProjects.forWorkspace`, the Vitest settings every tested workspace starts from. Dev-only - see `.claude/rules/general/testing.md`. |

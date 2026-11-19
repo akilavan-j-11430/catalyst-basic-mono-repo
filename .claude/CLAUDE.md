@@ -37,7 +37,8 @@ Where new work goes:
   `packages/http-server`, the one package allowed `express`. Every app that serves HTTP
   imports it from there and never copies it.
 - Catalyst SDK calls -> `packages/catalyst-node`, the one package allowed `@zcatalyst/*`.
-  Each entry point builds a `CatalystSession` and passes it to every call.
+  Each entry point sets the apps it needs on its execution context with
+  `CatalystSession.setApp`, and every wrapper reads them from there.
 - Logging -> `packages/logger` (`Logger.for("<source>")`); the request's execution
   context -> `packages/async-context`. Both rest on `node:async_hooks`, so they are server
   only - never reach them from `apps/web`.
@@ -264,9 +265,9 @@ In `apps/api`:
 - Reach Catalyst through a resource handle imported from
   `@repo/catalyst-node/resources`, where every table, bucket, cache segment
   and job is declared once with the wrapper's `create` factory. Never construct a wrapper
-  in a handler and never initialize Catalyst yourself. A handler passes the request's
-  `CatalystSession` - `catalystSessionOf(res)`, built by `initCatalystScopes` - to every
-  Catalyst call it makes - see `.claude/rules/general/catalyst-sdk.md`.
+  in a handler and never initialize Catalyst yourself. `initCatalystScopes` sets the app for
+  each scope the route names on the request's execution context, and every wrapper reads it
+  from there, so a handler passes nothing along - see `.claude/rules/general/catalyst-sdk.md`.
 - Throw `HttpError.BadRequest | Unauthorized | NotFound | Conflict`
   (`@repo/http-server/http-error`) instead of setting a status by hand. `errorHandler`
   maps them; anything else becomes a 500.

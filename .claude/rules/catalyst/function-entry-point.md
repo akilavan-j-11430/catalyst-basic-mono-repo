@@ -8,13 +8,15 @@ they all must get right.
   module itself, so the export has to be the function. `export default` bundles to
   `{ default: handler }`, which Catalyst cannot call. `export =` fails to typecheck under
   `base.json`'s `module: "ESNext"` (TS1203).
-- **The entry point builds one `CatalystSession` per run and passes it down.** An Advanced
-  I/O function builds it from the request's `headers`, through `initCatalystScopes`, as
-  `apps/api` does. Every other kind builds it from the function's context:
-  `CatalystSession.fromHeaders(context.catalystHeaders)`. No function calls `zcAuth.init`
-  itself - the session does, awaited, the first time a wrapper asks for an app.
+- **The entry point starts one execution context per run and sets the apps it needs.** An
+  Advanced I/O function does both through `initExecutionContext` and `initCatalystScopes`,
+  as `apps/api` does. Every other kind does it in `index.ts`: inside `runWithContext`, it
+  first awaits `CatalystSession.setApp(context.catalystHeaders, CatalystScope.Admin)` for
+  each scope its code uses, then runs the work. Apps are not built on first use, so a
+  wrapper asking for a scope the entry point did not set throws `SCOPE_UNAVAILABLE`. No
+  function calls `zcAuth.init` itself - `setApp` does.
   Not yet run on a deployed function: the SDK recognises a function's context by its
-  `catalystHeaders` key, and the session hands it `{ headers }`. If the first function's
+  `catalystHeaders` key, and `setApp` hands it `{ headers }`. If the first function's
   init rejects, give `CatalystSession` a way to pass the context through as-is.
 - **Admin is the only scope wherever no signed-in user made the call.** That is always
   the case for a job or an event. A wrapper that asks for User throws `SCOPE_UNAVAILABLE`.
