@@ -28,7 +28,7 @@ path under `src/`:
 import type { RecordResponse } from "@repo/types/api";              // src/api.ts
 import { Logger } from "@repo/logger/logger";                      // src/logger.ts
 import { currentContext } from "@repo/async-context/async-context";
-import { todoTable } from "@repo/catalyst-node/resources";         // src/resources.ts
+import { todoTable } from "@repo/repositories/resources";         // src/resources.ts
 import { defineEnv } from "@repo/env/define-env";                  // src/define-env.ts
 ```
 
@@ -58,10 +58,12 @@ Consumers must be built after these. Turborepo handles that via `dependsOn: ["^b
   `.claude/skills/deployable-steps.md`.
 - **`packages/catalyst-node` is the only package that may import a Catalyst
   SDK.** ESLint enforces it. See `.claude/rules/general/catalyst-sdk.md`.
-- **Catalyst resources are declared once, in `catalyst-node/src/resources.ts`** - one
+- **Catalyst resources are declared once, in `repositories/src/resources.ts`** - one
   `export const` per table, bucket, cache segment and job, built with the wrapper's
   `create` factory. Apps import the handle; they never construct a wrapper themselves.
-  It sits here rather than in an app so two AppSails cannot name the same table twice.
+  It sits in this package rather than in an app, so two deployables cannot name the same
+  table twice, and rather than in `catalyst-node`, which wraps the SDK for any solution.
+  `packages/repositories` arrives with the first resource.
 - **A capability an app lacks becomes a method on the wrapper**, never an SDK call at the
   call site. `catalyst/` is meant to be the whole list of what this repo asks of
   Catalyst, so anything used from a route has to be visible there.

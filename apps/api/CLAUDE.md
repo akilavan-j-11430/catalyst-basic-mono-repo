@@ -103,10 +103,10 @@ handler.
 Handlers must **not** initialize Catalyst themselves, and must not reach for the app at
 all. `initCatalystScopes` sets the apps on the request's execution context, and each wrapper
 reads them from there, so the handler just calls it. Table data goes through a repository in
-`packages/catalyst-node/src/repositories/`, which takes and returns domain types - a route never imports a table handle or `Zcql`:
+`packages/repositories/src/`, which takes and returns domain types - a route never imports a table handle or `Zcql`:
 
 ```ts
-import { TodoRepository } from "@repo/catalyst-node/repositories/todo-repository";
+import { TodoRepository } from "@repo/repositories/todo-repository";
 
 const todo = await TodoRepository.find(req.params.todoId);
 ```
@@ -119,8 +119,8 @@ await invoiceBucket.runIn(CatalystScope.User).getObject(invoiceKey);
 await reminderJob.submitJob({ params: { todoId } });
 ```
 
-Handles are declared once in `packages/catalyst-node/src/resources.ts`, never in a
-route. See `.claude/rules/general/vendor-boundaries.md`.
+Handles are declared once in `packages/repositories/src/resources.ts`, never in a
+route. See `.claude/rules/general/catalyst-sdk.md`.
 
 If a handle cannot do what the route needs, **add the method to the wrapper** rather than
 reaching for the SDK here. A single-use method is still the right shape.

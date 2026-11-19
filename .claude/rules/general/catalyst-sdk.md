@@ -4,7 +4,8 @@ Every Catalyst SDK call goes through `packages/catalyst-node/src/`. No
 `@zcatalyst/*` package may be imported anywhere else, and ESLint enforces it.
 
 One file per component - `bucket.ts`, `table.ts`, `zcql.ts`, `cache.ts`, `job.ts` - plus
-`resources.ts`, which names the resources, and `catalyst-session.ts`, which builds the apps.
+`catalyst-session.ts`, which sets the apps. The resources this app uses are named in
+`@repo/repositories`'s `resources.ts`, below, since they belong to the solution, not the SDK.
 Each component builds the SDK client it needs itself, in a module-private accessor at the
 top of the file, from the app the entry point set for the request in flight, and reaches
 for an app nowhere else:
@@ -26,15 +27,15 @@ Catalyst, and a boundary ESLint can name.
 ## Reaching a resource
 
 A wrapper instance is a **handle**: it holds a name and nothing else. Build it once, at
-module scope, in `resources.ts` - one `export const` per Catalyst resource this repo uses,
-and the only place a wrapper is ever constructed:
+module scope, in `resources.ts` in `@repo/repositories` - one `export const` per Catalyst
+resource this repo uses, and the only place a wrapper is ever constructed:
 
 ```ts
-// packages/catalyst-node/src/resources.ts
-import { Bucket } from "@/bucket";
-import { Cache } from "@/cache";
-import { Job } from "@/job";
-import { Table } from "@/table";
+// packages/repositories/src/resources.ts
+import { Bucket } from "@repo/catalyst-node/bucket";
+import { Cache } from "@repo/catalyst-node/cache";
+import { Job } from "@repo/catalyst-node/job";
+import { Table } from "@repo/catalyst-node/table";
 
 export const todoTable = Table.create<{
   TITLE: string;
@@ -52,19 +53,21 @@ export const reminderJob = Job.create<{ todoId: string }>({
 
 **Always `create`, never `new`.** The constructors are private precisely so that this file
 is the only seam. Never declare a second handle for a resource that already has one. A
-table handle is imported only by that table's repository (`vendor-boundaries.md`); a
+table handle is imported only by that table's repository (`api-layers.md`); a
 bucket, cache or job handle may be imported wherever it is needed:
 
 ```ts
-// packages/catalyst-node/src/repositories/todo-repository.ts
-import { CatalystScope } from "@/catalyst-scope";
+// packages/repositories/src/todo-repository.ts
+import { CatalystScope } from "@repo/catalyst-node/catalyst-scope";
 import { todoTable } from "@/resources";
 
 const storedTodo = await todoTable.runIn(CatalystScope.User).getRow(todoId);
 ```
 
-It lives here rather than in an app because `apps/api` is one AppSail among however many a
-solution grows, and two apps reaching the same table must not name it twice.
+It lives in a package rather than in an app because the web app is one deployable among
+however many a solution grows, and two of them reaching the same table must not name it
+twice. It is not in `catalyst-node` because the handles name this solution's resources, and
+that package wraps the SDK for any solution (`api-layers.md`).
 
 The four factories differ, because the resources do:
 
@@ -165,7 +168,8 @@ A statement returns at most 300 rows, so a read that can exceed that pages with
 single one, so it is static and starts from `runIn` -
 `Zcql.runIn(CatalystScope.User).executeQuery("SELECT ...")`.
 
-This is a starter kit, so it ships no resources. `resources.ts` arrives with the first one.
+This is a starter kit, so it ships no resources. `@repo/repositories` and its `resources.ts`
+arrive with the first one.
 
 ## A handle is hoisted, a client is not
 

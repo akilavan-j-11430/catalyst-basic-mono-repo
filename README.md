@@ -405,7 +405,7 @@ Short version; `CLAUDE.md` has the full list.
 - **Logging.** Use `Logger.for("<source>")` from `@repo/logger`, not `console`. It attaches
   the source and, inside a request, the execution ID and per-request ordering.
 - **Catalyst SDK.** `zcAuth.init(req)` happens once per request in middleware. Handlers
-  import a resource handle from `@repo/catalyst-node/resources` and never
+  import a resource handle from `@repo/repositories/resources` and never
   initialize their own app.
 - **Ports** come from `X_ZOHO_CATALYST_LISTEN_PORT` with a local fallback. Never
   hardcode.

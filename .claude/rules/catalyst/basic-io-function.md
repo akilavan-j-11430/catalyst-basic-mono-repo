@@ -36,7 +36,7 @@ import { CatalystScope } from "@repo/catalyst-node/catalyst-scope";
 import { CatalystSession } from "@repo/catalyst-node/catalyst-session";
 import { ExecutionContext, runWithContext } from "@repo/async-context/async-context";
 import { Logger } from "@repo/logger/logger";
-import { TodoRepository } from "@repo/catalyst-node/repositories/todo-repository";
+import { TodoRepository } from "@repo/repositories/todo-repository";
 
 const logger = Logger.for("todo-lookup");
 

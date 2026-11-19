@@ -42,7 +42,13 @@ Where new work goes:
   imports it from there and never copies it.
 - Catalyst SDK calls -> `packages/catalyst-node`, the one package allowed `@zcatalyst/*`.
   Each entry point sets the apps it needs on its execution context with
-  `CatalystSession.setApp`, and every wrapper reads them from there.
+  `CatalystSession.setApp`, and every wrapper reads them from there. It wraps the SDK for
+  any solution, so it holds no table, bucket or job of this one.
+- This app's records -> a repository in `packages/repositories` (`@repo/repositories`),
+  whether they sit in a Data Store table or in a CRM; every Catalyst resource handle goes in
+  its `resources.ts`. An outside service asked to *do* something - create a lead, send an
+  email - is a client in its own `packages/<service>`. The package arrives with the first
+  resource; `.claude/rules/general/api-layers.md` has the rule.
 - Logging -> `packages/logger` (`Logger.for("<source>")`); the request's execution
   context -> `packages/async-context`. Both rest on `node:async_hooks`, so they are server
   only - in `apps/web` only server code (a page, a Server Action, a route handler) reaches
@@ -188,11 +194,11 @@ Topic rules live one-per-file in `.claude/rules/` and load automatically, in two
 - `environment.md` - every environment variable.
 - `code-design.md` - every class, and the pattern it follows.
 - `readable-code.md` - casing, naming, and when complexity is worth it.
-- `vendor-boundaries.md` - where each vendor is reached, and how little a migration touches.
 - `testing.md` - where tests live, how Catalyst is faked, and what to run before calling a
   change done.
-- `api-layers.md` - what a route, a service and a repository each do, and when a service
-  is worth adding.
+- `api-layers.md` - what a route, a service and a repository each do, when a service is
+  worth adding, where repositories live, and whether an outside service is a repository or
+  a client.
 
 `.claude/rules/nextjs/` holds the rules that apply only to `apps/web`, each scoped with
 `paths:` frontmatter:
@@ -219,7 +225,7 @@ frontmatter when it applies to only part of the tree.
 - Shared packages expose subpaths, not a barrel: `@repo/types/api`, `@repo/routing/api-path`,
   `@repo/case-conversion/camel-case`,
   `@repo/logger/logger`, `@repo/async-context/async-context`,
-  `@repo/catalyst-node/resources`, `@repo/env/define-env`,
+  `@repo/repositories/resources`, `@repo/env/define-env`,
   `@repo/http-client/http-client`,
   `@repo/http-server/middleware`, `@repo/http-server/http-error`, `@repo/http-server/response`,
   `@repo/input-validation/input-validation`,
@@ -265,7 +271,7 @@ In `apps/web`:
 In `apps/api`:
 
 - Reach Catalyst through a resource handle imported from
-  `@repo/catalyst-node/resources`, where every table, bucket, cache segment
+  `@repo/repositories/resources`, where every table, bucket, cache segment
   and job is declared once with the wrapper's `create` factory. Never construct a wrapper
   in a handler and never initialize Catalyst yourself. `initCatalystScopes` sets the app for
   each scope the route names on the request's execution context, and every wrapper reads it
@@ -304,11 +310,13 @@ naming the scopes it uses - `router.use` it instead when every route on the rout
 The route stays thin - validate, call one operation, respond - and a business rule goes in
 a service only once there is one to hold. See `.claude/rules/general/api-layers.md`.
 
-**A table** - declare its handle in `packages/catalyst-node/src/resources.ts`, its
+**A table** - declare its handle in `packages/repositories/src/resources.ts`, its
 domain type in `packages/types`, and a repository in
-`packages/catalyst-node/src/repositories/<name>-repository.ts` that is the only importer of the
-handle and maps rows to the domain type. Routes call the repository. See
-`.claude/rules/general/vendor-boundaries.md`.
+`packages/repositories/src/<name>-repository.ts` that is the only importer of the
+handle and maps rows to the domain type. Routes call the repository. The first one creates
+`packages/repositories` as a shared package (below), depending on `@repo/catalyst-node`, with
+`allowVendorNames` over its `src/` for the Catalyst column names. See
+`.claude/rules/general/api-layers.md`.
 
 **An AppSail, a function or a Slate app** - a new deployable, so agree it with the user
 first, then pick the kind and run its skill in `.claude/skills/`:

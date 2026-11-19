@@ -9,6 +9,11 @@ The point is one seam. Transport, auth headers, encoding, timeout, logging and e
 mapping all live in the client, so moving off `fetch` means adding one `HttpTransport`
 implementation - not touching call sites.
 
+Who calls `HttpClient` depends on what the service is to this app. Records it keeps for us -
+the contacts in a CRM - are read and written by a repository in `@repo/repositories`; work we
+ask it to do - create a lead, send an email - goes through a client class in its own
+`packages/<service>`. `api-layers.md` has the test.
+
 ## Using it
 
 One instance per external service, built once at module scope:
