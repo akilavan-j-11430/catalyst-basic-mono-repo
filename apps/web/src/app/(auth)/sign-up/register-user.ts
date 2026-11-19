@@ -1,12 +1,12 @@
 "use server";
 
+import { headers } from "next/headers";
 import { z } from "zod";
 import { CatalystScope } from "@repo/catalyst-node/catalyst-scope";
 import { UserManagement } from "@repo/catalyst-node/user-management";
 import { InputValidation } from "@repo/input-validation/input-validation";
 import { InvalidInputError } from "@repo/input-validation/invalid-input-error";
 import type { NewUser, RegisteredUser } from "@repo/types/user";
-import { env } from "@/env";
 import { withCatalystFn } from "@/execution-context";
 
 /** What a registration must send. Each message says what is wrong with its field. */
@@ -28,6 +28,17 @@ export type RegisterResult =
   | { ok: true; registered: RegisteredUser }
   | { ok: false; field: string; problem: string };
 
+/** Where Catalyst sends a new user from the confirmation email: this app's home page. A
+ *  Server Action request always carries `Origin`, and Next has already checked it against the
+ *  request's host, so it is this app's own origin - local or Slate alike. */
+async function redirectUrl(): Promise<string> {
+  const origin = (await headers()).get("origin");
+  if (origin === null) {
+    throw new Error("A Server Action request arrived without an Origin header.");
+  }
+  return new URL("/", origin).toString();
+}
+
 /**
  * Registers an app user. Catalyst emails them a link to confirm and set a password. Admin,
  * because registering is not a browser SDK method and the caller has no account yet. Like
@@ -40,7 +51,7 @@ export const registerUser = withCatalystFn(
       const user: NewUser = InputValidation.parse(newUserSchema, input);
       const registered = await UserManagement.register({
         user,
-        redirectUrl: env.get("AUTH_REDIRECT_URL"),
+        redirectUrl: await redirectUrl(),
       });
       return { ok: true, registered };
     } catch (error) {

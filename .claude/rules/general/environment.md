@@ -112,9 +112,10 @@ caller's credentials ride on request headers, because `zcAuth.init(req)` is per 
 ## `apps/web` reads its keys on the server
 
 `apps/web` has its own template, `src/env.ts`, built with `defineEnv` like any other app's:
-`AUTH_REDIRECT_URL` and `TZ`. It imports `server-only`, so only a page, a Server Action or
+today only `TZ`. Sign-up's redirect is not a key here, because the Server Action takes it from
+the request's own origin. It imports `server-only`, so only a page, a Server Action or
 `instrumentation.ts` reads it - at request time, through `env`, never `process.env`. The
-four steps above apply unchanged, with `apps/web/turbo.json` passing the keys through for
+four steps above apply unchanged, with `apps/web/turbo.json` passing the key through for
 `dev`.
 
 - **The browser reads none.** There is no `NEXT_PUBLIC_*` key today: pages read and actions

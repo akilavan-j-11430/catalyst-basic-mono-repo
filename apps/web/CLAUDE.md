@@ -34,7 +34,9 @@ stay until a Slate deploy proves Slate passes those same headers to Next's serve
 
 Shapes both sides use live in `@repo/types` (`@repo/types/user` for the user shapes) -
 defined once, never redeclared here. Server-only configuration is on `src/env.ts`
-(`AUTH_REDIRECT_URL`, `TZ`), read through `env`; the browser reads no environment variable.
+(`TZ`), read through `env`; the browser reads no environment variable. Sign-up's
+confirmation link points at the origin the Server Action request came from, so no URL is
+configured.
 
 ## Who may see a page
 

@@ -150,7 +150,6 @@ Values this repo's own code reads. Each is a key on the owning app's template - 
 |---|---|---|
 | `AUTH_REDIRECT_URL` | `apps/api` | Where Catalyst sends a new user from the confirmation email. Locally the origin `catalyst serve` prints, usually `http://localhost:3001/`. |
 | `TZ` | `apps/api` | Timezone for log timestamps. Defaults to `Asia/Kolkata`. |
-| `AUTH_REDIRECT_URL` | `apps/web` | The same, for sign-up through the web app's Server Action. |
 | `TZ` | `apps/web` | Timezone for the web server's log timestamps. Optional. |
 
 These never go in `app-config.json` or any other Catalyst file - that file is committed,
@@ -326,9 +325,10 @@ Which is `turbo run bundle && catalyst deploy --only appsail:api,slate:web`:
 component only. In the cloud the web app reads and writes on its own server and calls no
 API.
 
-**The web app's keys** - `AUTH_REDIRECT_URL`, `TZ` - are set in **Console -> Slate -> web
--> Environment Variables**, once per environment. The server reads them at request time.
-`apps/web/.env.example` documents them, and a local `apps/web/.env` never reaches Slate,
+**The web app's key** - `TZ` - is set in **Console -> Slate -> web
+-> Environment Variables**, once per environment. The server reads it at request time.
+Sign-up needs no redirect key: the Server Action sends new users to the origin the request
+came from. `apps/web/.env.example` documents it, and a local `apps/web/.env` never reaches Slate,
 because the bundle leaves it out.
 
 **Environment variables are not carried by the deploy.** `app-config.json` declares no

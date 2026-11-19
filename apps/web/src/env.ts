@@ -7,8 +7,6 @@ import { defineEnv } from "@repo/env/define-env";
  * a key appears here exactly once either way. The browser reads none of these.
  */
 type WebEnv = {
-  /** Where Catalyst sends a new user from the confirmation email. */
-  AUTH_REDIRECT_URL: string;
   /** Timezone for log timestamps. Falls back to the logger's own default. */
   TZ: string;
 };
