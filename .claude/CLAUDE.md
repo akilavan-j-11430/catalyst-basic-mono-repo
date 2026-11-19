@@ -104,7 +104,7 @@ An API app, once there is one, gets its own prefix route in the proxy ahead of `
 | `packages/testing` | `@repo/testing` | - |
 
 **The proxy is never deployed.** It gives local development a single origin and an auth
-gate. It appears in `catalyst.json` so `catalyst serve` can run it, and `pnpm deploy`
+gate. It appears in `catalyst.json` so `catalyst serve` can run it, and `pnpm run deploy`
 deliberately ships only `slate:web`. Do not add it to the deploy list.
 
 **The web app serves its own reads and writes.** Slate serves `web` from `*.onslate.com`,
@@ -113,8 +113,8 @@ the `x-zc-*` headers on the request (`apps/web/src/execution-context.ts`). The b
 calls no backend of ours, so there is no API URL, bearer token or CORS to set up for it.
 
 That rests on Slate passing those headers to Next's server, which only a Slate deploy can
-prove. It is still unproven, and is checked on the first Slate deploy; there is no fallback
-app behind it any more.
+prove. It is still unproven: "The first Slate deploy" in `README.md` is the check, with
+headers logged by name only, and the fallback if it fails.
 
 ## Three things that will waste your time
 

@@ -6,7 +6,7 @@ AppSail named `proxy`, and is the only service the browser talks to directly.
 **This app is never deployed.** It exists for local development only. The cloud has no
 equivalent: there the web app reads and writes on its own server (see the root
 `.claude/CLAUDE.md`). It is declared in `catalyst.json` so `catalyst serve` can run it;
-`pnpm deploy` ships only `slate:web`. Do not add it to the deploy list.
+`pnpm run deploy` ships only `slate:web`. Do not add it to the deploy list.
 
 Port: `X_ZOHO_CATALYST_LISTEN_PORT` when the CLI injects it (4600 in practice), else
 **3000** as a standalone fallback. Under `catalyst serve` the CLI fronts it on a

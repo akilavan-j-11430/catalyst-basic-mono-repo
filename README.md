@@ -56,7 +56,7 @@ and done consistently.
 and any app added later that serves HTTP - behind one origin. The browser's session cookie
 and the Catalyst headers `catalyst serve` injects then reach the app with no extra setup,
 and `catalyst_auth: true` enforces login once, at the edge. It is listed in `catalyst.json`
-so `catalyst serve` can run it, and `pnpm deploy` ships only `slate:web`. **Do not add it to
+so `catalyst serve` can run it, and `pnpm run deploy` ships only `slate:web`. **Do not add it to
 the deploy list.**
 
 **The web app reads and writes on its own server.** A page reads Catalyst in its Server
@@ -66,7 +66,8 @@ ours, so there is no API URL, token or CORS to set up for it.
 
 Slate serves the web app from `*.onslate.com`. Locally `catalyst serve` adds those headers;
 in the cloud that rests on Slate passing them to Next's server, which is still unproven and
-is checked on the first Slate deploy. There is no fallback app behind it.
+is checked on the first Slate deploy - "The first Slate deploy" below says how, and what to
+do if it fails.
 
 **No API app ships.** A caller outside the web app - a mobile app, a webhook, another
 service - starts at a `route.ts` in `apps/web`. An Advanced I/O function or an AppSail is
@@ -255,7 +256,7 @@ All run from the repo root.
 | `pnpm test:unit` | `turbo test:unit` | Unit tests (`test/unit/` in each tested workspace). No network, Catalyst SDKs mocked. |
 | `pnpm test:integration` | `turbo test:integration` | Integration tests (`test/integration/`): `HttpClient` against a local server. Catalyst is still faked, so no `catalyst serve`. |
 | `pnpm verify` | `turbo run build lint typecheck test:unit test:integration` | Before calling a change done. Build, lint, typecheck and both test suites in one run - not `bundle`: run that too after a dependency or `scripts/bundle.mjs` change. |
-| `pnpm deploy` | `turbo run bundle && catalyst deploy --only slate:web` | Ship the frontend. The proxy is local only and is intentionally excluded. |
+| `pnpm run deploy` | `turbo run bundle && catalyst deploy --only slate:web` | Ship the frontend. The proxy is local only and is intentionally excluded. |
 
 Scoping to one workspace:
 
@@ -301,10 +302,11 @@ matching directory there, which is how the CLI finds the output.
 ## Deploying
 
 ```bash
-pnpm deploy
+pnpm run deploy
 ```
 
-Which is `turbo run bundle && catalyst deploy --only slate:web`:
+Always `pnpm run deploy`: a bare `pnpm deploy` runs pnpm's own command of that name, not
+this script. It is `turbo run bundle && catalyst deploy --only slate:web`:
 
 1. Turborepo builds the packages, then stages `apps/web` in `slate/web/` with its `@repo/*`
    packages vendored in.
@@ -337,6 +339,32 @@ breaking after promoting to Production.
 `apps/web/.catalyst/slate-config.toml` is generated and managed by the CLI - do not
 hand-edit it. It applies to the first deployment only, so set the Slate app's install and
 build commands to npm in the Console as well.
+
+### The first Slate deploy
+
+Before it, in the Console:
+
+- Activate Slate once per project (**Slate -> Start Exploring**). Until then a deploy fails
+  with HTTP 400.
+- Set the `web` app's install and build commands to `npm install` and `npm run build`, and
+  its `TZ` (above).
+- Turn on Authentication with the hosted sign-in, and public sign-up if people register
+  themselves. Whether the sign-in widget needs `*.onslate.com` as an authorized domain is not
+  checked yet - if the widget does not load on Slate, look there first.
+
+After it, check the one thing the design rests on: that Slate hands Next's server the
+`x-zc-*` headers the Catalyst app is built from.
+
+1. Open the deployed app signed out - `/` should send you to `/sign-in`. Sign in - `/` should
+   show your account. If both happen, the User app was built from the headers, and the
+   check is done.
+2. If `/` keeps sending you back to `/sign-in`, or every read fails, find out which headers
+   arrive - **by name only**, because their values are credentials. Log
+   `[...(await headers()).keys()].filter((name) => name.startsWith("x-zc-"))` and the value
+   of `x-zc-user-type` from one page, deploy, read the log, then remove the line.
+3. If the credential headers are missing, stop and bring it back to the team: the web app
+   cannot call Catalyst as the user from its server. The fallback is the shape `apps/api`
+   had - an API app the browser calls directly (`.claude/rules/node-api/express-app.md`).
 
 ---
 

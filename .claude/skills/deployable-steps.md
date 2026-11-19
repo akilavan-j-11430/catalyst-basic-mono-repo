@@ -71,5 +71,5 @@ function from its server code - a page or a Server Action - through `HttpClient`
   - A Slate app has `vendor/` and a `package-lock.json`.
 - Make one real request through the URL `pnpm dev` prints - to the app, or to the
   function's dev server.
-- After `pnpm deploy`, check the deployment in the Console. A Slate deploy can report
+- After `pnpm run deploy`, check the deployment in the Console. A Slate deploy can report
   success in the CLI even though the build failed on the server.

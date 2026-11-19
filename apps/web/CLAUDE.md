@@ -42,14 +42,15 @@ configured.
 
 ## Who may see a page
 
-The server decides, before any HTML is sent. Catalyst stamps every request to this app with
-`x-zc-user-type` (`catalyst serve` locally, Slate when deployed), and
-`RequestSession.isSignedIn` (`src/catalyst/request-session.ts`) reads it:
+The server decides, before any HTML is sent. `catalyst serve` stamps every local request
+with `x-zc-user-type`, and `RequestSession.isSignedIn` (`src/catalyst/request-session.ts`)
+reads it. That Slate stamps it too is still to be checked on the first Slate deploy
+(`README.md`, "The first Slate deploy"):
 
 - `app/(app)/layout.tsx` sends a signed-out visitor to `/sign-in`; `app/(auth)/layout.tsx`
   sends a signed-in one to `/`. Both groups therefore render per request, never prerendered.
-- Only `project-user` counts. An anonymous visitor on Slate arrives as `admin`, so a
-  presence check would let everyone in.
+- Only `project-user` counts. An anonymous visitor may arrive as `admin` - the gateway grants
+  Admin to anonymous requests - so a presence check could let everyone in.
 - Never log or echo request headers from a layout or route handler. The same request carries
   Catalyst credentials in its other `x-zc-*` headers.
 - A layout re-runs on a full load, not on a soft navigation, so the layout's check is not
@@ -114,7 +115,7 @@ rest.
 
 Slate does not deploy this directory. `pnpm bundle` runs `scripts/bundle.mjs`, which
 stages a self-contained copy in `slate/web/` (gitignored), and `catalyst.json` points the
-`web` Slate app there. Deployed from the repo root via `pnpm deploy`.
+`web` Slate app there. Deployed from the repo root via `pnpm run deploy`.
 
 Slate never runs turbo and cannot resolve `workspace:*`, so the staged copy is a plain
 npm project:
