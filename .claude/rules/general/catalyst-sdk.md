@@ -168,6 +168,27 @@ A statement returns at most 300 rows, so a read that can exceed that pages with
 single one, so it is static and starts from `runIn` -
 `Zcql.runIn(CatalystScope.User).executeQuery("SELECT ...")`.
 
+**Every value goes in as a `?`, with the values passed beside the statement** - never
+written into the statement. ZCQL has no bound parameters of its own, so `executeQuery` binds
+them: a value with a quote in it would otherwise end the literal and rewrite the query.
+
+```ts
+await Zcql.runIn(CatalystScope.User).executeQuery(
+  `SELECT ${table.column("ROWID")} FROM ${table.name} WHERE ${table.column("TITLE")} = ?`,
+  [title],
+);
+```
+
+- Table and column names come from the handle and go in the template; they are never a
+  caller's input.
+- A string is quoted with each quote inside doubled - ZCQL's only escape; a backslash is an
+  ordinary character. A number goes in as written, and one that is not finite throws.
+- `null` goes in as `NULL`, which `SET` and `INSERT` take. In a filter it is the caller's
+  call: as in SQL, `NOTES = NULL` matches no row and `NOTES IS NULL` is the test for an unset
+  column.
+- A count of values that does not match the `?`s throws before any call.
+- The error from a failed query never carries the statement, since it holds the values.
+
 This is a starter kit, so it ships no resources. `@repo/repositories` and its `resources.ts`
 arrive with the first one.
 
@@ -263,7 +284,8 @@ the fewest calls that answer the question**, and a review asks how many each pat
 
   ```ts
   await Zcql.runIn(CatalystScope.Admin).executeQuery(
-    `DELETE FROM ${table.name} WHERE ${table.column("TITLE")} = '${title}'`,
+    `DELETE FROM ${table.name} WHERE ${table.column("TITLE")} = ?`,
+    [title],
   );
   ```
 

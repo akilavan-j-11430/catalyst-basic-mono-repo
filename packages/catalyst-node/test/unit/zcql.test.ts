@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { Zcql, type ZcqlRow } from "@/zcql";
+import { Zcql, type ZcqlRow, type ZcqlValue } from "@/zcql";
 import { CatalystScope } from "@/catalyst-scope";
 import { ErrorCode } from "@/error-codes";
 import { CatalystError } from "@/catalyst-error";
@@ -16,8 +16,15 @@ vi.mock("@zcatalyst/datastore", () => ({
 }));
 
 /** Runs the query the way a route would, inside the request's execution context. */
-function queryAsUser(query: string): Promise<ZcqlRow[]> {
-  return inRequest(() => Zcql.runIn(CatalystScope.User).executeQuery(query));
+function queryAsUser(statement: string, values?: ZcqlValue[]): Promise<ZcqlRow[]> {
+  return inRequest(() => Zcql.runIn(CatalystScope.User).executeQuery(statement, values));
+}
+
+/** The query text the SDK received for a statement and its values. */
+async function sentFor(statement: string, values: ZcqlValue[]): Promise<unknown> {
+  executeZcqlQuery.mockResolvedValue([]);
+  await queryAsUser(statement, values);
+  return executeZcqlQuery.mock.calls[0]?.[0];
 }
 
 describe("Zcql.executeQuery", () => {
@@ -38,5 +45,55 @@ describe("Zcql.executeQuery", () => {
 
     await expect(querying).rejects.toBeInstanceOf(CatalystError);
     await expect(querying).rejects.toMatchObject({ code: ErrorCode.INVALID_RESOURCE });
+  });
+
+  it("keeps the statement, and the values bound into it, out of the error", async () => {
+    executeZcqlQuery.mockRejectedValue(new Error("ZCQL syntax error"));
+
+    const querying = queryAsUser("SELECT * FROM Todo WHERE TITLE = ?", ["secret"]);
+
+    await expect(querying).rejects.toSatisfy(
+      (error: CatalystError) => !error.toString().includes("secret"),
+    );
+  });
+});
+
+describe("Zcql.executeQuery binding values", () => {
+  it("puts each value where its ? is, a string quoted and a number as written", async () => {
+    const sent = await sentFor("SELECT * FROM Todo WHERE TITLE = ? LIMIT 1, ?", ["Pay", 300]);
+
+    expect(sent).toBe("SELECT * FROM Todo WHERE TITLE = 'Pay' LIMIT 1, 300");
+  });
+
+  it("doubles each quote in a string, so the value cannot close its literal", async () => {
+    const sent = await sentFor("SELECT * FROM Todo WHERE TITLE = ?", ["' OR TITLE = 'x"]);
+
+    expect(sent).toBe("SELECT * FROM Todo WHERE TITLE = ''' OR TITLE = ''x'");
+  });
+
+  it("leaves a backslash as it is - ZCQL treats it as an ordinary character", async () => {
+    const sent = await sentFor("SELECT * FROM Todo WHERE TITLE = ?", ["back\\slash"]);
+
+    expect(sent).toBe("SELECT * FROM Todo WHERE TITLE = 'back\\slash'");
+  });
+
+  it("puts null in as NULL, wherever the statement puts its ?", async () => {
+    const sent = await sentFor("UPDATE Todo SET NOTES = ? WHERE TITLE = ?", [null, "Pay"]);
+
+    expect(sent).toBe("UPDATE Todo SET NOTES = NULL WHERE TITLE = 'Pay'");
+  });
+
+  it("throws before any call when the values do not match the placeholders", async () => {
+    await expect(queryAsUser("SELECT * FROM Todo WHERE TITLE = ?", [])).rejects.toMatchObject({
+      code: ErrorCode.INVALID_RESOURCE,
+    });
+    expect(executeZcqlQuery).not.toHaveBeenCalled();
+  });
+
+  it("throws before any call for a number that is not finite", async () => {
+    await expect(queryAsUser("SELECT * FROM Todo LIMIT ?", [Number.NaN])).rejects.toMatchObject({
+      code: ErrorCode.INVALID_RESOURCE,
+    });
+    expect(executeZcqlQuery).not.toHaveBeenCalled();
   });
 });
