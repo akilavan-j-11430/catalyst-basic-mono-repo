@@ -51,15 +51,16 @@ export function withCatalystPage<Props>(
 
 /**
  * Runs a Server Action or a route handler inside one execution context with the app for each
- * scope set. A scope that cannot be set throws before the call runs.
+ * scope set, passing on every argument Next gives it - a route's `{ params }`, an action's
+ * previous state. A scope that cannot be set throws before the call runs.
  */
-export function withCatalystFn<Input, Result>(
+export function withCatalystFn<Args extends unknown[], Result>(
   scopes: CatalystScope[],
-  call: (input: Input) => Promise<Result>,
-): (input: Input) => Promise<Result> {
-  return async (input) =>
+  call: (...args: Args) => Promise<Result>,
+): (...args: Args) => Promise<Result> {
+  return async (...args) =>
     runWithContext(newExecutionContext(), async () => {
       await setApps(scopes);
-      return call(input);
+      return call(...args);
     });
 }
