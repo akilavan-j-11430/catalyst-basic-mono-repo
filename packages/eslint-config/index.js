@@ -197,6 +197,12 @@ export default tseslint.config(
         "error",
         { name: "fetch", message: USE_HTTP_CLIENT },
       ],
+      // The global ban sees only a bare `fetch`, not one read off the global object.
+      "no-restricted-properties": [
+        "error",
+        { object: "globalThis", property: "fetch", message: USE_HTTP_CLIENT },
+        { object: "window", property: "fetch", message: USE_HTTP_CLIENT },
+      ],
       "no-restricted-imports": restrictedImports(),
       "@typescript-eslint/naming-convention": camelCaseNaming,
     },
@@ -207,6 +213,7 @@ export default tseslint.config(
     files: ["**/*-transport.ts"],
     rules: {
       "no-restricted-globals": "off",
+      "no-restricted-properties": "off",
       "no-restricted-imports": restrictedImports({ allowHttpClients: true }),
     },
   },
