@@ -87,15 +87,18 @@ its own. Several jobs may share one executor, which dispatches on the `jobName` 
 the params.
 
 Both methods take a single object. `submitJob` queues the job now; `submitOneTimeCron`
-schedules it, and its `cronName` is required, unique in the project, and capped at 20
-characters like the alias:
+schedules it. `timeOfExecution` is epoch milliseconds, as `Date.getTime()` gives, and the
+wrapper sends Catalyst the seconds it reads; a time below 2001 is taken for seconds passed by
+mistake and throws. `cronName` is required; keep it to letters, digits and underscores - a
+precaution, since only `job_name`'s rule is confirmed - and keep it unique yourself: Catalyst
+does not enforce that, so a caller that must not schedule twice marks its own record:
 
 ```ts
 await reminderJob.submitJob({ params: { todoId: "1" } });
 await reminderJob.submitOneTimeCron({
   timeOfExecution: runAt,          // epoch milliseconds
   params: { todoId: "1" },
-  cronName: "remind-0001",
+  cronName: "remind_0001",
 });
 ```
 
@@ -111,7 +114,7 @@ export const nightlyReportJob = Job.create({
 });
 
 await nightlyReportJob.submitJob();
-await nightlyReportJob.submitOneTimeCron({ timeOfExecution: runAt, cronName: "nightly-01" });
+await nightlyReportJob.submitOneTimeCron({ timeOfExecution: runAt, cronName: "nightly_01" });
 ```
 
 The generic decides which, so the two cannot be confused: passing a payload to a void job,

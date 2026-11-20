@@ -8,8 +8,9 @@ import { randomUUID } from "node:crypto";
  *  underscores - a hyphen fails every submit at runtime. */
 const ALIAS_NAME_PATTERN = /^[A-Za-z0-9_]{1,20}$/;
 
-/** Catalyst rejects a cron name longer than this. */
-const MAX_CRON_NAME_LENGTH = 20;
+/** 2001-09-09 in epoch milliseconds. A smaller time is seconds passed by mistake, which
+ *  Catalyst would take as 1970 and run at once. */
+const MIN_EPOCH_MS = 1_000_000_000_000;
 
 // Neither SDK method can be satisfied as declared. `submitJob` wants a `TCatalystJobs`
 // member, whose `target_type` is a TS enum the package exports from neither its root nor
@@ -62,9 +63,10 @@ type SubmitJobArgs<T> = T extends void
   : [input: SubmitJobInput<T>];
 
 type SubmitOneTimeCronInput<T> = WithParams<T> & {
-  /** Epoch milliseconds. */
+  /** Epoch milliseconds, as `Date.getTime()` gives - sent to Catalyst in seconds. */
   timeOfExecution: number;
-  /** Unique in the project, at most `MAX_CRON_NAME_LENGTH` characters. */
+  /** Kept to letters, digits and underscores as a precaution - only `job_name`'s rule is
+   *  confirmed. Catalyst does not enforce uniqueness. */
   cronName: string;
 };
 
@@ -108,13 +110,13 @@ export class Job<T extends JobParams | void = void> {
     }
   }
 
-  /** Queues the job to run once. `cronName` names the cron, must be unique in the
-   *  project, and never reaches the job's params. */
+  /** Queues the job to run once. `cronName` names the cron and never reaches the job's
+   *  params. */
   async submitOneTimeCron(input: SubmitOneTimeCronInput<T>): Promise<void> {
     const { timeOfExecution, params, cronName } = input;
-    if (cronName.length > MAX_CRON_NAME_LENGTH) {
+    if (!Number.isFinite(timeOfExecution) || timeOfExecution < MIN_EPOCH_MS) {
       throw CatalystError.InvalidResource(
-        `Cron name must be at most ${MAX_CRON_NAME_LENGTH} characters, got "${cronName}".`,
+        `timeOfExecution must be epoch milliseconds, got ${timeOfExecution}.`,
       );
     }
 
@@ -122,7 +124,8 @@ export class Job<T extends JobParams | void = void> {
       cron_type: "OneTime",
       cron_name: cronName,
       cron_status: true,
-      cron_detail: { time_of_execution: timeOfExecution.toString() },
+      // Catalyst reads seconds: milliseconds schedule the run for the year ~58,000, silently.
+      cron_detail: { time_of_execution: Math.floor(timeOfExecution / 1000).toString() },
       job_meta: {
         job_name: this.config.aliasName,
         jobpool_name: this.config.jobPoolName,
