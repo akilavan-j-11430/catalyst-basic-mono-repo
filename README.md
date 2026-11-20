@@ -421,6 +421,12 @@ reading a stale `dist/`. Add it to consumers as `"workspace:*"`.
 domain) and your `.env` files. Nothing project-specific is committed, so a fresh clone
 plus `catalyst init` is genuinely all it takes.
 
+**Know the sign-up gap.** Sign-up is a public Server Action that runs as Admin, and nothing
+limits how often it is called. Anyone can script it to make Catalyst create pending users and
+send confirmation emails to any address. The kit cannot rate-limit it, so before going live
+decide whether public sign-up stays on (**Authentication** in the Console), or whether users
+are invited instead.
+
 ---
 
 ## Conventions
