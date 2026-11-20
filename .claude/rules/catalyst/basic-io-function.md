@@ -72,7 +72,7 @@ export async function handler(context: BasicIoContext, basicIo: BasicIo): Promis
   try {
     const todo = await runWithContext(execution, async () => {
       await CatalystSession.setApp(context.catalystHeaders, CatalystScope.Admin);
-      return TodoRepository.find(todoId);
+      return TodoRepository.findForSupport(todoId);
     });
     basicIo.write(JSON.stringify(todo ?? null));
   } catch (error) {
@@ -102,8 +102,10 @@ module.exports = handler;
   string throws.
 - **Call `context.close()` on every path**, including the early return after validation.
   A run that is never closed holds the caller until it times out.
-- **Use Admin scope.** No one has checked yet whether a Basic I/O context can build a
-  User app. Check that before a function relies on knowing who called it.
+- **Use Admin scope,** and call the repository methods that read with it -
+  `findForSupport`, not `find` (`general/repositories.md`, "Which scope a method reads
+  with"). No one has checked yet whether a Basic I/O context can build a User app. Check
+  that before a function relies on knowing who called it.
 - The export, the execution context, the apps and the logger are the same for every
   function, and `function-entry-point.md` explains each one. The handler imports no
   `@zcatalyst/*` - `CatalystSession.setApp` builds the app - so the function needs no

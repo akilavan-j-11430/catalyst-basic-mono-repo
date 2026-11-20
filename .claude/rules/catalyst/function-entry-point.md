@@ -26,8 +26,10 @@ they all must get right.
   `catalystHeaders` key, and `setApp` hands it `{ headers }`. If the first function's
   init rejects, give `CatalystSession` a way to pass the context through as-is.
 - **Admin is the only scope wherever no signed-in user made the call.** That is always
-  the case for a job or an event. A wrapper that asks for User throws `SCOPE_UNAVAILABLE`.
-  The fix is to add an Admin path to the wrapper, not to build a User app.
+  the case for a job or an event. A repository method that reads with User throws
+  `SCOPE_UNAVAILABLE` there. The fix is a method for the function's own business case that
+  reads with Admin (`general/repositories.md`, "Which scope a method reads with"), not a
+  User app.
 - **Logging goes through `Logger.for("<source>")`** (`@repo/logger/logger`,
   `general/logging.md`). The entry point configures it once with `output: CatalystLogOutput`, as every app does: it
   writes to the log collector when Catalyst hands the function one, and to stdout when it does

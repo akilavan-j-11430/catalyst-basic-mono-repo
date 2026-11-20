@@ -27,8 +27,15 @@ import { todoTable, type TodoRow } from "@/resources";
 
 /** Repository: every Data Store read and write of todos, and the only code naming their columns. */
 export class TodoRepository {
+  /** A signed-in user opening one of their todos. */
   static async find(todoId: string): Promise<Todo | undefined> {
     const storedTodo = await todoTable.runIn(CatalystScope.User).getRow(todoId);
+    return storedTodo && TodoRepository.toTodo(storedTodo);
+  }
+
+  /** Support looking up anyone's todo, from a function no signed-in user calls. */
+  static async findForSupport(todoId: string): Promise<Todo | undefined> {
+    const storedTodo = await todoTable.runIn(CatalystScope.Admin).getRow(todoId);
     return storedTodo && TodoRepository.toTodo(storedTodo);
   }
 
@@ -42,6 +49,23 @@ import { TodoRepository } from "@repo/repositories/todo-repository";
 
 const todo = await TodoRepository.find(todoId);
 ```
+
+## Which scope a method reads with
+
+Each method picks its scope from the business case it serves, and its name says which case
+that is. A signed-in user reading their own records is User, so the table's User
+permissions decide what they see. Work no signed-in user starts - a job, an event, support
+reading anyone's record - is Admin. The caller never passes a scope in.
+
+- **Two cases, two methods,** even when the query is the same: `find` for the user,
+  `findForSupport` for support. A method that served both would need the caller to choose,
+  and then nothing in the repository says who may read what.
+- **The entry point sets every scope the methods it calls read.** A page that calls `find`
+  lists User in `withCatalystPage`; a job, which has only Admin, calls only Admin methods.
+  A missing scope throws `SCOPE_UNAVAILABLE` at the call, never reads with another one.
+- **Admin proves nothing about the caller.** An Admin method behind a public entry point is
+  public, so the entry point that calls one checks who may - a Security Rule set to
+  `required`, or User scope beside it.
 
 An area calls a repository; a page, an action or a route calls one directly only while there
 is no area in between (`nextjs/code-placement.md`, `node-api/code-placement.md`). Bucket,
