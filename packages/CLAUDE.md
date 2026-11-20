@@ -85,7 +85,9 @@ Consumers must be built after these. Turborepo handles that via `dependsOn: ["^b
   parameter** - `UserManagement.register({ user, redirectUrl })`, `Logger.configure({ timeZone })` - so
   the app that owns the variable is the one that reads it, and the failure lands where the
   value is used. No file under `packages/` calls `process.env` except the mechanism
-  itself. See `.claude/rules/general/environment.md`.
+  itself and `logger`'s `catalyst-log-output.ts`, which reads the log collector Catalyst
+  hands the process - a platform value no app configures. See
+  `.claude/rules/general/environment.md`.
 
 ## A new package
 

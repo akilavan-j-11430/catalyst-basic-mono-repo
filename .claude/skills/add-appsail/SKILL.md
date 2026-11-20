@@ -14,7 +14,8 @@ description: Add a new Catalyst AppSail to this repo - an Express app with its w
    from the files restored from git in its "Start from the last one". Then:
    - `package.json`: `apps/api/package.json`, restored from git the same way, under the
      app's name. Keep its scripts; drop `@repo/http-server`, `@repo/routing` and any other
-     dependency the app does not import.
+     dependency the app does not import, and add `@repo/async-context`, which the restored
+     `middleware.ts` imports and that manifest predates.
    - `src/index.ts`: configure the logger with `CatalystLogOutput`, listen on
      `X_ZOHO_CATALYST_LISTEN_PORT`, then `PORT`, then a free local port from 8000 up, and
      on `SIGTERM` and `SIGINT` close the server and flush the logger before exiting

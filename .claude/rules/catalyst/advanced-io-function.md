@@ -41,6 +41,10 @@ app.listen(8101);
 - **The logger is configured in `index.ts`,** before the export:
   `Logger.configure({ output: CatalystLogOutput })` (`general/logging.md`).
 - **No port lookup and no shutdown in `index.ts`.** Only the dev server listens.
+- **Flush after each response.** A run has no `close` to flush before, and Catalyst may
+  stop the instance once the response is sent, so `recordRequestTiming`'s `finish` listener
+  calls `void CatalystLogOutput.flush()` after its own line. Whether lines are lost
+  without it is unverified; check the first deploy's log for the timing line.
 - **`catalyst-config.json`** comes from `catalyst functions:add --type aio`.
 - **`express` is a runtime `dependency`.** The deployed function runs it, so the bundle
   must install it.

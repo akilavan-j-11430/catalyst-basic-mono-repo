@@ -32,8 +32,8 @@ comment.
 
 A system design names its patterns the same way - publish/subscribe, cache-aside,
 write-through, idempotent consumer, backpressure, retry with backoff - and states in those
-terms how it handles consistency, failure and recovery. `docs/architecture.md` is where
-that goes.
+terms how it handles consistency, failure and recovery. That goes in
+`docs/architecture.md`, which the first system design creates.
 
 ## A pattern still has to earn its place
 

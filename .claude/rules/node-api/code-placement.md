@@ -49,7 +49,11 @@ A route reads as: check, call, respond.
 ```ts
 invoiceRouter.get(BillingPath.InvoiceId, initCatalystScopes([CatalystScope.User]), async (req, res) => {
   const { invoiceId } = InputValidation.parse(invoiceParams, req.params);
-  res.json(toRecordResponse(await InvoiceRepository.find(invoiceId)));
+  const invoice = await InvoiceRepository.find(invoiceId);
+  if (!invoice) {
+    throw HttpError.NotFound(`No invoice ${invoiceId}.`);
+  }
+  res.json(toRecordResponse(invoice));
 });
 ```
 
@@ -57,6 +61,8 @@ invoiceRouter.get(BillingPath.InvoiceId, initCatalystScopes([CatalystScope.User]
   schema through `InputValidation.parse`, never a check per field (`express-app.md`). The schema lives in the route file until a second route needs it.
 - **A business rule is not validation.** "A discharged patient cannot be admitted again"
   belongs to the area, which throws, and the route lets the error reach `errorHandler`.
+- **A missing record is a 404 the route throws,** since a repository answers `undefined`
+  rather than deciding the status.
 - **`HttpError` and the response builders stay in the route.** An area throws its own error
   or the wrapper's, and the route maps it to an `HttpError` only when a specific status is
   wanted.

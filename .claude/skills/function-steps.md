@@ -30,9 +30,10 @@ for Basic I/O and Advanced I/O - and every entry point follows
      maintain them.
 2. **The workspace** is set up as "Build and bundle" in `node-api/express-app.md` says:
    CommonJS, the `tsconfig.json` / `tsconfig.build.json` pair, and `@types/node`. Its
-   dependencies are `@repo/async-context`, `@repo/logger`, `@repo/catalyst-node`, the
-   `@zcatalyst/*` packages its wrappers need, and `pino` - the logger's runtime dependency,
-   which the bundle installs rather than inlines. The function sets its apps through
+   dependencies are `@repo/async-context`, `@repo/logger`, `@repo/catalyst-node`,
+   `@repo/repositories` once it reads a record, the `@zcatalyst/*` packages its wrappers
+   need, and `pino` - the logger's runtime dependency, which the bundle installs rather than
+   inlines. The function sets its apps through
    `CatalystSession.setApp` rather than building them itself, so it needs no
    `allowCatalystSdk([...])`.
 3. **`scripts/bundle.mjs`** is the deleted `apps/api/scripts/bundle.mjs`, restored from git
