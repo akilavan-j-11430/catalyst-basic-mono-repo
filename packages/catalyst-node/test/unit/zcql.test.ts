@@ -9,9 +9,12 @@ import { inRequest } from "../in-request";
 // makes the spy exist by then, since vi.mock is hoisted above the imports.
 const { executeZcqlQuery } = vi.hoisted(() => ({ executeZcqlQuery: vi.fn() }));
 
+const { executeOlapQuery } = vi.hoisted(() => ({ executeOlapQuery: vi.fn() }));
+
 vi.mock("@zcatalyst/datastore", () => ({
   Datastore: class {
     executeZCQLQuery = executeZcqlQuery;
+    executeOLAPQuery = executeOlapQuery;
   },
 }));
 
@@ -52,6 +55,34 @@ describe("Zcql.executeQuery", () => {
 
     const querying = queryAsUser("SELECT * FROM Todo WHERE TITLE = ?", ["secret"]);
 
+    await expect(querying).rejects.toSatisfy(
+      (error: CatalystError) => !error.toString().includes("secret"),
+    );
+  });
+});
+
+describe("Zcql.executeOlapQuery", () => {
+  it("binds its values and sends the query to the OLAP engine", async () => {
+    executeOlapQuery.mockResolvedValue([]);
+
+    const statement = "SELECT COUNT(ROWID) FROM Todo WHERE TITLE = ?";
+    await inRequest(() => Zcql.runIn(CatalystScope.Admin).executeOlapQuery(statement, ["Pay"]));
+
+    expect(executeOlapQuery).toHaveBeenCalledExactlyOnceWith(
+      "SELECT COUNT(ROWID) FROM Todo WHERE TITLE = 'Pay'",
+    );
+    expect(executeZcqlQuery).not.toHaveBeenCalled();
+  });
+
+  it("turns an SDK failure into a CatalystError without the statement", async () => {
+    executeOlapQuery.mockRejectedValue(new Error("OLAP engine unavailable"));
+
+    const statement = "SELECT * FROM Todo WHERE TITLE = ?";
+    const querying = inRequest(() =>
+      Zcql.runIn(CatalystScope.Admin).executeOlapQuery(statement, ["secret"]),
+    );
+
+    await expect(querying).rejects.toMatchObject({ code: ErrorCode.INVALID_RESOURCE });
     await expect(querying).rejects.toSatisfy(
       (error: CatalystError) => !error.toString().includes("secret"),
     );

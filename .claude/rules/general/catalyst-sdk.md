@@ -188,6 +188,9 @@ await Zcql.runIn(CatalystScope.User).executeQuery(
 - `null` goes in as `NULL`, which `SET` and `INSERT` take. In a filter it is the caller's
   call: as in SQL, `NOTES = NULL` matches no row and `NOTES IS NULL` is the test for an unset
   column.
+- Every `?` in the statement is a placeholder, one inside a quoted literal included, so a
+  constant with a `?` in it goes in as a value too: `LIKE ?` with `["*?*"]`, never
+  `LIKE '*?*'`.
 - A count of values that does not match the `?`s throws before any call.
 - The error from a failed query never carries the statement, since it holds the values.
 
