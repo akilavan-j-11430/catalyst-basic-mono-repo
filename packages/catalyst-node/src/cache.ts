@@ -1,4 +1,5 @@
 import { Cache as CacheClient } from "@zcatalyst/cache";
+import { CatalystError } from "@/catalyst-error";
 import { CatalystScope } from "@/catalyst-scope";
 import { CatalystSession } from "@/catalyst-session";
 
@@ -32,20 +33,32 @@ export class Cache {
     expiryHours?: number,
   ): Promise<void> {
     const segment = await this.segment();
-    await segment.put(key, value, expiryHours);
+    try {
+      await segment.put(key, value, expiryHours);
+    } catch (cause) {
+      throw CatalystError.InvalidResource(`putValue failed for ${key}`, cause);
+    }
   }
 
   /** Reads a cache entry; undefined when absent or expired. */
   async getValue(key: string): Promise<string | undefined> {
     const segment = await this.segment();
-    const value = await segment.getValue(key);
-    return value ?? undefined;
+    try {
+      const value = await segment.getValue(key);
+      return value ?? undefined;
+    } catch (cause) {
+      throw CatalystError.InvalidResource(`getValue failed for ${key}`, cause);
+    }
   }
 
   /** Deletes a cache entry. */
   async deleteValue(key: string): Promise<boolean> {
     const segment = await this.segment();
-    return segment.delete(key);
+    try {
+      return await segment.delete(key);
+    } catch (cause) {
+      throw CatalystError.InvalidResource(`deleteValue failed for ${key}`, cause);
+    }
   }
 
   // getSegmentDetails is a round trip, so it only runs when a specific segment is named.
@@ -54,6 +67,10 @@ export class Cache {
     if (!this.segmentId) {
       return client.segment();
     }
-    return client.getSegmentDetails(this.segmentId);
+    try {
+      return await client.getSegmentDetails(this.segmentId);
+    } catch (cause) {
+      throw CatalystError.ResourceNotFound(`Cache segment ${this.segmentId} not found`, cause);
+    }
   }
 }

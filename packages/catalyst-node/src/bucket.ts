@@ -16,19 +16,6 @@ function stratus(scope: CatalystScope): Stratus {
   return new Stratus(CatalystSession.app(scope));
 }
 
-/** `listPagedObjects` returns either a plain detail record or an object handle. */
-function keyOf(entry: { key?: string; keyDetails?: { key: string } }): string {
-  return entry.keyDetails ? entry.keyDetails.key : (entry.key ?? "");
-}
-
-async function readStream(stream: Readable): Promise<string> {
-  const chunks: Buffer[] = [];
-  for await (const chunk of stream) {
-    chunks.push(Buffer.from(chunk as Buffer));
-  }
-  return Buffer.concat(chunks).toString("utf8");
-}
-
 /** A Stratus bucket bound to a scope, acting for the request in flight. Reached only
  *  through `Bucket.runIn`. */
 class ScopedBucket {
@@ -41,21 +28,38 @@ class ScopedBucket {
     return stratus(this.scope).bucket(this.name);
   }
 
+  /** `listPagedObjects` returns either a plain detail record or an object handle. */
+  private static keyOf(entry: { key?: string; keyDetails?: { key: string } }): string {
+    return entry.keyDetails ? entry.keyDetails.key : (entry.key ?? "");
+  }
+
+  private static async readStream(stream: Readable): Promise<string> {
+    const chunks: Buffer[] = [];
+    for await (const chunk of stream) {
+      chunks.push(Buffer.from(chunk as Buffer));
+    }
+    return Buffer.concat(chunks).toString("utf8");
+  }
+
   async listObject(options: {
     maxKeys?: number;
     prefix?: string;
     nextToken?: string;
   }): Promise<{ items: string[]; nextToken?: string }> {
     const bucket = this.bucket();
-    const objects = await bucket.listPagedObjects({
-      prefix: options.prefix,
-      maxKeys: options.maxKeys?.toString(),
-      continuationToken: options.nextToken,
-    });
-    return {
-      items: objects.contents.map(keyOf),
-      nextToken: objects.next_continuation_token,
-    };
+    try {
+      const objects = await bucket.listPagedObjects({
+        prefix: options.prefix,
+        maxKeys: options.maxKeys?.toString(),
+        continuationToken: options.nextToken,
+      });
+      return {
+        items: objects.contents.map((entry) => ScopedBucket.keyOf(entry)),
+        nextToken: objects.next_continuation_token,
+      };
+    } catch (cause) {
+      throw CatalystError.InvalidResource(`listObject failed on ${this.name}`, cause);
+    }
   }
 
   /** Uploads an object. A TTL below the Catalyst minimum is rejected before the call. */
@@ -75,7 +79,11 @@ class ScopedBucket {
       uploadOptions.ttl = options.ttl.toString();
     }
     const bucket = this.bucket();
-    await bucket.putObject(key, data, uploadOptions);
+    try {
+      await bucket.putObject(key, data, uploadOptions);
+    } catch (cause) {
+      throw CatalystError.InvalidResource(`putObject failed for ${key} on ${this.name}`, cause);
+    }
   }
 
   async generatePreSignedUrl(
@@ -83,9 +91,14 @@ class ScopedBucket {
     expiryInSeconds: number,
   ): Promise<string> {
     const bucket = this.bucket();
-    const result = await bucket.generatePreSignedUrl(key, "GET", {
-      expiryIn: expiryInSeconds.toString(),
-    });
+    let result: Awaited<ReturnType<CatalystBucket["generatePreSignedUrl"]>>;
+    try {
+      result = await bucket.generatePreSignedUrl(key, "GET", {
+        expiryIn: expiryInSeconds.toString(),
+      });
+    } catch (cause) {
+      throw CatalystError.InvalidResource(`generatePreSignedUrl failed for ${key}`, cause);
+    }
     if (!result.signature) {
       throw CatalystError.InvalidResource(
         `Failed to generate pre-signed URL for key ${key}`,
@@ -121,7 +134,7 @@ class ScopedBucket {
     if (as === "stream") {
       return stream;
     }
-    const text = await readStream(stream);
+    const text = await ScopedBucket.readStream(stream);
     if (as === "text") {
       return text;
     }
@@ -135,15 +148,22 @@ class ScopedBucket {
     }
   }
 
-
   async deleteObject(key: string): Promise<void> {
     const bucket = this.bucket();
-    await bucket.deleteObject(key);
+    try {
+      await bucket.deleteObject(key);
+    } catch (cause) {
+      throw CatalystError.InvalidResource(`deleteObject failed for ${key} on ${this.name}`, cause);
+    }
   }
 
   async deletePath(path: string): Promise<void> {
     const bucket = this.bucket();
-    await bucket.deletePath(path);
+    try {
+      await bucket.deletePath(path);
+    } catch (cause) {
+      throw CatalystError.InvalidResource(`deletePath failed for ${path} on ${this.name}`, cause);
+    }
   }
 }
 

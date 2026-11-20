@@ -101,7 +101,11 @@ export class Job<T extends JobParams | void = void> {
       params: { ...params, jobId, jobName: this.config.jobName },
     };
     const scheduling = jobScheduling();
-    await scheduling.JOB.submitJob(job as unknown as SdkJobMeta);
+    try {
+      await scheduling.JOB.submitJob(job as unknown as SdkJobMeta);
+    } catch (cause) {
+      throw CatalystError.InvalidResource(`submitJob failed for ${this.config.jobName}`, cause);
+    }
   }
 
   /** Queues the job to run once. `cronName` names the cron, must be unique in the
@@ -128,6 +132,10 @@ export class Job<T extends JobParams | void = void> {
       },
     };
     const scheduling = jobScheduling();
-    await scheduling.CRON.createCron(cron as unknown as SdkCronDetails);
+    try {
+      await scheduling.CRON.createCron(cron as unknown as SdkCronDetails);
+    } catch (cause) {
+      throw CatalystError.InvalidResource(`submitOneTimeCron failed for ${cronName}`, cause);
+    }
   }
 }
