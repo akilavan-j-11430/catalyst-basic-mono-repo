@@ -79,7 +79,7 @@ The four factories differ, because the resources do:
 | `Table.create<Row>("Todo")` | the table name, where `Row` declares its columns - see below |
 | `Bucket.create("invoices")` | the bucket name |
 | `Cache.create()` | a segment **id**, not a name - omit it for the project default segment |
-| `Job.create<T>({ jobName, aliasName, jobPoolName, jobTargetFunctionName })` | a config object, where `T` types the job's params and `aliasName` may not exceed 20 characters |
+| `Job.create<T>({ jobName, aliasName, jobPoolName, jobTargetFunctionName })` | a config object, where `T` types the job's params and `aliasName` is 1-20 letters, digits or underscores - Catalyst sends it as `job_name` and rejects a hyphen |
 
 `jobTargetFunctionName` is the function the job pool invokes. There is no default: a job
 that does not say what runs it is a deploy-time failure nothing catches, so every job names

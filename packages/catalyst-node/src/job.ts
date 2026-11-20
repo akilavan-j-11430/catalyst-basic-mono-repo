@@ -4,8 +4,9 @@ import { CatalystScope } from "@/catalyst-scope";
 import { CatalystSession } from "@/catalyst-session";
 import { randomUUID } from "node:crypto";
 
-/** Catalyst rejects an alias longer than this. */
-const MAX_ALIAS_LENGTH = 20;
+/** The alias is sent as `job_name`, which Catalyst takes as 1-20 letters, digits or
+ *  underscores - a hyphen fails every submit at runtime. */
+const ALIAS_NAME_PATTERN = /^[A-Za-z0-9_]{1,20}$/;
 
 /** Catalyst rejects a cron name longer than this. */
 const MAX_CRON_NAME_LENGTH = 20;
@@ -81,9 +82,9 @@ export class Job<T extends JobParams | void = void> {
   private constructor(readonly config: JobConfig) {}
 
   static create<T extends JobParams | void = void>(config: JobConfig): Job<T> {
-    if (config.aliasName.length > MAX_ALIAS_LENGTH) {
+    if (!ALIAS_NAME_PATTERN.test(config.aliasName)) {
       throw CatalystError.InvalidResource(
-        `Job alias name must be at most ${MAX_ALIAS_LENGTH} characters, got "${config.aliasName}".`,
+        `Job alias name must be 1-20 letters, digits or underscores, got "${config.aliasName}".`,
       );
     }
     return new Job<T>(config);

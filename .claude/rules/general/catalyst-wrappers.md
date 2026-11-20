@@ -17,7 +17,7 @@ repo's vocabulary to a Catalyst call, so:
   object back to a caller, or the seam leaks.
 - Throw `CatalystError` (`@/catalyst-error`) with an `ErrorCode`, never a raw SDK
   error.
-- Validate what Catalyst will reject anyway - a TTL under 60s, an alias over 20 chars -
+- Validate what Catalyst will reject anyway - a TTL under 60s, a job alias with a hyphen -
   before spending the round trip.
 - Keep the constructor `private` and expose a `static create(...)`, so construction stays
   in `resources.ts`.
