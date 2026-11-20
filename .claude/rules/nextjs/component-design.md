@@ -1,6 +1,9 @@
 ---
 paths:
   - "apps/web/**"
+  - "apps/*/next.config.ts"
+  - "apps/*/src/app/**"
+  - "apps/*/src/components/**"
 ---
 
 # Component design

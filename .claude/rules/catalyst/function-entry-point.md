@@ -1,7 +1,9 @@
 ---
 paths:
   - "apps/*/catalyst-config.json"
-  - "apps/*/src/index.ts"
+  - "apps/*/src/handler.ts"
+  - "apps/*/src/job-dispatcher.ts"
+  - "apps/*/src/signal-dispatcher.ts"
 ---
 
 # Function entry point

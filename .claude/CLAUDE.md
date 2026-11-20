@@ -207,8 +207,8 @@ Topic rules live one-per-file in `.claude/rules/` and load automatically, one fo
   server included: its path constants, how routers mount, its proxy route, and when the
   paths move to `packages/routing`.
 
-`.claude/rules/nextjs/` holds the rules that apply only to `apps/web`, each scoped with
-`paths:` frontmatter:
+`.claude/rules/nextjs/` holds the rules that apply only to a Next.js app - `apps/web`, and a
+second Slate app's `src/app/` and `src/components/` - each scoped with `paths:` frontmatter:
 - `code-placement.md` - where server-side work in Next.js starts - a Server Component, a
   Server Action, a `route.ts` - and when it moves into an area or a package.
 - `forms.md` - every form: react-hook-form, its resolver, and how it calls a Server Action
@@ -240,8 +240,10 @@ function. None ships today:
 - `code-placement.md` - where an event's work goes, how it parses its data, and when it moves.
 
 Every rule in `catalyst/` and `node-*/` is scoped with `paths:` frontmatter, so it loads only
-once a workspace of its kind exists - a function's `catalyst-config.json`, or files only that
-kind has. Before then, the skill that creates one points to it.
+once a workspace of its kind exists, from files only that kind has - a Job function's
+`src/job-dispatcher.ts`, a Basic I/O function's `src/handler.ts`. Only the rules every
+function shares, and the Advanced I/O rule, which has no file of its own, load from a
+function's `catalyst-config.json`. Before then, the skill that creates one points to it.
 
 Add a file to the folder it belongs to rather than growing this one. Give a rule `paths:`
 frontmatter when it applies to only part of the tree.

@@ -1,6 +1,5 @@
 ---
 paths:
-  - "apps/*/catalyst-config.json"
   - "apps/*/src/handler.ts"
 ---
 
