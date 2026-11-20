@@ -75,7 +75,7 @@ not handle both shapes in the app's routes.
 
 ## Local run
 
-`"dev": "tsx watch --env-file-if-exists=../../.env --env-file-if-exists=.env src/dev-server.ts"`
+`"dev": "tsx watch --env-file-if-exists=.env src/dev-server.ts"`
 on its own port, 8100 and up. The proxy routes the prefix to that port, so requests go
 through the URL `pnpm dev` prints and carry the Catalyst headers.
 

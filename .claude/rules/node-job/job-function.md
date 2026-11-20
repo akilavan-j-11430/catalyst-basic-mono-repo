@@ -196,7 +196,7 @@ app.listen(8100);
   them the Admin app cannot be built.
 - `express` is a `devDependency`. The bundle installs `dependencies` only, and
   `dev-server.ts` is never bundled.
-- `"dev": "tsx watch --env-file-if-exists=../../.env --env-file-if-exists=.env src/dev-server.ts"`,
+- `"dev": "tsx watch --env-file-if-exists=.env src/dev-server.ts"`,
   on its own port from 8100 up. `pnpm dev` then starts it with everything else.
 
 ```bash

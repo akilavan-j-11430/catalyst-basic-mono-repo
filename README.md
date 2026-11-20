@@ -138,42 +138,51 @@ the table -> Scopes & Permissions**: an App User can read by default, and insert
 delete only once you allow them. A write without permission throws a `CatalystError`, so
 check this first when an action that works as Admin fails for a signed-in user.
 
-**3. Set up environment variables**
+**3. Fill in the environment**
+
+Each deployable has its own `.env`, gitignored, beside a committed `.env.example` that lists
+every key with a comment and no value. The web app's is the one to fill in; the proxy's
+needs nothing, since `catalyst serve` sets everything it reads:
 
 ```bash
-cp .env.example .env
 cp apps/web/.env.example apps/web/.env
 ```
 
-The root `.env` is shared by every app. App-specific values go in `apps/<app>/.env`,
-each with its own `apps/<app>/.env.example`. The `.env` files are gitignored; the
-`.env.example` files are committed.
+Then fill `apps/web/.env` in:
 
-Platform values, read by the Catalyst CLI and SDK rather than by this repo's code:
+- **`TZ`** - optional. Your timezone for log timestamps, e.g. `Asia/Kolkata`; blank keeps the
+  logger's default, `Asia/Kolkata`.
+- **The five Catalyst SDK keys** - take them from `catalyst serve`, which works them out from
+  the project and data centre you signed in to. Run `pnpm serve` once; when the proxy starts
+  it prints them, ready to paste:
 
-| Variable | Purpose |
-|---|---|
-| `X_ZOHO_CATALYST_IS_LOCAL` | Tells the Catalyst SDK it is running outside the cloud. |
-| `X_ZOHO_CATALYST_ACCOUNTS_URL` | Accounts endpoint for your data centre. |
-| `X_ZOHO_CATALYST_CONSOLE_URL` | Console endpoint for your data centre. |
-| `X_ZOHO_STRATUS_RESOURCE_SUFFIX` | Suffix for Stratus bucket resource names. |
-| `CATALYST_PORTAL_DOMAIN` | Your project's portal domain. |
+  ```
+  [proxy] Catalyst SDK keys for apps/web/.env:
+  X_ZOHO_CATALYST_IS_LOCAL=true
+  X_ZOHO_CATALYST_ACCOUNTS_URL=https://accounts.zoho.com
+  X_ZOHO_CATALYST_CONSOLE_URL=https://api.catalyst.zoho.com
+  CATALYST_PORTAL_DOMAIN=https://accounts.zohoportal.com
+  X_ZOHO_STRATUS_RESOURCE_SUFFIX=.zohostratus.com
+  ```
 
-Nothing loads the root `.env` into the web app: Next.js reads only `apps/web/.env*`. The
-dev script of a Node app or function loads it (`tsx --env-file-if-exists=../../.env`), and
-none ships today. A value exported in your shell reaches every task, because `turbo.json`
-lists these under `globalPassThroughEnv`. Whether the web server needs any of them - say, for
-a project outside the US data centre - has not been checked yet.
+  Replace the five empty lines in `apps/web/.env` with those five, then stop it. Paste all
+  five even for a US project: with `IS_LOCAL=true` the Stratus SDK reads
+  `CATALYST_PORTAL_DOMAIN` with no US default. Paste them again only if you bind the repo to
+  a project in another data centre.
 
-Values this repo's own code reads. Each is a key on the owning app's template - its
-`src/env.ts` - so the app decides what it is configured with:
+Why the web app needs them and the proxy does not: `catalyst serve` sets them for the proxy,
+the one AppSail it runs, but turbo starts the web app, so it only has what Next loads from
+`apps/web/.env`.
 
-| Variable | Owner | Purpose |
-|---|---|---|
-| `TZ` | `apps/web` | Timezone for the web server's log timestamps. Optional. |
+On Slate, set `TZ` and the four data-centre keys - every key above except
+`X_ZOHO_CATALYST_IS_LOCAL`, which is never set when deployed - in **Console -> Slate -> web ->
+Environment Variables**. Whether Slate sets the data-centre keys itself is checked on the
+first deploy (below).
 
-These never go in `app-config.json` or any other Catalyst file - that file is committed,
-and `.env` is not. `.claude/rules/general/environment.md` is the full rule.
+A function, an AppSail or a second app gets its own `.env.example` from the skill that adds
+it, with the same five keys, since turbo starts its dev server too. Never put a value in
+`app-config.json` or any other Catalyst file - those are committed, and `.env` is not.
+`.claude/rules/general/environment.md` is the full rule.
 
 **4. Start everything**
 
@@ -325,11 +334,11 @@ this script. It is `turbo run bundle && catalyst deploy --only slate:web`:
 **The proxy is not in that list, and must not be.** It is a local-development
 component only. In the cloud the web app reads and writes on its own server.
 
-**The web app's key** - `TZ` - is set in **Console -> Slate -> web
--> Environment Variables**, once per environment. The server reads it at request time.
-Sign-up needs no redirect key: the Server Action sends new users to the origin the request
-came from. `apps/web/.env.example` documents it, and a local `apps/web/.env` never reaches Slate,
-because the bundle leaves it out.
+**The web app's keys** - `TZ` and the four data-centre keys from step 3 - are
+set in **Console -> Slate -> web -> Environment Variables**, once per environment. The server
+reads them at request time. Sign-up needs no redirect key: the Server Action sends new users
+to the origin the request came from. `apps/web/.env.example` documents each one, and a local
+`apps/web/.env` never reaches Slate, because the bundle leaves it out.
 
 **Environment variables are not carried by the deploy.** No Catalyst file declares one, on
 purpose - those files are committed, so a value there is a value in git. Set what a deployed

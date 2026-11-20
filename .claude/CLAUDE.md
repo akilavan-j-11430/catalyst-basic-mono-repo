@@ -356,8 +356,9 @@ exception to all of this - see `.claude/rules/general/testing.md`.
 ## Catalyst notes
 
 - `zcAuth.init(req)` (`@zcatalyst/auth`) is **per request**. Project details and caller
-  credentials ride on request headers, so nothing Catalyst-related belongs in the
-  environment.
+  credentials ride on request headers, so neither belongs in the environment. The SDK's own
+  data-centre keys do, in each app's `.env` - `environment.md`, "The keys the Catalyst SDK
+  reads".
 - `catalyst_auth: true` in `apps/proxy/app-config.json` is what enforces login locally.
   Nothing sits in front of a deployed app, so each page, action or route names the scopes it
   reads, and one that needs a signed-in caller names User. Admin scope proves nothing about

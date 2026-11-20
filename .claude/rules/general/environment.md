@@ -41,8 +41,10 @@ Not `apps/*/app-config.json`, not `catalyst.json`, not
 
 `app-config.json` is committed, so a value written there is a value committed to the
 repository. `.env` is gitignored and is the only place a value lives; `.env.example` is
-committed and carries the key with a comment and no value. The root pair holds what every
-app shares; an app's own keys go in `apps/<app>/.env` and `apps/<app>/.env.example`.
+committed and carries the key with a comment and no value. Each deployable has its own pair,
+`apps/<app>/.env` and `apps/<app>/.env.example`, and there is no shared root one: two
+deployables are configured on two Console screens, so a value they both need is written in
+both.
 
 This costs something at deploy time and the cost is worth knowing. For an app linked in
 `catalyst.json`, `env_variables` in `app-config.json` is what the AppSail runtime applies
@@ -101,13 +103,32 @@ read before any app template is in play. They stay as they are:
 - `packages/logger/src/catalyst-log-output.ts` - `X_ZOHO_SPARKLET_LOG_FD`, the log collector
   Catalyst hands a running app. The one read inside a package: no app configures it, and the
   class that writes SparkP packets to it is the only code that knows what it means.
-- `apps/proxy/src/index.ts` - `X_ZOHO_CATALYST_LISTEN_PORT`
+- `apps/proxy/src/index.ts` - `X_ZOHO_CATALYST_LISTEN_PORT`, and the five SDK keys below, which
+  it only prints
 
 They are not configuration this repo owns, so they do not belong on a template. `apps/proxy`
 has no `src/env.ts` for exactly that reason.
 
-Nothing Catalyst-related belongs in the environment at all. Project details and the
-caller's credentials ride on request headers, because `zcAuth.init(req)` is per request.
+The project's details and the caller's credentials never go in the environment: they ride
+on request headers, because `zcAuth.init(req)` is per request.
+
+## The keys the Catalyst SDK reads
+
+The SDK reads five keys of its own when it loads: `X_ZOHO_CATALYST_IS_LOCAL`,
+`X_ZOHO_CATALYST_ACCOUNTS_URL`, `X_ZOHO_CATALYST_CONSOLE_URL`, `CATALYST_PORTAL_DOMAIN` and
+`X_ZOHO_STRATUS_RESOURCE_SUFFIX`.
+
+- **Not on a template.** No app code reads them, so they are not keys on `src/env.ts`; they
+  go in the app's `.env.example`, with a comment, like any other key.
+- **Their values come from `catalyst serve`**, which works them out from the project and data
+  centre you signed in to and sets them for the one AppSail it runs, the proxy. The proxy
+  prints them at startup, ready to paste; README "3. Fill in the environment" says how.
+- **Anything turbo starts gets none** - the web app, an AppSail's or a function's dev
+  server - so its `.env.example` lists all five and its `.env` holds the pasted values, all
+  five even for the US: with `IS_LOCAL=true` the Stratus SDK reads `CATALYST_PORTAL_DOMAIN`
+  with no US default.
+- **Deployed, `IS_LOCAL` is never set.** The other four are set in the Console, until the
+  first Slate deploy shows whether Slate sets them itself.
 
 ## `apps/web` reads its keys on the server
 
@@ -127,9 +148,10 @@ it, through `env`, never `process.env`. The four steps above apply unchanged, wi
 
 `turbo.json`'s `globalPassThroughEnv` forwards variables to local tasks and keeps them out
 of the cache key. It configures the build, not the runtime, and declaring a key there is
-not declaring it to an app. It lists the platform values the Catalyst CLI and SDK read,
-not this repo's own keys, which reach an app because it loads its own `.env` - Next does
-for `apps/web`, and a Node app's `dev` script passes it to `tsx --env-file-if-exists`.
+not declaring it to an app. It lists the SDK's keys above, so a value exported in the shell
+still reaches every task, but an app normally gets them, like its own keys, by loading its
+own `.env` - Next does for `apps/web`, and a Node app's `dev` script passes it to
+`tsx --env-file-if-exists=.env`.
 
 An app may carry its own `turbo.json` with `extends: ["//"]`, but a **global key is
 root-only**: turbo 2.11 rejects `globalPassThroughEnv` there with `Found an unknown key`.

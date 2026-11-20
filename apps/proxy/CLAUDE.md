@@ -46,6 +46,11 @@ process manager's pipe never sends one, so it hangs. The front port still binds,
 every request 502s and it looks like a proxy fault. Do not drop that redirect.
 Running `pnpm serve` yourself is unaffected: a terminal takes the interactive path.
 
+At startup it prints the five keys the Catalyst SDK reads, which `catalyst serve` set for it
+from the project you signed in to, ready to paste into `apps/web/.env` - README "3. Fill in
+the environment". They are URLs and a suffix, never a credential; print nothing else from
+the environment.
+
 Because it serves the bundle, **edits to `src/` require a re-bundle** to take effect.
 
 Running `node appsails/proxy/index.js` by hand serves the pages but breaks every Catalyst
