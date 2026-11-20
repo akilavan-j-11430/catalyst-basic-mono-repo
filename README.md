@@ -386,8 +386,8 @@ After it, check the one thing the design rests on: that Slate hands Next's serve
    `[...(await headers()).keys()].filter((name) => name.startsWith("x-zc-"))` and the value
    of `x-zc-user-type` from one page, deploy, read the log, then remove the line.
 3. If the credential headers are missing, stop and bring it back to the team: the web app
-   cannot call Catalyst as the user from its server. The fallback is the shape `apps/api`
-   had - an API app the browser calls directly (`.claude/rules/node-api/express-app.md`).
+   cannot call Catalyst as the user from its server. The fallback is an API app the browser
+   calls directly (`.claude/rules/node-api/express-app.md`).
 
 ---
 

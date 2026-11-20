@@ -36,8 +36,8 @@ for Basic I/O and Advanced I/O - and every entry point follows
    inlines. The function sets its apps through
    `CatalystSession.setApp` rather than building them itself, so it needs no
    `allowCatalystSdk([...])`.
-3. **`scripts/bundle.mjs`** is the deleted `apps/api/scripts/bundle.mjs`, restored from git
-   as `node-api/express-app.md` shows ("Start from the last one"), with these changes:
+3. **`scripts/bundle.mjs`** is written as "Build and bundle" in `node-api/express-app.md`
+   describes, from a copy of `apps/proxy/scripts/bundle.mjs`, with these changes:
    - `outDir` is `functions/<name>`.
    - It copies `catalyst-config.json` instead of `app-config.json`.
    - The entry is `src/index.ts` alone, so `src/dev-server.ts` is never bundled.

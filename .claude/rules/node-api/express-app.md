@@ -11,19 +11,50 @@ None ships today (`code-placement.md`, "No API app until one is needed"); this i
 first one is built from. Creating the workspace, its bundle and its deploy entries is the
 `add-appsail` or `add-aio-fn` skill.
 
-## Start from the last one
+## The plumbing
 
-The repo had one, `apps/api`, with its plumbing in `packages/http-server` and its paths in
-`packages/routing`. Restore them from git rather than writing them again:
+No API app ships, so the first one writes its plumbing from this section, in its own `src/` -
+not in a package: with one app it has one caller. It moves to `packages/http-server` when a
+second app that serves HTTP needs it, and every such app then imports it from there and never
+copies it.
 
-```bash
-deleted=$(git log -1 --format=%h --diff-filter=D -- apps/api/src/app.ts)
-git show "$deleted^:packages/http-server/src/middleware.ts"
+**`src/http-error.ts`** - `HttpError extends Error`, with `readonly status` and
+`readonly code`, a private constructor, and one factory per status: `BadRequest` (400,
+`BAD_REQUEST`), `Unauthorized` (401, `UNAUTHORIZED`), `NotFound` (404, `NOT_FOUND`) and
+`Conflict` (409, `CONFLICT`). A new status is a new factory.
+
+**`src/response.ts`** - three builders, with their envelope types beside them:
+
+```ts
+toRecordResponse(data)     // { status: "success", data }
+toErrorResponse(message)   // { status: "error", message }
+toPagedResponse(data, page, perPage, count, nextPageToken?)
+// { status: "success", data,
+//   pageInfo: { page, perPage, count, totalPages, hasMore, nextPageToken } }
+// totalPages = Math.max(Math.ceil(count / perPage), 1) - one page even when empty
+// hasMore    = page * perPage < count
 ```
 
-Bring the plumbing into the new app's own `src/`, not back into a package: with one app it
-has one caller. It moves to `packages/http-server` when a second app that serves HTTP needs
-it, and every such app then imports it from there and never copies it.
+**`src/middleware.ts`** - four, with one `Logger.for("middleware")`:
+
+- **`initExecutionContext`** - a new `ExecutionContext` with `executionId: randomUUID()` and
+  empty extras, then `runWithContext(context, next)`.
+- **`recordRequestTiming`** - logs `Request execution started for <METHOD> <url>`, and in a
+  `res.on("finish")` listener logs how long it took; a listener, since it must not hold the
+  response. An Advanced I/O function also flushes the logger there
+  (`catalyst/advanced-io-function.md`).
+- **`initCatalystScopes(scopes)`** - returns an async handler that awaits
+  `CatalystSession.setApp(req.headers, scope)` for each scope in order, then calls `next()`.
+  On a failure it logs `String(error)` - a `CatalystError` holding only the SDK's code and
+  message, never the headers - and throws `HttpError.Unauthorized("Sign in to continue.")` for
+  User, or the error itself for any other scope.
+- **`errorHandler`** - last in the chain. An `HttpError` answers its status with
+  `toErrorResponse(error.message)`, an `InvalidInputError` answers 400 the same way, and
+  anything else is logged with `logger.error` and answered 500 `"Something went wrong."` -
+  never with the error's own message.
+
+Express 5 passes a rejected async handler to `errorHandler`; Express 4 does not, and the
+request hangs. So `express` is `^5`.
 
 ## Layout
 
@@ -103,8 +134,19 @@ Logging is `logging.md`; a call to an outside service is `outbound-http.md`.
 ## Build and bundle
 
 - The workspace is CommonJS (`"type": "commonjs"`); its Vitest config is `vitest.config.mts`.
-- `build` is `tsc --build tsconfig.build.json && tsc-alias -p tsconfig.build.json`.
-- `bundle` is `scripts/bundle.mjs`: esbuild bundles `src/index.ts` with `format: "cjs"`,
-  inlines every `@repo/*` package and strips them from the deployed manifest, and marks the
-  rest external. So a package that reaches for something outside the bundle at runtime - a
-  file on disk, a native module - works under `tsx watch` and fails when deployed.
+- **Dependencies:** `express` (`^5`), `zod`, `pino` (the logger's, installed rather than
+  inlined), the `@zcatalyst/*` packages its wrappers need, and each `@repo/*` package it
+  imports as `"workspace:*"`. **Dev dependencies:** `@repo/eslint-config`,
+  `@repo/typescript-config`, `@repo/testing`, `@types/express`, `@types/node` (`^24`),
+  `eslint`, `vitest`, `supertest` and `@types/supertest`.
+- **Scripts:** `build` is `tsc --build tsconfig.build.json && tsc-alias -p tsconfig.build.json`;
+  `dev` is `tsx watch --env-file-if-exists=.env` on its entry; `bundle` is
+  `node scripts/bundle.mjs`; plus `typecheck`, `lint` and `test:integration`, as every
+  workspace has them.
+- **`scripts/bundle.mjs`** starts as a copy of `apps/proxy/scripts/bundle.mjs`, with three
+  changes: `outDir` is the app's own staging folder; the deployed manifest's dependencies are
+  the app's `package.json` dependencies minus every `@repo/*`, and the same list is esbuild's
+  `external` in place of `packages: "external"`, so the `@repo/*` packages are inlined; and
+  it runs `npm install --omit=dev`. esbuild bundles `src/index.ts` with `format: "cjs"`, so a
+  package that reaches for something outside the bundle at runtime - a file on disk, a native
+  module - works under `tsx watch` and fails when deployed.

@@ -17,8 +17,8 @@ describes. It is exported and never listens. What differs from any other Express
 2. **Read `.claude/skills/deployable-steps.md` and `.claude/skills/function-steps.md`**,
    then follow them with `--type aio`.
 3. **Write the app**, following `express-app.md` and `advanced-io-function.md`:
-   - `src/middleware.ts`, `src/http-error.ts` and `src/response.ts`, restored from git as
-     "Start from the last one" in `express-app.md` shows.
+   - `src/middleware.ts`, `src/http-error.ts` and `src/response.ts`, written as "The
+     plumbing" in `express-app.md` describes.
    - `src/app.ts` sets the middleware order `express-app.md` gives.
    - `src/index.ts` is `module.exports = app`.
    - `src/dev-server.ts` is `app.listen(<port>)`, using a port from 8100 up.

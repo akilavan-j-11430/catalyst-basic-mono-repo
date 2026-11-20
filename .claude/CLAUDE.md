@@ -229,7 +229,7 @@ function. None ships today:
 - `code-placement.md` - when to create an API app at all, what a route does, and when its
   work moves into an area (`src/<area>/<areas>.ts`) and when into a package.
 - `express-app.md` - the app's layout, middleware order, scopes, input, errors, responses
-  and bundle, and how to restore the deleted plumbing from git.
+  and bundle, and the plumbing the first one writes.
 
 `.claude/rules/node-job/` holds the rules for a Job function:
 - `job-function.md` - one function for every job, dispatching on `jobName`.
