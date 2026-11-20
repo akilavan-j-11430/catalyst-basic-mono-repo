@@ -44,6 +44,9 @@ A Server Action and a route handler are both plain async functions - no wrapper 
 besides `withCatalystFn`. Use an action for a write from our own pages, and a route
 handler only for a caller outside the app, a parallel or polled read, or a streamed file.
 
+A path the app writes - a redirect, a link, a sign-out target - is a `WebPath` constant from
+`src/web-path.ts`, never a string literal (`general/routing.md`, "A Next.js app").
+
 ## The execution context
 
 Each entry point starts one execution context, so its log lines share one Execution ID and

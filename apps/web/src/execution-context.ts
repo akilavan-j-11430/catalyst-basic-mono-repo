@@ -8,6 +8,7 @@ import { ExecutionContext, runWithContext } from "@repo/async-context/async-cont
 import { CatalystScope } from "@repo/catalyst-node/catalyst-scope";
 import { CatalystSession } from "@repo/catalyst-node/catalyst-session";
 import { Logger } from "@repo/logger/logger";
+import { WebPath } from "@/web-path";
 
 const logger = Logger.for("execution-context");
 
@@ -55,7 +56,7 @@ export function withCatalystPage<Props>(
   return async (props) =>
     runWithContext(newExecutionContext(), async () => {
       if (!(await setApps(scopes))) {
-        redirect("/sign-in");
+        redirect(WebPath.SignIn);
       }
       return page(props);
     });

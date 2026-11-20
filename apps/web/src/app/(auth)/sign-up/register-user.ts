@@ -8,6 +8,7 @@ import { InputValidation } from "@repo/input-validation/input-validation";
 import { InvalidInputError } from "@repo/input-validation/invalid-input-error";
 import type { NewUser, RegisteredUser } from "@repo/types/user";
 import { withCatalystFn } from "@/execution-context";
+import { WebPath } from "@/web-path";
 
 /** What a registration must send. Each message says what is wrong with its field. */
 const newUserSchema = z.object(
@@ -36,7 +37,7 @@ async function redirectUrl(): Promise<string> {
   if (origin === null) {
     throw new Error("A Server Action request arrived without an Origin header.");
   }
-  return new URL("/", origin).toString();
+  return new URL(WebPath.Home, origin).toString();
 }
 
 /**

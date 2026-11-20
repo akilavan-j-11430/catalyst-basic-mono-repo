@@ -9,9 +9,9 @@ paths:
 
 # Routing
 
-Every Node app that serves HTTP - an AppSail, an Advanced I/O function, a function's dev
-server - names its paths the same way: each segment is a constant, declared once, and a path
-is never a string literal.
+Every app that serves HTTP - the Next.js app, an AppSail, an Advanced I/O function, a
+function's dev server - names its paths the same way: each segment is a constant, declared
+once, and a path is never a string literal.
 
 ## The path file
 
@@ -35,6 +35,26 @@ export type BillingPath = (typeof BillingPath)[keyof typeof BillingPath];
   by prefix, so two apps never share one.
 - **A frozen object, not an `enum`.** An enum emits runtime code that Node's strip-only type
   support rejects.
+
+## A Next.js app
+
+`apps/web` names its pages the same way, in `src/web-path.ts`:
+
+```ts
+export const WebPath = {
+  Home: "/",
+  SignIn: "/sign-in",
+  SignUp: "/sign-up",
+} as const;
+```
+
+- **Every path the app writes is a constant** - a `redirect`, a `Link` or `href`, the
+  sign-out target, the origin URL a Server Action builds: `redirect(WebPath.SignIn)`, never
+  `redirect("/sign-in")`.
+- **The folders still decide what a path serves.** Next routes by `app/`, so moving a page
+  moves its folder and its `WebPath` entry together, in one change.
+- **One entry per page,** added with the page. The file is plain - no `server-only` - since
+  client components link with it too.
 
 ## Mounting
 

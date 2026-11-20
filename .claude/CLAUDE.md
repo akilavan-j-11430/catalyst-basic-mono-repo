@@ -202,9 +202,9 @@ Topic rules live one-per-file in `.claude/rules/` and load automatically, one fo
   change done.
 - `repositories.md` - where repositories live, why every table sits behind one, and whether
   an outside service is a repository or a client.
-- `routing.md` - every Node app that serves HTTP, a function's dev server included: its path
-  constants, how routers mount, its proxy route, and when the paths move to
-  `packages/routing`.
+- `routing.md` - every app that serves HTTP, the web app's `WebPath` and a function's dev
+  server included: its path constants, how routers mount, its proxy route, and when the
+  paths move to `packages/routing`.
 
 `.claude/rules/nextjs/` holds the rules that apply only to `apps/web`, each scoped with
 `paths:` frontmatter:
