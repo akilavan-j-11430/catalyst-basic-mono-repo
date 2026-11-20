@@ -28,9 +28,10 @@ Where new work goes:
   page reads in its Server Component and a form writes through a Server Action, on the
   server - see `.claude/rules/nextjs/code-placement.md`.
 - No API app ships. A caller outside the web app - a mobile app, a webhook, another
-  service - starts at a `route.ts` in `apps/web`. An API app - an Advanced I/O function or an
-  AppSail, named for what it serves (`billing`, not `api`) - is created only when that cannot
-  serve the caller, and agreed with the user first. See
+  service - is served by an API app: an Advanced I/O function or an AppSail, named for what
+  it serves (`billing`, not `api`), guarded by its own Express middleware. It is a new
+  deployable, so it is agreed with the user first. `withCatalystFn` is the web app's own and
+  serves only its Server Actions and route handlers. See
   `.claude/rules/node-api/code-placement.md`.
 - Shapes two workspaces use -> `packages/types`, defined once and imported by both;
   never two definitions that can drift.
@@ -298,11 +299,11 @@ variables follow the `general/` rules like every other app.
 
 ## Adding to the repo
 
-**An API route** - starts as a `route.ts` in `apps/web`
-(`.claude/rules/nextjs/code-placement.md`). An API app of its own comes only when that
-cannot serve the caller, agreed with the user first: `.claude/rules/node-api/code-placement.md`
-says when, `express-app.md` beside it how the app is built, and
-`.claude/rules/general/routing.md` how its paths are named and mounted.
+**An API for a caller outside the web app** - an API app, agreed with the user first:
+`.claude/rules/node-api/code-placement.md` says which kind, `express-app.md` beside it how
+the app is built, and `.claude/rules/general/routing.md` how its paths are named and
+mounted. A `route.ts` in `apps/web` serves only the web app's own browser
+(`.claude/rules/nextjs/code-placement.md`).
 
 **A table** - declare its handle in `packages/repositories/src/resources.ts`, its
 domain type in `packages/types`, and a repository in

@@ -10,8 +10,8 @@ writes back one string. What goes inside it is described in
 `.claude/rules/catalyst/basic-io-function.md`. This skill creates it.
 
 1. **Agree it with the user.** It is a new deployable, so settle its name, its arguments
-   and what it writes back. If it needs more than one operation, use a `route.ts` in
-   `apps/web` or an Advanced I/O function instead.
+   and what it writes back. If it needs more than one operation, use an Advanced I/O
+   function instead.
 2. **Read `.claude/skills/deployable-steps.md` and `.claude/skills/function-steps.md`**,
    then follow them with `--type bio`.
 3. **Write the function**, following `basic-io-function.md`:

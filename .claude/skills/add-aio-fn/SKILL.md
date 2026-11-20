@@ -11,8 +11,8 @@ describes. It is exported and never listens. What differs from any other Express
 
 1. **Agree it with the user.** It is a new deployable, so settle these first:
    - its name, for what it serves (`billing`)
-   - why a `route.ts` in `apps/web` cannot serve the caller - "No API app until one is
-     needed" in `.claude/rules/node-api/code-placement.md`
+   - who calls it from outside the web app, and why not an AppSail - "No API app until one
+     is needed" in `.claude/rules/node-api/code-placement.md`
    - whether the web app calls it
 2. **Read `.claude/skills/deployable-steps.md` and `.claude/skills/function-steps.md`**,
    then follow them with `--type aio`.

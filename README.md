@@ -70,9 +70,8 @@ is checked on the first Slate deploy - "The first Slate deploy" below says how, 
 do if it fails.
 
 **No API app ships.** A caller outside the web app - a mobile app, a webhook, another
-service - starts at a `route.ts` in `apps/web`. An Advanced I/O function or an AppSail is
-added only when that cannot serve the caller; `.claude/rules/node-api/code-placement.md`
-says when.
+service - is served by an API app, an Advanced I/O function or an AppSail, added when the
+first such caller arrives; `.claude/rules/node-api/code-placement.md` says which.
 
 **Two things to internalise before you start.** First, the entry port is assigned by
 the Catalyst CLI - it takes the first free port from 3000 upward, so in practice it is

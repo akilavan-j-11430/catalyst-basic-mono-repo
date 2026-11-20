@@ -18,12 +18,13 @@ How the app is wired - middleware order, the execution context, errors and respo
 
 ## No API app until one is needed
 
-None ships. The web app's pages read and its Server Actions write on its own server, and a
-caller outside the web app - a mobile app, a webhook, another service - starts at a
-`route.ts` in `apps/web` (`nextjs/code-placement.md`).
+None ships. The web app's pages read and its Server Actions write on its own server, and
+its `route.ts` files serve only its own browser (`nextjs/code-placement.md`).
 
-Create an API app only when that cannot serve the caller, and agree it with the user first,
-since it is a new deployable:
+A caller outside the web app - a mobile app, a webhook, another service - is served by an
+API app. Its Express middleware answers a caller with no signed-in user with a 401, where the
+web app's `withCatalystFn` would throw. Create the first one when the first such caller
+arrives, and agree it with the user first, since it is a new deployable:
 
 | The API must | Create | Skill |
 |---|---|---|

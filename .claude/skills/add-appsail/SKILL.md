@@ -6,8 +6,8 @@ description: Add a new Catalyst AppSail to this repo - an Express app with its w
 # Add an AppSail
 
 1. **Agree it with the user.** It is a new deployable, so settle three things first: its
-   name, for what it serves (`billing`); why neither a `route.ts` in `apps/web` nor a
-   function will do - "No API app until one is needed" in
+   name, for what it serves (`billing`); who calls it from outside the web app, and why a
+   function will not do - "No API app until one is needed" in
    `.claude/rules/node-api/code-placement.md`; and whether the web app calls it.
 2. **Read `.claude/skills/deployable-steps.md`.**
 3. **Build `apps/<name>` as `.claude/rules/node-api/express-app.md` describes**, starting

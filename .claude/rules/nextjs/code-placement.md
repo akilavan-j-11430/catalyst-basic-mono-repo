@@ -11,10 +11,10 @@ and when it moves. Code starts as small as it can and moves only when a real cal
 for it, the same rule as "a file earns its existence from a second caller" in the root
 `CLAUDE.md`.
 
-No API app ships: a page reads in its Server Component, a form writes through a Server
-Action, and a caller outside the app starts at a `route.ts`. This rule is for every one of
-them. An API app is created only when a `route.ts` cannot serve the caller
-(`node-api/code-placement.md`).
+A page reads in its Server Component, a form writes through a Server Action, and a
+`route.ts` serves what the app's own browser cannot get from either. This rule is for every
+one of them. A caller outside the app - a mobile app, a webhook, another service - is served
+by an API app instead, with its own Express middleware (`node-api/code-placement.md`).
 
 ## Built, and not yet
 
@@ -37,12 +37,14 @@ receives the `x-zc-*` credential headers, a signed-in user's included. Locally
 |---|---|
 | a page that shows data | the page's Server Component, wrapped in `withCatalystPage`, reading during render - no API call, no client loading state for it |
 | a form that changes data | a Server Action - a `"use server"` file beside its page, wrapped in `withCatalystFn`: `app/(auth)/sign-up/register-user.ts` |
-| an endpoint something outside the app calls - a mobile app, a webhook, a Catalyst function | `app/api/.../route.ts`, its handler written in the `GET` / `POST` export and wrapped in `withCatalystFn` |
+| an endpoint the app's own browser calls - a streamed file, a polled read | `app/api/.../route.ts`, its handler written in the `GET` / `POST` export and wrapped in `withCatalystFn`, which passes on Next's `{ params }` |
 | data | a repository in `@repo/repositories`, or a bucket, cache or job handle from its `resources.ts` - each reads the request's app from the execution context. Never a table handle, ZCQL or an SDK call in `apps/web` |
 
 A Server Action and a route handler are both plain async functions - no wrapper of our own
 besides `withCatalystFn`. Use an action for a write from our own pages, and a route
-handler only for a caller outside the app, a parallel or polled read, or a streamed file.
+handler only for a parallel or polled read or a streamed file. `withCatalystFn` throws
+when a scope cannot be set, which suits the app's own pages; a caller outside the app needs
+a 401, which an API app's `initCatalystScopes` answers.
 
 A path the app writes - a redirect, a link, a sign-out target - is a `WebPath` constant from
 `src/web-path.ts`, never a string literal (`general/routing.md`, "A Next.js app").

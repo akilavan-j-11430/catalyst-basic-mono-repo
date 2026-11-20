@@ -30,9 +30,9 @@ headers `catalyst serve` adds, so a request made straight to `:4000` has no Cata
 read with.
 
 Whether Slate passes those same headers to Next's server is still unproven. "The first Slate
-deploy" in `README.md` is the check, and names the fallback if it fails. A caller outside this app - a
-mobile app, a webhook, another service - starts at a `route.ts` here; an API app of its own
-comes only when that cannot serve it (`.claude/rules/node-api/code-placement.md`).
+deploy" in `README.md` is the check, and names the fallback if it fails. A caller outside this
+app - a mobile app, a webhook, another service - is served by an API app, not by a
+`route.ts` here (`.claude/rules/node-api/code-placement.md`).
 
 Shapes two workspaces use live in `@repo/types` (`@repo/types/user` for the user shapes) -
 defined once, never redeclared here. Server-only configuration is on `src/env.ts`
