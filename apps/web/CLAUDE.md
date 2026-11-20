@@ -47,16 +47,22 @@ with `x-zc-user-type`, and `RequestSession.isSignedIn` (`src/catalyst/request-se
 reads it. That Slate stamps it too is still to be checked on the first Slate deploy
 (`README.md`, "The first Slate deploy"):
 
-- `app/(app)/layout.tsx` sends a signed-out visitor to `/sign-in`; `app/(auth)/layout.tsx`
-  sends a signed-in one to `/`. Both groups therefore render per request, never prerendered.
+- `src/proxy.ts` sends a signed-out visitor to `/sign-in` and a signed-in one away from
+  `/sign-in` and `/sign-up` to `/`. Next runs it before any layout or page, on every
+  request - a client-side navigation and a prefetch included - so a page never renders for
+  the wrong visitor. Not a layout: a layout neither re-runs on a soft navigation nor stops
+  its page from rendering (Next's `02-guides/authentication.md`, "Layouts and auth checks").
+- Its `matcher` skips Next's assets and any path with an extension, since the sign-in widget
+  loads `public/catalyst-signin.css` before anyone is signed in. A new public file needs
+  nothing; a new signed-out page goes in its `SIGNED_OUT_PAGES`.
 - Only `project-user` counts. An anonymous visitor may arrive as `admin` - the gateway grants
   Admin to anonymous requests - so a presence check could let everyone in.
-- Never log or echo request headers from a layout or route handler. The same request carries
-  Catalyst credentials in its other `x-zc-*` headers.
-- A layout re-runs on a full load, not on a soft navigation, so the layout's check is not
-  what protects data. Each page and action names its scopes: `withCatalystPage` with User
-  scope sends a visitor with no signed-in user to `/sign-in`, and `withCatalystFn` with User
-  scope throws before the action runs.
+- Never log or echo request headers from the proxy, a layout or a route handler. The same
+  request carries Catalyst credentials in its other `x-zc-*` headers.
+- The proxy reads a header and makes no Catalyst call, so it is not what protects data. Each
+  page and action names its scopes, and a User scope with no signed-in user throws before
+  the page or action runs - Next's "verify inside each Server Function", since an action is
+  a POST the proxy's `matcher` could miss. The wrappers never redirect.
 
 What the browser shows is display only. Data stays protected by the User scope each page and
 action sets, since a wrapper can read only the apps its entry point set.

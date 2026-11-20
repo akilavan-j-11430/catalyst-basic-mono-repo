@@ -53,14 +53,18 @@ Each entry point starts one execution context, so its log lines share one Execut
 the Catalyst wrappers find the request's apps on it. Next.js has no middleware chain to do
 that, so `src/execution-context.ts` wraps each entry point instead:
 
-| Entry point | Wrapper | A User scope with no signed-in user |
-|---|---|---|
-| a page | `withCatalystPage(scopes, page)` | redirects to `/sign-in` |
-| a Server Action, a route handler | `withCatalystFn(scopes, call)` | throws "Sign in to continue." |
+| Entry point | Wrapper |
+|---|---|
+| a page | `withCatalystPage(scopes, page)` |
+| a Server Action, a route handler | `withCatalystFn(scopes, call)` |
 
 Both start the context, set the app for each listed scope from Next's request headers with
-`CatalystSession.setApp`, then run the function inside it. Every `@repo/catalyst-node`
-wrapper reads its app with `CatalystSession.app(scope)`, so nothing passes a session along.
+`CatalystSession.setApp`, in order, then run the function inside it. A scope that cannot be
+set - User, with no signed-in user - throws `SCOPE_UNAVAILABLE` before the function runs, and
+the wrappers decide nothing more: `src/proxy.ts` has already sent a signed-out visitor to
+`/sign-in`, so a failure here is a real error and shows the error page. Every
+`@repo/catalyst-node` wrapper reads its app with `CatalystSession.app(scope)`, so nothing
+passes a session along.
 
 **Only the page's own body runs inside the context.** React renders the components a page
 returns later, outside it, so a component below the page cannot read Catalyst. The page
@@ -98,9 +102,10 @@ export const registerUser = withCatalystFn(
 );
 ```
 
-`app/(app)/layout.tsx` still turns a signed-out visitor away with the cheap
-`RequestSession.isSignedIn` check, but a layout does not re-run on a client-side navigation,
-so each page names its own scopes as well.
+`src/proxy.ts` turns a signed-out visitor away with the cheap `RequestSession.isSignedIn`
+check before anything renders - never a layout, which neither re-runs on a client-side
+navigation nor stops its page from rendering. It only redirects; each page and action names
+its own scopes as well, and that is what protects the data.
 
 `@repo/logger` gets `CatalystLogOutput` in `src/server-logging.ts`, which `execution-context.ts`
 imports - `general/logging.md` says why there and not in `instrumentation.ts`.

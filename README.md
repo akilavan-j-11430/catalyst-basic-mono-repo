@@ -367,10 +367,12 @@ After it, check the one thing the design rests on: that Slate hands Next's serve
 `x-zc-*` headers the Catalyst app is built from.
 
 1. Open the deployed app signed out - `/` should send you to `/sign-in`. Sign in - `/` should
-   show your account. If both happen, the User app was built from the headers, and the
-   check is done.
-2. If `/` keeps sending you back to `/sign-in`, or every read fails, find out which headers
-   arrive - **by name only**, because their values are credentials. Log
+   show your account. If both happen, Slate ran `src/proxy.ts` and the User app was built
+   from the headers, and the check is done.
+2. If `/` keeps sending you back to `/sign-in` (no `x-zc-user-type: project-user`), shows the
+   error page signed out (the proxy did not run) or signed in (the user type arrived but the
+   User app could not be built), or every read fails, find out which headers arrive - **by
+   name only**, because their values are credentials. Log
    `[...(await headers()).keys()].filter((name) => name.startsWith("x-zc-"))` and the value
    of `x-zc-user-type` from one page, deploy, read the log, then remove the line.
 3. If the credential headers are missing, stop and bring it back to the team: the web app

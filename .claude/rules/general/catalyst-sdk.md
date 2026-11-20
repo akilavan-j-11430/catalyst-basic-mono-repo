@@ -241,10 +241,11 @@ export default withCatalystPage([CatalystScope.User], async function HomePage() 
 A scope `setApp` cannot build - User, when the request carries no signed-in user - rejects
 with `CatalystError` (`SCOPE_UNAVAILABLE`), holding only the SDK's code and message: the
 SDK's own error carries the request headers, credential tokens included, so it is never
-attached or logged. In `apps/web`, `withCatalystPage` turns a User failure into a redirect to
-`/sign-in` and `withCatalystFn` into a throw, before the page or action runs
-(`nextjs/code-placement.md`); an API app's `initCatalystScopes([...])` turns it into a 401
-(`node-api/express-app.md`). An Admin failure throws, and an API app answers it with a 500.
+attached or logged. In `apps/web`, `withCatalystPage` and `withCatalystFn` let it throw
+before the page or action runs; `src/proxy.ts` has already sent a signed-out visitor to
+`/sign-in` (`nextjs/code-placement.md`). An API app's `initCatalystScopes([...])` turns a User
+failure into a 401 (`node-api/express-app.md`). An Admin failure throws, and an API app
+answers it with a 500.
 
 **Never hold an app at module scope** or store it on a handle. It is the one object here
 that carries a caller's credentials, so one kept past its request serves another user's

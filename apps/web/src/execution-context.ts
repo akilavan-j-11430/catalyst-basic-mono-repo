@@ -2,39 +2,28 @@ import "server-only";
 import "@/server-logging";
 import { randomUUID } from "node:crypto";
 import { headers } from "next/headers";
-import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
 import { ExecutionContext, runWithContext } from "@repo/async-context/async-context";
-import { CatalystScope } from "@repo/catalyst-node/catalyst-scope";
+import type { CatalystScope } from "@repo/catalyst-node/catalyst-scope";
 import { CatalystSession } from "@repo/catalyst-node/catalyst-session";
 import { Logger } from "@repo/logger/logger";
-import { WebPath } from "@/web-path";
 
 const logger = Logger.for("execution-context");
 
-/**
- * Sets the request's Catalyst app for each scope on the execution context in flight. Resolves
- * false when the request carries no signed-in user for a User scope; any other failure throws.
- */
-async function setApps(scopes: CatalystScope[]): Promise<boolean> {
+/** Sets the request's Catalyst app for each scope on the execution context in flight, and
+ *  throws on the first that fails. */
+async function setApps(scopes: CatalystScope[]): Promise<void> {
   // Catalyst reads the project details and the caller's credentials off these headers.
   const requestHeaders = Object.fromEntries(await headers());
-  const scopesSet = await Promise.all(
-    scopes.map(async (scope) => {
-      try {
-        await CatalystSession.setApp(requestHeaders, scope);
-        return true;
-      } catch (error) {
-        // A CatalystError carrying only the SDK's code and message - never the headers.
-        logger.info(String(error));
-        if (scope === CatalystScope.User) {
-          return false;
-        }
-        throw error;
-      }
-    }),
-  );
-  return scopesSet.every(Boolean);
+  try {
+    for (const scope of scopes) {
+      await CatalystSession.setApp(requestHeaders, scope);
+    }
+  } catch (error) {
+    // A CatalystError carrying only the SDK's code and message - never the headers.
+    logger.error(String(error));
+    throw error;
+  }
 }
 
 function newExecutionContext(): ExecutionContext {
@@ -43,8 +32,8 @@ function newExecutionContext(): ExecutionContext {
 
 /**
  * Runs a page inside one execution context with the app for each scope set, so the page's
- * own reads find them and its log lines share one execution id. A page that needs a
- * signed-in user and has none is sent to sign-in before it runs.
+ * own reads find them and its log lines share one execution id. A scope that cannot be set -
+ * User, for a visitor who is not signed in - throws before the page runs.
  *
  * Only the page's own body runs inside the context: React renders the components it returns
  * later, outside it. So the page reads, and passes what it read down as props.
@@ -55,16 +44,14 @@ export function withCatalystPage<Props>(
 ): (props: Props) => Promise<ReactNode> {
   return async (props) =>
     runWithContext(newExecutionContext(), async () => {
-      if (!(await setApps(scopes))) {
-        redirect(WebPath.SignIn);
-      }
+      await setApps(scopes);
       return page(props);
     });
 }
 
 /**
  * Runs a Server Action or a route handler inside one execution context with the app for each
- * scope set. A call that needs a signed-in user and has none throws before it runs.
+ * scope set. A scope that cannot be set throws before the call runs.
  */
 export function withCatalystFn<Input, Result>(
   scopes: CatalystScope[],
@@ -72,9 +59,7 @@ export function withCatalystFn<Input, Result>(
 ): (input: Input) => Promise<Result> {
   return async (input) =>
     runWithContext(newExecutionContext(), async () => {
-      if (!(await setApps(scopes))) {
-        throw new Error("Sign in to continue.");
-      }
+      await setApps(scopes);
       return call(input);
     });
 }
