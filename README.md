@@ -135,8 +135,8 @@ Then, in the Console for that project and environment, turn on **Authentication*
 hosted sign-in, and public sign-up if people register themselves - the sign-in and sign-up
 pages need it. Each table you add later needs its App User permissions set in **Data Store ->
 the table -> Scopes & Permissions**: an App User can read by default, and insert, update and
-delete only once you allow them. A read without permission comes back from `getRow` as no
-row at all, so check this first when a row you can see in the Console reads as missing.
+delete only once you allow them. A write without permission throws a `CatalystError`, so
+check this first when an action that works as Admin fails for a signed-in user.
 
 **3. Set up environment variables**
 

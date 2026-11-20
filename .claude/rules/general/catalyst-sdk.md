@@ -127,7 +127,7 @@ place a table's columns are written down. Everything else is derived from it:
 |---|---|---|
 | `insertRow` / `insertRows` | `Row` | `StoredRow<Row>` |
 | `updateRow` / `updateRows` | `RowUpdate<Row>` - any subset of `Row`, plus `ROWID` | `StoredRow<Row>` |
-| `getRow` / `getPagedRows` | a `ROWID` / a page token | `StoredRow<Row>` |
+| `getRow` / `getPagedRows` | a `ROWID` / a page token | `StoredRow<Row>` - `getRow` gives `undefined` when no row has that ROWID, which Catalyst answers with `null`; any rejection throws `CatalystError` |
 
 - **A non-optional property is a mandatory column.** Leaving it out of an insert is a
   compile error; an optional property (`NOTES?`) may be left out.

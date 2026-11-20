@@ -77,15 +77,14 @@ class ScopedTable<Row extends object> {
     if (!/^\d+$/.test(rowId)) {
       return undefined;
     }
-    // Outside the try: a request with no app for the scope is an error, not an absent row.
     const table = this.table();
-    // Catalyst rejects for a missing row rather than resolving empty. Rather than probing
-    // with a second query, treat a failed lookup as absent - a real datastore outage
-    // surfaces on the next call rather than being reported as a phantom row.
+    // Catalyst answers a missing row with null, so any rejection - a missing table, a
+    // permission, an outage - is an error, never an absent row.
     try {
-      return (await table.getRow(rowId)) as unknown as StoredRow<Row>;
-    } catch {
-      return undefined;
+      const storedRow = await table.getRow(rowId);
+      return (storedRow ?? undefined) as unknown as StoredRow<Row> | undefined;
+    } catch (cause) {
+      throw CatalystError.InvalidResource(`getRow failed on ${this.name}`, cause);
     }
   }
 

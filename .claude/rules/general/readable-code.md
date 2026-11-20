@@ -31,9 +31,9 @@ function toRegisteredUser(details: RegisteredUserDetails): RegisteredUser {
 - ESLint enforces it (`@typescript-eslint/naming-convention`, from `@repo/eslint-config`).
   The vendor seams are exempt through `allowVendorNames(files)` - all of `catalyst-node`'s
   `src/`, the package that wraps Catalyst, plus `logger`'s `catalyst-log-output.ts` - and so
-  are four tests whose inputs are vendor-cased: `case-conversion`'s `camel-case.test.ts`,
-  `env`'s `define-env.test.ts`, `catalyst-node`'s `user-management.test.ts` and `logger`'s
-  `catalyst-log-output.test.ts`. `apps/web` builds on Next's config instead and leaves
+  are five tests whose inputs are vendor-cased: `case-conversion`'s `camel-case.test.ts`,
+  `env`'s `define-env.test.ts`, `catalyst-node`'s `user-management.test.ts` and
+  `table.test.ts`, and `logger`'s `catalyst-log-output.test.ts`. `apps/web` builds on Next's config instead and leaves
   `src/catalyst/` and `src/env.ts` out of the rule's `files` with `ignores`, along with the
   vendored shadcn primitives in `src/components/ui/`. A key that needs quotes
   (`"content-type"`, `"--width"`) is a wire string and is never checked. Add a file to the
