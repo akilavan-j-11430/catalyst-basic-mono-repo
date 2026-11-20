@@ -26,9 +26,12 @@ instance for its prefix, registered before `webProxy`, which takes every other p
 
 ## Auth
 
-`app-config.json` sets `catalyst_auth: true` with `login_redirect: "/"`. Locally, login
-is enforced here. Nothing sits in front of a deployed app, so in the cloud each page, action
-or route guards itself by naming the scopes it reads.
+`app-config.json` sets `catalyst_auth: true` with `login_redirect: "/"`. It gates no page:
+`catalyst serve` reads it to pass Catalyst's own sign-in paths (`/accounts`, `/oauthorize`)
+and the web SDK's requests through to Catalyst, and to send a signed-in browser to `/`. The
+sign-in widget and sign-out need that locally, so keep it. Who sees which page is the web
+app's own `src/proxy.ts`, and each page, action or route guards its data by naming the scopes
+it reads.
 
 ## Running
 

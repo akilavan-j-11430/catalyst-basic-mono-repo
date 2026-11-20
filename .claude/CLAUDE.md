@@ -104,8 +104,8 @@ An API app, once there is one, gets its own prefix route in the proxy ahead of `
 | `packages/eslint-config` | `@repo/eslint-config` | - |
 | `packages/testing` | `@repo/testing` | - |
 
-**The proxy is never deployed.** It gives local development a single origin and an auth
-gate. It appears in `catalyst.json` so `catalyst serve` can run it, and `pnpm run deploy`
+**The proxy is never deployed.** It gives local development a single origin and passes
+Catalyst's sign-in paths through to Catalyst. It appears in `catalyst.json` so `catalyst serve` can run it, and `pnpm run deploy`
 deliberately ships only `slate:web`. Do not add it to the deploy list.
 
 **The web app serves its own reads and writes.** Slate serves `web` from `*.onslate.com`,
@@ -359,8 +359,10 @@ exception to all of this - see `.claude/rules/general/testing.md`.
   credentials ride on request headers, so neither belongs in the environment. The SDK's own
   data-centre keys do, in each app's `.env` - `environment.md`, "The keys the Catalyst SDK
   reads".
-- `catalyst_auth: true` in `apps/proxy/app-config.json` is what enforces login locally.
-  Nothing sits in front of a deployed app, so each page, action or route names the scopes it
+- `catalyst_auth: true` in `apps/proxy/app-config.json` gates no page. It has
+  `catalyst serve` pass Catalyst's sign-in paths (`/accounts`, `/oauthorize`) through to
+  Catalyst, which the sign-in widget and sign-out need locally - do not remove it. Who sees
+  which page is `apps/web/src/proxy.ts`, and each page, action or route names the scopes it
   reads, and one that needs a signed-in caller names User. Admin scope proves nothing about
   the caller: the gateway grants it to anonymous requests too, so an Admin-only route is
   public.

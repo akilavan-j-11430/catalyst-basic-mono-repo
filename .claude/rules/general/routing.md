@@ -69,8 +69,8 @@ export const WebPath = {
 
 ## Locally, through the proxy
 
-`apps/proxy` gives local development one origin and the auth gate, and `catalyst serve` adds
-the Catalyst headers on the way in. Each app that serves HTTP gets a route there for its
+`apps/proxy` gives local development one origin and Catalyst's sign-in paths, and
+`catalyst serve` adds the Catalyst headers on the way in. Each app that serves HTTP gets a route there for its
 prefix, pointing at its dev port (8000 and up for an AppSail, 8100 and up for a function):
 
 ```ts

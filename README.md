@@ -15,7 +15,7 @@ minutes.
   sign-up form that registers the user through a Server Action. The home page needs a
   signed-in user and shows their account.
 - A **reverse proxy** AppSail, for local development only, that gives the stack a single
-  origin and enforces Catalyst login at the edge.
+  origin and passes Catalyst's sign-in paths through to Catalyst.
 - **Shared TypeScript packages** for shared types, runtime utilities, and a common
   tsconfig - wired up with pnpm workspaces.
 - A **Turborepo pipeline** so packages build in dependency order, plus one-command bundle
@@ -54,10 +54,12 @@ and done consistently.
 
 **Why the proxy exists, and why it is local only.** Locally the proxy puts the web app -
 and any app added later that serves HTTP - behind one origin. The browser's session cookie
-and the Catalyst headers `catalyst serve` injects then reach the app with no extra setup,
-and `catalyst_auth: true` enforces login once, at the edge. It is listed in `catalyst.json`
-so `catalyst serve` can run it, and `pnpm run deploy` ships only `slate:web`. **Do not add it to
-the deploy list.**
+and the Catalyst headers `catalyst serve` injects then reach the app with no extra setup.
+Its `catalyst_auth: true` gates no page: it has `catalyst serve` pass Catalyst's own sign-in
+paths (`/accounts`, `/oauthorize`) through to Catalyst, which the sign-in widget and sign-out
+need, while `src/proxy.ts` in the web app decides who sees which page. It is listed in
+`catalyst.json` so `catalyst serve` can run it, and `pnpm run deploy` ships only
+`slate:web`. **Do not add it to the deploy list.**
 
 **The web app reads and writes on its own server.** A page reads Catalyst in its Server
 Component and a form writes through a Server Action, both on Next's server, with the
